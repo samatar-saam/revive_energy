@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Mail, Phone, MapPin, Clock,
-  Send, MessageSquare, User, Building2, Globe,  ChevronRight,
+  Send, MessageSquare, User, Building2, Globe, ChevronRight,
   Headphones, Award, Users, Zap, Leaf, Recycle
 } from "lucide-react";
 
@@ -72,16 +72,21 @@ export default function ContactPage() {
     }
   ];
 
-
-
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-[#F6F8F4] text-[#142019] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800;900&display=swap');
-        .font-serif-display { font-family: 'DM Serif Display', serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .font-display {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .font-mono-cw {
+          font-family: 'JetBrains Mono', monospace;
+        }
       `}</style>
 
-      {/* ============ HERO SECTION - NO SPACE, MOVED UP ============ */}
+      {/* ============ HERO SECTION - MOVED UP ============ */}
       <section className="relative min-h-[45vh] flex items-center bg-white pt-0">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 right-10 w-96 h-96 bg-[#9CF06B]/5 rounded-full blur-3xl" />
@@ -95,7 +100,7 @@ export default function ContactPage() {
             transition={{ duration: 0.6 }}
             className="text-center max-w-4xl mx-auto"
           >
-            <h1 className="font-serif-display text-5xl sm:text-6xl lg:text-7xl text-[#0A1A0F] leading-[1.1] tracking-tight mb-6">
+            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl text-[#0E2A1C] leading-[1.1] tracking-tight mb-6">
               Let's
               <span className="relative inline-block mx-3">
                 <span className="relative z-10 text-[#11402D]">connect.</span>
@@ -105,7 +110,7 @@ export default function ContactPage() {
               </span>
             </h1>
             
-            <p className="text-xl text-[#5A7060] leading-relaxed max-w-2xl mx-auto">
+            <p className="text-xl text-[#142019]/65 leading-relaxed max-w-2xl mx-auto">
               Have questions about our solutions? Need a custom proposal? Our team is here to help you turn waste into value.
             </p>
           </motion.div>
@@ -113,7 +118,7 @@ export default function ContactPage() {
       </section>
 
       {/* ============ CONTACT INFO CARDS ============ */}
-      <section className="py-12 bg-[#F6F8F4]">
+      <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid md:grid-cols-4 gap-4">
             {contactInfo.map((item, i) => (
@@ -123,16 +128,16 @@ export default function ContactPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-xl transition-all border border-[#11402D]/5 group"
+                className="bg-[#F6F8F4] rounded-xl p-6 shadow-sm hover:shadow-xl transition-all border border-[#11402D]/5 group"
               >
-                <div className="w-12 h-12 rounded-full bg-[#11402D] flex items-center justify-center mx-auto mb-4 group-hover:bg-[#0A1A0F] transition-colors">
+                <div className="w-12 h-12 rounded-full bg-[#11402D] flex items-center justify-center mx-auto mb-4 group-hover:bg-[#0E2A1C] transition-colors">
                   <item.icon className="w-6 h-6 text-[#9CF06B]" />
                 </div>
-                <h3 className="font-bold text-[#0A1A0F] text-center mb-2">{item.title}</h3>
+                <h3 className="font-display font-bold text-[#0E2A1C] text-center mb-2">{item.title}</h3>
                 {item.details.map((detail, j) => (
-                  <p key={j} className="text-sm text-[#5A7060] text-center">{detail}</p>
+                  <p key={j} className="text-sm text-[#142019]/55 text-center">{detail}</p>
                 ))}
-                <button className="text-xs font-semibold text-[#11402D] mt-3 hover:text-[#0A1A0F] transition-colors flex items-center justify-center gap-1 mx-auto">
+                <button className="font-mono-cw text-xs font-semibold text-[#11402D] mt-3 hover:text-[#0E2A1C] transition-colors flex items-center justify-center gap-1 mx-auto">
                   {item.action}
                 </button>
               </motion.div>
@@ -142,7 +147,7 @@ export default function ContactPage() {
       </section>
 
       {/* ============ CONTACT FORM & MAP ============ */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-[#F6F8F4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid lg:grid-cols-5 gap-12">
             {/* Form */}
@@ -154,12 +159,12 @@ export default function ContactPage() {
             >
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-px bg-[#11402D]" />
-                <span className="text-xs font-bold tracking-wider text-[#11402D] uppercase">Get in Touch</span>
+                <span className="font-mono-cw text-xs font-bold tracking-wider text-[#11402D] uppercase">Get in Touch</span>
               </div>
-              <h2 className="font-serif-display text-3xl sm:text-4xl text-[#0A1A0F] mb-4">
+              <h2 className="font-display text-3xl sm:text-4xl text-[#0E2A1C] mb-4">
                 Send us a message
               </h2>
-              <p className="text-[#5A7060] mb-8">
+              <p className="text-[#142019]/65 mb-8">
                 Fill in the form below and our team will get back to you within 24 hours.
               </p>
 
@@ -172,43 +177,43 @@ export default function ContactPage() {
                   <div className="w-16 h-16 rounded-full bg-[#9CF06B] flex items-center justify-center mx-auto mb-4">
                     <CheckCircle2 className="w-8 h-8 text-[#11402D]" />
                   </div>
-                  <h3 className="font-bold text-xl text-[#0A1A0F] mb-2">Message Sent!</h3>
-                  <p className="text-[#5A7060]">Thank you for reaching out. We'll get back to you shortly.</p>
+                  <h3 className="font-display font-bold text-xl text-[#0E2A1C] mb-2">Message Sent!</h3>
+                  <p className="text-[#142019]/65">Thank you for reaching out. We'll get back to you shortly.</p>
                 </motion.div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-[#0A1A0F] mb-2">
+                      <label className="block text-sm font-display font-semibold text-[#0E2A1C] mb-2">
                         Full Name <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5A7060]" />
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#142019]/55" />
                         <input
                           type="text"
                           name="name"
                           value={formData.name}
                           onChange={handleChange}
                           required
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-[#F6F8F4]"
-                          placeholder="John Doe"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-white"
+                          placeholder="Full Name"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-[#0A1A0F] mb-2">
+                      <label className="block text-sm font-display font-semibold text-[#0E2A1C] mb-2">
                         Email Address <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5A7060]" />
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#142019]/55" />
                         <input
                           type="email"
                           name="email"
                           value={formData.email}
                           onChange={handleChange}
                           required
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-[#F6F8F4]"
-                          placeholder="john@example.com"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-white"
+                          placeholder="Email Address"
                         />
                       </div>
                     </div>
@@ -216,33 +221,33 @@ export default function ContactPage() {
 
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-[#0A1A0F] mb-2">
+                      <label className="block text-sm font-display font-semibold text-[#0E2A1C] mb-2">
                         Phone Number
                       </label>
                       <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5A7060]" />
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#142019]/55" />
                         <input
                           type="tel"
                           name="phone"
                           value={formData.phone}
                           onChange={handleChange}
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-[#F6F8F4]"
-                          placeholder="+254 700 123 456"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-white"
+                          placeholder="Phone Number"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-[#0A1A0F] mb-2">
+                      <label className="block text-sm font-display font-semibold text-[#0E2A1C] mb-2">
                         Company
                       </label>
                       <div className="relative">
-                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5A7060]" />
+                        <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#142019]/55" />
                         <input
                           type="text"
                           name="company"
                           value={formData.company}
                           onChange={handleChange}
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-[#F6F8F4]"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-white"
                           placeholder="Company Name"
                         />
                       </div>
@@ -250,7 +255,7 @@ export default function ContactPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-[#0A1A0F] mb-2">
+                    <label className="block text-sm font-display font-semibold text-[#0E2A1C] mb-2">
                       Subject <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -259,13 +264,13 @@ export default function ContactPage() {
                       value={formData.subject}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-[#F6F8F4]"
+                      className="w-full px-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-white"
                       placeholder="How can we help you?"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-[#0A1A0F] mb-2">
+                    <label className="block text-sm font-display font-semibold text-[#0E2A1C] mb-2">
                       Message <span className="text-red-500">*</span>
                     </label>
                     <textarea
@@ -274,7 +279,7 @@ export default function ContactPage() {
                       onChange={handleChange}
                       required
                       rows="5"
-                      className="w-full px-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-[#F6F8F4] resize-none"
+                      className="w-full px-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-white resize-none"
                       placeholder="Tell us about your waste management needs..."
                     />
                   </div>
@@ -284,8 +289,8 @@ export default function ContactPage() {
                     whileTap={{ scale: 0.98 }}
                     type="submit"
                     disabled={isSubmitting}
-                    className={`w-full py-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                      isSubmitting ? 'bg-[#5A7060]' : 'bg-[#11402D] hover:bg-[#0A1A0F]'
+                    className={`w-full py-4 rounded-xl text-white font-display font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                      isSubmitting ? 'bg-[#5A7060]' : 'bg-[#11402D] hover:bg-[#0E2A1C]'
                     }`}
                   >
                     {isSubmitting ? (
@@ -310,34 +315,32 @@ export default function ContactPage() {
               viewport={{ once: true }}
               className="lg:col-span-2"
             >
-              <div className="bg-[#F6F8F4] rounded-2xl p-8 sticky top-8">
-                <h3 className="font-bold text-lg text-[#0A1A0F] mb-6">Quick Connect</h3>
+              <div className="bg-white rounded-2xl p-8 sticky top-8 shadow-sm border border-[#11402D]/5">
+                <h3 className="font-display font-bold text-lg text-[#0E2A1C] mb-6">Quick Connect</h3>
                 
                 <div className="space-y-6">
                   <div>
-                    <h4 className="font-semibold text-sm text-[#11402D] mb-2">Emergency Support</h4>
-                    <p className="text-sm text-[#5A7060]">24/7 support for urgent issues</p>
-                    <a href="tel:+254700123456" className="text-[#11402D] font-bold text-sm block mt-1">
+                    <h4 className="font-display font-semibold text-sm text-[#11402D] mb-2">Emergency Support</h4>
+                    <p className="text-sm text-[#142019]/65">24/7 support for urgent issues</p>
+                    <a href="tel:+254700123456" className="text-[#11402D] font-display font-bold text-sm block mt-1">
                       +254 700 123 456
                     </a>
                   </div>
 
                   <div className="border-t border-[#11402D]/10 pt-6">
-                    <h4 className="font-semibold text-sm text-[#11402D] mb-2">Sales Inquiries</h4>
-                    <p className="text-sm text-[#5A7060]">For sales and partnership</p>
-                    <a href="mailto:sales@reviveenergy.com" className="text-[#11402D] font-bold text-sm block mt-1">
+                    <h4 className="font-display font-semibold text-sm text-[#11402D] mb-2">Sales Inquiries</h4>
+                    <p className="text-sm text-[#142019]/65">For sales and partnership</p>
+                    <a href="mailto:sales@reviveenergy.com" className="text-[#11402D] font-display font-bold text-sm block mt-1">
                       sales@reviveenergy.com
                     </a>
                   </div>
 
-                  
-
                   <div className="border-t border-[#11402D]/10 pt-6">
-                    <div className="bg-[#11402D] rounded-xl p-4 text-white text-center">
+                    <div className="bg-[#0E2A1C] rounded-xl p-4 text-white text-center">
                       <Recycle className="w-8 h-8 text-[#9CF06B] mx-auto mb-2" />
-                      <p className="text-sm font-semibold">Free Waste Assessment</p>
+                      <p className="text-sm font-display font-semibold">Free Waste Assessment</p>
                       <p className="text-xs text-white/60 mt-1">Book a consultation today</p>
-                      <button className="mt-3 text-xs font-bold text-[#11402D] bg-[#9CF06B] px-4 py-2 rounded-full hover:bg-[#8AE05A] transition-colors">
+                      <button className="mt-3 text-xs font-display font-bold text-[#0E2A1C] bg-[#9CF06B] px-4 py-2 rounded-full hover:bg-[#8AE05A] transition-colors">
                         Book Now
                       </button>
                     </div>
@@ -350,7 +353,7 @@ export default function ContactPage() {
       </section>
 
       {/* ============ MAP SECTION ============ */}
-      <section className="py-24 bg-[#F6F8F4]">
+      <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -361,10 +364,10 @@ export default function ContactPage() {
             <div className="flex justify-center mb-6">
               <div className="w-12 h-px bg-[#11402D]" />
             </div>
-            <h2 className="font-serif-display text-3xl sm:text-4xl text-[#0A1A0F] mb-4">
+            <h2 className="font-display text-3xl sm:text-4xl text-[#0E2A1C] mb-4">
               Find Us Here
             </h2>
-            <p className="text-lg text-[#5A7060]">
+            <p className="text-lg text-[#142019]/65">
               Visit our headquarters in Nairobi, Kenya
             </p>
           </motion.div>
@@ -376,7 +379,6 @@ export default function ContactPage() {
             transition={{ duration: 0.6 }}
             className="relative rounded-2xl overflow-hidden shadow-xl border border-[#11402D]/5"
           >
-            {/* Google Maps Embed */}
             <div className="w-full h-[450px] bg-[#F6F8F4]">
               <iframe
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d255282.3585374525!2d36.6821976484375!3d-1.3028611!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x182f1172d84d49a7%3A0xf7cf0254b297924c!2sNairobi%2C%20Kenya!5e0!3m2!1sen!2s!4v1700000000000"
@@ -390,7 +392,6 @@ export default function ContactPage() {
               />
             </div>
             
-            {/* Map Overlay Card */}
             <div className="absolute bottom-6 left-6 right-6 md:right-auto md:max-w-xs">
               <div className="bg-white rounded-xl shadow-xl p-5 border border-[#11402D]/5">
                 <div className="flex items-start gap-3">
@@ -398,8 +399,8 @@ export default function ContactPage() {
                     <MapPin className="w-5 h-5 text-[#9CF06B]" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-[#0A1A0F] text-sm">ReVive Energy Headquarters</h4>
-                    <p className="text-xs text-[#5A7060] mt-1">
+                    <h4 className="font-display font-bold text-[#0E2A1C] text-sm">ReVive Energy Headquarters</h4>
+                    <p className="text-xs text-[#142019]/65 mt-1">
                       Westlands Business Park, 8th Floor<br />
                       Nairobi, Kenya
                     </p>
@@ -408,7 +409,7 @@ export default function ContactPage() {
                         href="https://maps.google.com/maps?daddr=Westlands+Business+Park+Nairobi+Kenya" 
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#11402D] text-xs font-semibold hover:text-[#0A1A0F] transition-colors flex items-center gap-1"
+                        className="text-[#11402D] text-xs font-display font-semibold hover:text-[#0E2A1C] transition-colors flex items-center gap-1"
                       >
                         Get Directions <ArrowRight className="w-3 h-3" />
                       </a>
@@ -422,7 +423,7 @@ export default function ContactPage() {
       </section>
 
       {/* ============ CTA SECTION ============ */}
-      <section className="py-20 bg-[#11402D]">
+      <section className="py-20 bg-[#0E2A1C]">
         <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -432,7 +433,7 @@ export default function ContactPage() {
             <div className="w-16 h-16 rounded-full bg-[#9CF06B]/10 flex items-center justify-center mx-auto mb-6">
               <Headphones className="w-8 h-8 text-[#9CF06B]" />
             </div>
-            <h2 className="font-serif-display text-3xl sm:text-4xl text-white mb-4">
+            <h2 className="font-display text-3xl sm:text-4xl text-white mb-4">
               Need immediate assistance?
             </h2>
             <p className="text-lg text-white/60 max-w-2xl mx-auto mb-8">
@@ -441,13 +442,13 @@ export default function ContactPage() {
             <div className="flex flex-wrap gap-4 justify-center">
               <motion.button 
                 whileHover={{ scale: 1.05 }}
-                className="bg-[#9CF06B] text-[#11402D] font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
+                className="bg-[#9CF06B] text-[#0E2A1C] font-display font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
               >
                 <Phone className="w-4 h-4" /> Call Now
               </motion.button>
               <motion.button 
                 whileHover={{ scale: 1.05 }}
-                className="border-2 border-white/20 text-white font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
+                className="border-2 border-white/20 text-white font-display font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
               >
                 <Mail className="w-4 h-4" /> Email Us
               </motion.button>

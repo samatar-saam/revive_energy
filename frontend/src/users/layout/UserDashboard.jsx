@@ -89,7 +89,7 @@ export default function UserDashboard() {
     navigate("/login", { replace: true });
   };
 
- const getPageTitle = () => {
+  const getPageTitle = () => {
     const path = location.pathname;
     if (path === "/dashboard") return "Dashboard Overview";
     if (path.includes("/request-pickup")) return "Request Pickup";
@@ -102,13 +102,25 @@ export default function UserDashboard() {
     if (path.includes("/support")) return "Customer Support";
     if (path.includes("/messages")) return "Messages";
     return "User Dashboard";
-};
+  };
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-72";
   const mainMargin = isCollapsed ? "lg:ml-20" : "lg:ml-72";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .font-display {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .font-mono-cw {
+          font-family: 'JetBrains Mono', monospace;
+        }
+      `}</style>
+
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -117,7 +129,7 @@ export default function UserDashboard() {
         />
       )}
 
-      {/* SCROLLABLE SIDEBAR - Dark Green Theme (matching AdminDashboard) */}
+      {/* SCROLLABLE SIDEBAR - Dark Green Theme */}
       <aside
         className={`fixed left-0 top-0 z-50 flex h-screen flex-col bg-gradient-to-b from-[#0E2A1C] to-[#11402D] text-white transition-all duration-300 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -130,11 +142,11 @@ export default function UserDashboard() {
               <div>
                 <div className="flex items-center gap-2">
                   <Recycle className="w-8 h-8 text-[#9CF06B]" />
-                  <h1 className="text-2xl font-black tracking-tight">
+                  <h1 className="font-display text-2xl font-black tracking-tight">
                     Re<span className="text-[#9CF06B]">V</span>ive
                   </h1>
                 </div>
-                <p className="mt-1 text-xs text-white/50">User Dashboard</p>
+                <p className="font-mono-cw mt-1 text-xs text-white/50">User Dashboard</p>
               </div>
             )}
             {isCollapsed && (
@@ -183,23 +195,21 @@ export default function UserDashboard() {
                   }
                 >
                   <Icon size={isCollapsed ? 22 : 20} className="flex-shrink-0" />
-                  {!isCollapsed && <span>{item.name}</span>}
+                  {!isCollapsed && <span className="font-display">{item.name}</span>}
                 </NavLink>
               );
             })}
           </nav>
         </div>
 
-       
-
-        {/* SIDEBAR BOTTOM - Logout button with same styling as AdminDashboard */}
+        {/* SIDEBAR BOTTOM - Logout button */}
         <div className="shrink-0 border-t border-white/10 p-4">
           {!isCollapsed && (
             <div className="mb-4 rounded-2xl bg-white/5 p-4">
-              {/* <p className="text-xs uppercase tracking-wider text-white/40">
+              <p className="font-mono-cw text-xs uppercase tracking-wider text-white/40">
                 Logged in as
-              </p> */}
-              <p className="mt-1 font-semibold text-white">{userName}</p>
+              </p>
+              <p className="font-display mt-1 font-semibold text-white">{userName}</p>
             </div>
           )}
 
@@ -208,14 +218,14 @@ export default function UserDashboard() {
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500/20 px-3 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500 hover:text-white"
           >
             <LogOut size={18} />
-            {!isCollapsed && <span>Logout</span>}
+            {!isCollapsed && <span className="font-display">Logout</span>}
           </button>
         </div>
       </aside>
 
       {/* MAIN CONTENT */}
       <div className={`transition-all duration-300 ${mainMargin}`}>
-        {/* TOPBAR - Matching AdminDashboard style */}
+        {/* TOPBAR */}
         <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur-xl">
           <div className="flex flex-col gap-4 px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-8">
             <div className="flex items-center gap-4">
@@ -227,7 +237,7 @@ export default function UserDashboard() {
               </button>
 
               <div>
-                <h2 className="text-2xl lg:text-3xl font-black text-gray-900">
+                <h2 className="font-display text-2xl lg:text-3xl font-black text-gray-900">
                   {getPageTitle()}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
@@ -268,7 +278,7 @@ export default function UserDashboard() {
 
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-red-700 hover:scale-[1.02]"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-display font-bold text-white shadow-lg transition hover:bg-red-700 hover:scale-[1.02]"
               >
                 <LogOut size={16} />
                 <span className="hidden sm:inline">Logout</span>
@@ -282,7 +292,7 @@ export default function UserDashboard() {
           <Outlet />
         </main>
 
-        {/* FOOTER - Matching AdminDashboard style */}
+        {/* FOOTER */}
         <footer className="border-t border-gray-200 bg-white px-5 py-4 lg:px-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-gray-500">
             <div className="flex items-center gap-2">
@@ -292,7 +302,7 @@ export default function UserDashboard() {
             <div className="flex items-center gap-4">
               <NavLink to="/dashboard/support" className="hover:text-[#0E2A1C] transition">Support</NavLink>
               <NavLink to="/dashboard/profile" className="hover:text-[#0E2A1C] transition">Settings</NavLink>
-              <span>v2.0.0</span>
+              <span className="font-mono-cw">v2.0.0</span>
             </div>
           </div>
         </footer>

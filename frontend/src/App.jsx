@@ -17,7 +17,10 @@ import Partners from './component/Partners'
 import Contact from './component/Contact'
 import Login from './component/Login'
 import Signup from './component/Signup'
+import SignupWasteSupplier from './component/SignupWasteSupplier'
+import SignupEnergyProducer from './component/SignupEnergyProducer'
 import WelcomeSplash from './component/WelcomeSplash'
+import AdminLogin from './admin/pages/AdminLogin'
 
 // Admin Layout
 import AdminDashboard from './admin/layout/AdminDashboard'
@@ -126,7 +129,15 @@ function App() {
         <Route path="/solutions/plastic-recycling" element={<><Navbar /><PlasticRecyclingSolution /></>} />
         <Route path="/impact" element={<><Navbar /><Impact /></>} />
         
-        {/* ============ ADMIN DASHBOARD ROUTES ============ */}
+        {/* ============ SIGNUP ROUTES WITH NAVBAR ============ */}
+        <Route path="/signup/waste-supplier" element={<><Navbar /><SignupWasteSupplier /></>} />
+        <Route path="/signup/energy-producer" element={<><Navbar /><SignupEnergyProducer /></>} />
+        
+        {/* ============ ADMIN ROUTES ============ */}
+        {/* Admin Login - with Navbar */}
+        <Route path="/adminlogin" element={<><Navbar /><AdminLogin /></>} />
+        
+        {/* Admin Dashboard - Protected Routes */}
         <Route path="/admin" element={<AdminDashboard />}>
           <Route index element={<WasteSources />} />
           <Route path="waste-sources" element={<WasteSources />} />

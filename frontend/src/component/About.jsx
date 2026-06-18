@@ -88,9 +88,16 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-        .font-serif-display { font-family: 'DM Serif Display', serif; }
-        .font-space { font-family: 'Space Grotesk', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .font-display {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .font-mono-cw {
+          font-family: 'JetBrains Mono', monospace;
+        }
+
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-20px); }
@@ -118,7 +125,7 @@ export default function AboutPage() {
             className="text-center max-w-4xl mx-auto"
           >
             {/* Main Headline */}
-            <h1 className="font-serif-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#0A1A0F] leading-[1.1] tracking-tight mb-6">
+            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#0E2A1C] leading-[1.1] tracking-tight mb-6">
               Turning Africa's waste into
               <span className="relative inline-block mx-3">
                 <span className="relative z-10" style={{ color: "#11402D" }}>Africa's power.</span>
@@ -129,7 +136,7 @@ export default function AboutPage() {
             </h1>
 
             {/* Subtitle */}
-            <p className="text-xl sm:text-2xl text-[#5A7060] leading-relaxed max-w-2xl mx-auto mb-10">
+            <p className="text-xl sm:text-2xl text-[#142019]/65 leading-relaxed max-w-2xl mx-auto mb-10">
               We're on a mission to build the most advanced waste-to-energy network in emerging markets — creating value from what others discard.
             </p>
 
@@ -138,21 +145,21 @@ export default function AboutPage() {
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center gap-2 bg-[#11402D] text-white font-black px-8 py-4 rounded-full text-sm hover:bg-[#0C2F20] transition-colors shadow-xl"
+                className="inline-flex items-center gap-2 bg-[#11402D] text-white font-display font-black px-8 py-4 rounded-full text-sm hover:bg-[#0C2F20] transition-colors shadow-xl"
               >
                 Our Mission <ArrowRight className="w-4 h-4" />
               </motion.button>
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center gap-2 border-2 border-[#11402D]/20 text-[#11402D] font-black px-8 py-4 rounded-full text-sm hover:border-[#11402D] hover:bg-[#11402D]/5 transition-all"
+                className="inline-flex items-center gap-2 border-2 border-[#11402D]/20 text-[#11402D] font-display font-black px-8 py-4 rounded-full text-sm hover:border-[#11402D] hover:bg-[#11402D]/5 transition-all"
               >
                 Watch Our Story <Play className="w-4 h-4" />
               </motion.button>
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-[#11402D]/10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-[#142019]/10">
               {[
                 { val: 5, suffix: "+", label: "Years of Impact", prefix: "" },
                 { val: 1250000, suffix: "+", label: "Tonnes Recovered", prefix: "" },
@@ -166,10 +173,10 @@ export default function AboutPage() {
                   transition={{ delay: 0.3 + i * 0.1 }}
                   className="text-center"
                 >
-                  <div className="font-space text-3xl md:text-4xl font-bold text-[#11402D]">
+                  <div className="font-display text-3xl md:text-4xl font-bold text-[#11402D]">
                     <Counter to={stat.val} suffix={stat.suffix} prefix={stat.prefix} />
                   </div>
-                  <div className="text-xs text-[#5A7060] font-medium mt-1 uppercase tracking-wide">{stat.label}</div>
+                  <div className="font-mono-cw text-xs text-[#142019]/55 font-medium mt-1 uppercase tracking-wide">{stat.label}</div>
                 </motion.div>
               ))}
             </div>
@@ -181,7 +188,7 @@ export default function AboutPage() {
           style={{ opacity }}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
         >
-          <span className="text-[10px] text-[#5A7060] uppercase tracking-widest font-bold">Scroll to explore</span>
+          <span className="font-mono-cw text-[10px] text-[#142019]/55 uppercase tracking-widest font-bold">Scroll to explore</span>
           <div className="w-6 h-10 border-2 border-[#11402D]/20 rounded-full flex justify-center">
             <motion.div 
               animate={{ y: [0, 12, 0] }}
@@ -209,11 +216,11 @@ export default function AboutPage() {
                 <div className="w-16 h-16 rounded-2xl bg-[#11402D] flex items-center justify-center mb-6">
                   <Target className="w-8 h-8 text-[#9CF06B]" />
                 </div>
-                <h2 className="font-serif-display text-3xl lg:text-4xl text-[#0A1A0F] mb-4">Our Mission</h2>
-                <p className="text-lg text-[#5A7060] leading-relaxed mb-6">
+                <h2 className="font-display text-3xl lg:text-4xl text-[#0E2A1C] mb-4">Our Mission</h2>
+                <p className="text-lg text-[#142019]/65 leading-relaxed mb-6">
                   To transform waste management across Africa by building world-class infrastructure that converts discarded materials into clean energy, creating economic opportunity and environmental restoration.
                 </p>
-                <div className="flex items-center gap-2 text-[#11402D] font-semibold">
+                <div className="flex items-center gap-2 text-[#11402D] font-display font-semibold">
                   <CheckCircle2 className="w-5 h-5" />
                   <span>100% circular by 2030</span>
                 </div>
@@ -229,15 +236,15 @@ export default function AboutPage() {
               className="relative group"
             >
               <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-[#9CF06B]/10 rounded-2xl group-hover:scale-110 transition-transform duration-500" />
-              <div className="relative z-10 bg-[#0A1A0F] rounded-3xl p-8 lg:p-10 shadow-xl">
+              <div className="relative z-10 bg-[#0E2A1C] rounded-3xl p-8 lg:p-10 shadow-xl">
                 <div className="w-16 h-16 rounded-2xl bg-[#9CF06B] flex items-center justify-center mb-6">
-                  <Eye className="w-8 h-8 text-[#0A1A0F]" />
+                  <Eye className="w-8 h-8 text-[#0E2A1C]" />
                 </div>
-                <h2 className="font-serif-display text-3xl lg:text-4xl text-white mb-4">Our Vision</h2>
+                <h2 className="font-display text-3xl lg:text-4xl text-white mb-4">Our Vision</h2>
                 <p className="text-lg text-white/60 leading-relaxed mb-6">
                   A future where no waste goes to landfill — where every discarded resource becomes a source of energy, jobs, and sustainable prosperity for communities across Africa and beyond.
                 </p>
-                <div className="flex items-center gap-2 text-[#9CF06B] font-semibold">
+                <div className="flex items-center gap-2 text-[#9CF06B] font-display font-semibold">
                   <Globe className="w-5 h-5" />
                   <span>Clean energy for 10 million homes by 2030</span>
                 </div>
@@ -248,7 +255,7 @@ export default function AboutPage() {
       </section>
 
       {/* ============ IMPACT IMAGE SHOWCASE ============ */}
-      <section className="py-16 bg-[#0A1A0F]">
+      <section className="py-16 bg-[#0E2A1C]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
@@ -265,7 +272,7 @@ export default function AboutPage() {
                 className="relative overflow-hidden rounded-2xl group cursor-pointer"
               >
                 <img src={img} alt="Impact" className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-700" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0A1A0F] via-transparent to-transparent opacity-60" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0E2A1C] via-transparent to-transparent opacity-60" />
               </motion.div>
             ))}
           </div>
@@ -283,10 +290,10 @@ export default function AboutPage() {
           >
             <div className="inline-flex items-center gap-2 bg-[#11402D]/5 rounded-full px-4 py-2 mb-6">
               <Heart className="w-4 h-4 text-[#11402D]" />
-              <span className="text-xs font-black tracking-wider text-[#11402D] uppercase">What We Believe</span>
+              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">What We Believe</span>
             </div>
-            <h2 className="font-serif-display text-4xl lg:text-5xl text-[#0A1A0F] mb-4">Our Core Values</h2>
-            <p className="text-lg text-[#5A7060]">The principles that guide every decision we make.</p>
+            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">Our Core Values</h2>
+            <p className="text-lg text-[#142019]/65">The principles that guide every decision we make.</p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -303,8 +310,8 @@ export default function AboutPage() {
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ background: `${value.color}15` }}>
                   <value.icon className="w-6 h-6" style={{ color: value.color }} />
                 </div>
-                <h3 className="font-bold text-xl text-[#0A1A0F] mb-3">{value.title}</h3>
-                <p className="text-[#5A7060] leading-relaxed">{value.desc}</p>
+                <h3 className="font-display font-bold text-xl text-[#0E2A1C] mb-3">{value.title}</h3>
+                <p className="text-[#142019]/65 leading-relaxed">{value.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -322,10 +329,10 @@ export default function AboutPage() {
           >
             <div className="inline-flex items-center gap-2 bg-white rounded-full px-4 py-2 mb-6 shadow-sm">
               <Award className="w-4 h-4 text-[#11402D]" />
-              <span className="text-xs font-black tracking-wider text-[#11402D] uppercase">Our Journey</span>
+              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">Our Journey</span>
             </div>
-            <h2 className="font-serif-display text-4xl lg:text-5xl text-[#0A1A0F] mb-4">Key Milestones</h2>
-            <p className="text-lg text-[#5A7060]">From startup to industry leader — our path to impact.</p>
+            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">Key Milestones</h2>
+            <p className="text-lg text-[#142019]/65">From startup to industry leader — our path to impact.</p>
           </motion.div>
 
           <div className="relative">
@@ -351,11 +358,11 @@ export default function AboutPage() {
                   <div className={`w-full lg:w-[calc(50%-40px)] ${i % 2 === 0 ? 'lg:pr-12' : 'lg:pl-12 lg:ml-auto'}`}>
                     <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex items-center gap-3 mb-3">
-                        <span className="font-space text-3xl font-bold text-[#9CF06B]">{milestone.year}</span>
+                        <span className="font-display text-3xl font-bold text-[#9CF06B]">{milestone.year}</span>
                         <milestone.icon className="w-5 h-5 text-[#11402D]" />
                       </div>
-                      <h3 className="font-bold text-lg text-[#0A1A0F] mb-2">{milestone.title}</h3>
-                      <p className="text-[#5A7060] text-sm">{milestone.desc}</p>
+                      <h3 className="font-display font-bold text-lg text-[#0E2A1C] mb-2">{milestone.title}</h3>
+                      <p className="text-[#142019]/55 text-sm">{milestone.desc}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -376,10 +383,10 @@ export default function AboutPage() {
           >
             <div className="inline-flex items-center gap-2 bg-[#11402D]/5 rounded-full px-4 py-2 mb-6">
               <Users className="w-4 h-4 text-[#11402D]" />
-              <span className="text-xs font-black tracking-wider text-[#11402D] uppercase">Leadership</span>
+              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">Leadership</span>
             </div>
-            <h2 className="font-serif-display text-4xl lg:text-5xl text-[#0A1A0F] mb-4">Meet Our Team</h2>
-            <p className="text-lg text-[#5A7060]">Passionate experts driving change across the continent.</p>
+            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">Meet Our Team</h2>
+            <p className="text-lg text-[#142019]/65">Passionate experts driving change across the continent.</p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -395,13 +402,13 @@ export default function AboutPage() {
               >
                 <div className="relative overflow-hidden rounded-2xl mb-4">
                   <img src={member.image} alt={member.name} className="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-700" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A1A0F]/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0E2A1C]/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <p className="text-white text-xs leading-relaxed">{member.bio}</p>
                   </div>
                 </div>
-                <h3 className="font-bold text-[#0A1A0F] text-lg">{member.name}</h3>
-                <p className="text-[#11402D] text-sm font-semibold">{member.role}</p>
+                <h3 className="font-display font-bold text-[#0E2A1C] text-lg">{member.name}</h3>
+                <p className="text-[#11402D] text-sm font-display font-semibold">{member.role}</p>
               </motion.div>
             ))}
           </div>
@@ -417,7 +424,7 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h3 className="font-bold text-xl text-[#5A7060] uppercase tracking-wider">Trusted by Industry Leaders</h3>
+            <h3 className="font-display font-bold text-xl text-[#142019]/55 uppercase tracking-wider">Trusted by Industry Leaders</h3>
           </motion.div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 items-center">
@@ -438,7 +445,7 @@ export default function AboutPage() {
       </section>
 
       {/* ============ CTA SECTION ============ */}
-      <section className="py-24 lg:py-32 bg-[#0A1A0F]">
+      <section className="py-24 lg:py-32 bg-[#0E2A1C]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
@@ -449,7 +456,7 @@ export default function AboutPage() {
             <div className="w-20 h-20 rounded-full bg-[#9CF06B]/10 flex items-center justify-center mx-auto mb-8">
               <Recycle className="w-10 h-10 text-[#9CF06B]" />
             </div>
-            <h2 className="font-serif-display text-4xl lg:text-6xl text-white leading-tight mb-6">
+            <h2 className="font-display text-4xl lg:text-6xl text-white leading-tight mb-6">
               Join us in building<br />a circular future.
             </h2>
             <p className="text-xl text-white/50 leading-relaxed mb-10 max-w-2xl mx-auto">
@@ -459,14 +466,14 @@ export default function AboutPage() {
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center gap-2 bg-[#9CF06B] text-[#0A1A0F] font-black px-8 py-4 rounded-full text-sm hover:bg-[#8AE05A] transition-colors"
+                className="inline-flex items-center gap-2 bg-[#9CF06B] text-[#0E2A1C] font-display font-black px-8 py-4 rounded-full text-sm hover:bg-[#8AE05A] transition-colors"
               >
                 Become a Partner <ArrowRight className="w-4 h-4" />
               </motion.button>
               <motion.button 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
-                className="inline-flex items-center gap-2 border-2 border-white/20 text-white font-black px-8 py-4 rounded-full text-sm hover:bg-white/10 transition-all"
+                className="inline-flex items-center gap-2 border-2 border-white/20 text-white font-display font-black px-8 py-4 rounded-full text-sm hover:bg-white/10 transition-all"
               >
                 Contact Us
               </motion.button>
@@ -476,20 +483,20 @@ export default function AboutPage() {
       </section>
 
       {/* ============ FOOTER ============ */}
-      <footer className="bg-[#0A1A0F] border-t border-white/5 py-12">
+      <footer className="bg-[#0E2A1C] border-t border-white/5 py-12">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#11402D] flex items-center justify-center">
                 <Recycle className="w-5 h-5 text-[#9CF06B]" />
               </div>
-              <span className="font-bold text-white text-lg">ReVive Energy</span>
+              <span className="font-display font-bold text-white text-lg">ReVive Energy</span>
             </div>
             
             <div className="flex gap-6 text-xs text-white/30">
-              <a href="#" className="hover:text-white/60 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white/60 transition-colors">Terms</a>
-              <a href="#" className="hover:text-white/60 transition-colors">Careers</a>
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">Privacy</a>
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">Terms</a>
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">Careers</a>
             </div>
           </div>
           <div className="text-center text-white/20 text-xs mt-8">

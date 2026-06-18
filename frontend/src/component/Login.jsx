@@ -20,7 +20,17 @@ import {
   CheckCircle,
   Factory,
   Building2,
-  MapPin
+  MapPin,
+  Hotel,
+  Store,
+  Wheat,
+  Utensils,
+  Flame,
+  Building,
+  Package,
+  Truck as TruckIcon,
+  Landmark,
+  Building as BuildingIcon
 } from "lucide-react";
 
 const USERS_API = "http://localhost:5000/users";
@@ -33,6 +43,7 @@ function Login() {
     email: "",
     password: "",
   });
+  const [selectedRole, setSelectedRole] = useState("waste-supplier");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -106,10 +117,31 @@ function Login() {
         return;
       }
 
+      if (selectedRole) {
+        foundUser.role = selectedRole;
+        const updateResponse = await fetch(`${USERS_API}/${foundUser.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ role: selectedRole }),
+        });
+        if (!updateResponse.ok) {
+          console.warn("Failed to update user role");
+        }
+      }
+
       const { password, ...userWithoutPassword } = foundUser;
       localStorage.setItem("user", JSON.stringify(userWithoutPassword));
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("loginTime", new Date().toISOString());
+      localStorage.setItem("role", selectedRole);
+
+      const roleRoutes = {
+        "waste-supplier": "/supplier/dashboard",
+        "energy-producer": "/producer/dashboard",
+        "transport-partner": "/transport/dashboard",
+      };
 
       toast.success(`Welcome back, ${foundUser.firstName || "Partner"}!`);
 
@@ -120,7 +152,8 @@ function Login() {
           sessionStorage.removeItem("redirectAfterLogin");
           navigate(redirectUrl);
         } else {
-          navigate("/");
+          const dashboardPath = roleRoutes[selectedRole] || "/";
+          navigate(dashboardPath);
         }
       }, 1500);
 
@@ -133,8 +166,47 @@ function Login() {
     }
   };
 
+  const roleOptions = [
+    {
+      id: "waste-supplier",
+      icon: Building2,
+      label: "Waste Supplier",
+      description: "Hotels, Farms, Markets, Factories, Restaurants",
+      color: "#34D399",
+      subTypes: ["Hotels", "Farms", "Markets", "Factories", "Restaurants"]
+    },
+    {
+      id: "energy-producer",
+      icon: Zap,
+      label: "Energy Producer",
+      description: "Biogas Plants, Recycling Companies, WtE Plants",
+      color: "#F59E0B",
+      subTypes: ["Biogas Plants", "Recycling Companies", "Biomass Companies", "Waste-to-Energy Plants"]
+    },
+    {
+      id: "transport-partner",
+      icon: TruckIcon,
+      label: "Transport Partner",
+      description: "Logistics Companies, Truck Owners, Collection Agents",
+      color: "#60A5FA",
+      subTypes: ["Logistics Companies", "Truck Owners", "Collection Agents"]
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 pt-24 pb-10">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 pt-12 pb-10" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .font-display {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .font-mono-cw {
+          font-family: 'JetBrains Mono', monospace;
+        }
+      `}</style>
+
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -157,14 +229,14 @@ function Login() {
           <div className="relative z-10">
             <div className="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm border border-white/20">
               <Recycle className="w-6 h-6" />
-              <span className="font-semibold text-lg">ReVive Energy</span>
+              <span className="font-display font-semibold text-lg">ReVive Energy</span>
             </div>
 
-            <div className="mt-16">
-              <p className="text-sm uppercase tracking-[0.25em] text-green-200">
+            <div className="mt-12">
+              <p className="font-mono-cw text-sm uppercase tracking-[0.25em] text-green-200">
                 Welcome Back
               </p>
-              <h1 className="mt-4 text-4xl font-bold leading-tight">
+              <h1 className="font-display mt-4 text-4xl font-bold leading-tight">
                 Transform Waste.
                 <br />
                 <span className="text-[#9CF06B]">Create Value.</span>
@@ -177,27 +249,27 @@ function Login() {
           </div>
 
           {/* Stats Grid */}
-          <div className="relative z-10 grid grid-cols-2 gap-4 mt-12">
+          <div className="relative z-10 grid grid-cols-2 gap-4 mt-8">
             <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
-              <p className="text-2xl font-bold">1,200+</p>
+              <p className="font-display text-2xl font-bold">1,200+</p>
               <p className="text-sm text-green-200">Active Partners</p>
             </div>
             <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
-              <p className="text-2xl font-bold">125K+</p>
+              <p className="font-display text-2xl font-bold">125K+</p>
               <p className="text-sm text-green-200">Tons Processed</p>
             </div>
             <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
-              <p className="text-2xl font-bold">85K+</p>
+              <p className="font-display text-2xl font-bold">85K+</p>
               <p className="text-sm text-green-200">MWh Generated</p>
             </div>
             <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
-              <p className="text-2xl font-bold">24/7</p>
+              <p className="font-display text-2xl font-bold">24/7</p>
               <p className="text-sm text-green-200">Support</p>
             </div>
           </div>
 
           {/* Features */}
-          <div className="relative z-10 mt-8 space-y-3">
+          <div className="relative z-10 mt-6 space-y-2.5">
             <div className="flex items-center gap-3 text-sm text-green-200">
               <Truck className="w-4 h-4" />
               <span>Free collection for qualified partners</span>
@@ -221,31 +293,79 @@ function Login() {
         <div className="p-6 sm:p-10 lg:p-14 flex items-center">
           <div className="w-full max-w-md mx-auto">
             {/* Mobile Logo */}
-            <div className="lg:hidden mb-8 text-center">
-              <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] flex items-center justify-center text-white shadow-lg">
+            <div className="lg:hidden mb-6 text-center">
+              <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] flex items-center justify-center text-white shadow-lg">
                 <Recycle className="w-7 h-7" />
               </div>
-              <h1 className="text-2xl font-bold text-slate-900">
+              <h1 className="font-display text-2xl font-bold text-slate-900">
                 Re<span className="text-green-600">V</span>ive{" "}
                 <span className="text-green-600">Energy</span>
               </h1>
-              <p className="text-xs text-green-600 mt-1 tracking-wider">TRANSFORMING WASTE</p>
+              <p className="font-mono-cw text-xs text-green-600 mt-1 tracking-wider">TRANSFORMING WASTE</p>
             </div>
 
-            <p className="text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">
+            <p className="font-mono-cw text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">
               Login
             </p>
-            <h2 className="mt-3 text-3xl font-bold text-slate-900">
+            <h2 className="font-display mt-2 text-3xl font-bold text-slate-900">
               Welcome back!
             </h2>
-            <p className="mt-3 text-slate-500 leading-6">
-              Please enter your details to access your account and start transforming waste into value.
+            <p className="mt-2 text-slate-500 leading-6">
+              Please enter your details to access your account.
             </p>
 
-            <form onSubmit={handleLogin} className="mt-8 space-y-5">
+            {/* Login As - Role Selection */}
+            <div className="mt-6">
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-3">
+                Login As
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {roleOptions.map((role) => {
+                  const Icon = role.icon;
+                  const isActive = selectedRole === role.id;
+                  return (
+                    <button
+                      key={role.id}
+                      type="button"
+                      onClick={() => setSelectedRole(role.id)}
+                      className={`p-3 rounded-xl text-center transition-all duration-200 ${
+                        isActive
+                          ? "bg-[#11402D] text-white shadow-md ring-2 ring-[#9CF06B]"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 mx-auto mb-1 ${
+                        isActive ? "text-[#9CF06B]" : "text-gray-500"
+                      }`} />
+                      <div className={`font-display text-[10px] font-bold ${
+                        isActive ? "text-white" : "text-gray-600"
+                      }`}>
+                        {role.label.split(" ")[0]}
+                      </div>
+                      <div className={`font-mono-cw text-[8px] ${
+                        isActive ? "text-white/60" : "text-gray-400"
+                      }`}>
+                        {role.label.split(" ").slice(1).join(" ")}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Role Subtypes */}
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {roleOptions.find(r => r.id === selectedRole)?.subTypes.map((sub, i) => (
+                <span key={i} className="font-mono-cw text-[9px] font-medium bg-[#F6F8F4] text-[#5A7060] px-2 py-1 rounded-full border border-[#11402D]/5">
+                  {sub}
+                </span>
+              ))}
+            </div>
+
+            <form onSubmit={handleLogin} className="mt-6 space-y-4">
               {/* Email Field */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
                   Email Address
                 </label>
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
@@ -265,7 +385,7 @@ function Login() {
 
               {/* Password Field */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
                   Password
                 </label>
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
@@ -294,7 +414,7 @@ function Login() {
               <div className="text-right">
                 <Link
                   to="/forgot-password"
-                  className="text-sm text-green-600 hover:text-green-700 font-medium"
+                  className="font-display text-sm text-green-600 hover:text-green-700 font-medium"
                 >
                   Forgot password?
                 </Link>
@@ -309,7 +429,7 @@ function Login() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0E2A1C] to-[#11402D] px-5 py-3.5 font-semibold text-white shadow-lg hover:from-[#1a5c3e] hover:to-[#0E2A1C] transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0E2A1C] to-[#11402D] px-5 py-3.5 font-display font-semibold text-white shadow-lg hover:from-[#1a5c3e] hover:to-[#0E2A1C] transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>
@@ -325,15 +445,45 @@ function Login() {
               </button>
             </form>
             
-            <p className="mt-8 text-sm text-slate-600 text-center">
-              Don't have an account?{" "}
-              <Link
-                to="/signup"
-                className="font-semibold text-green-600 hover:text-green-700"
-              >
-                Create one
-              </Link>
-            </p>
+            <div className="mt-6 space-y-3">
+              <p className="font-display text-sm text-slate-600 text-center">
+                Don't have an account?{" "}
+                <Link
+                  to="/signup"
+                  className="font-semibold text-green-600 hover:text-green-700"
+                >
+                  Create one
+                </Link>
+              </p>
+              
+              <div className="flex items-center justify-center gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-px h-4 bg-slate-200" />
+                  <span className="text-xs text-slate-400">or</span>
+                  <div className="w-px h-4 bg-slate-200" />
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  to="/signup/waste-supplier"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group"
+                >
+                  <Landmark className="w-4 h-4 text-[#11402D] group-hover:text-[#0E2A1C] transition-colors" />
+                  Join as Waste Supplier
+                  <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+                <span className="text-slate-300 hidden sm:inline">|</span>
+                <Link
+                  to="/signup/energy-producer"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group"
+                >
+                  <Recycle className="w-4 h-4 text-[#11402D] group-hover:text-[#0E2A1C] transition-colors" />
+                  Join as Energy Producer
+                  <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>

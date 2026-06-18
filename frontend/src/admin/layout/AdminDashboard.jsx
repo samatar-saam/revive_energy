@@ -93,7 +93,19 @@ export default function AdminDashboard() {
   const mainMargin = isCollapsed ? "lg:ml-20" : "lg:ml-72";
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .font-display {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .font-mono-cw {
+          font-family: 'JetBrains Mono', monospace;
+        }
+      `}</style>
+
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
@@ -115,11 +127,11 @@ export default function AdminDashboard() {
               <div>
                 <div className="flex items-center gap-2">
                   <Recycle className="w-8 h-8 text-[#9CF06B]" />
-                  <h1 className="text-2xl font-black tracking-tight">
+                  <h1 className="font-display text-2xl font-black tracking-tight">
                     Re<span className="text-[#9CF06B]">V</span>ive
                   </h1>
                 </div>
-                <p className="mt-1 text-xs text-white/50">Admin Dashboard</p>
+                <p className="font-mono-cw mt-1 text-xs text-white/50">Admin Dashboard</p>
               </div>
             )}
             {isCollapsed && (
@@ -168,7 +180,7 @@ export default function AdminDashboard() {
                   }
                 >
                   <Icon size={isCollapsed ? 22 : 20} className="flex-shrink-0" />
-                  {!isCollapsed && <span>{item.name}</span>}
+                  {!isCollapsed && <span className="font-display">{item.name}</span>}
                 </NavLink>
               );
             })}
@@ -179,10 +191,10 @@ export default function AdminDashboard() {
         <div className="shrink-0 border-t border-white/10 p-4">
           {!isCollapsed && (
             <div className="mb-4 rounded-2xl bg-white/5 p-4">
-              <p className="text-xs uppercase tracking-wider text-white/40">
+              <p className="font-mono-cw text-xs uppercase tracking-wider text-white/40">
                 Logged in as
               </p>
-              <p className="mt-1 font-semibold text-white">{adminName}</p>
+              <p className="font-display mt-1 font-semibold text-white">{adminName}</p>
             </div>
           )}
 
@@ -191,7 +203,7 @@ export default function AdminDashboard() {
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500/20 px-3 py-3 text-sm font-semibold text-red-400 transition hover:bg-red-500 hover:text-white"
           >
             <LogOut size={18} />
-            {!isCollapsed && <span>Logout</span>}
+            {!isCollapsed && <span className="font-display">Logout</span>}
           </button>
         </div>
       </aside>
@@ -210,7 +222,7 @@ export default function AdminDashboard() {
               </button>
 
               <div>
-                <h2 className="text-2xl lg:text-3xl font-black text-gray-900">
+                <h2 className="font-display text-2xl lg:text-3xl font-black text-gray-900">
                   Dashboard Overview
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
@@ -236,7 +248,7 @@ export default function AdminDashboard() {
 
               <button
                 onClick={handleLogout}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-red-700 hover:scale-[1.02]"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-display font-bold text-white shadow-lg transition hover:bg-red-700 hover:scale-[1.02]"
               >
                 <LogOut size={16} />
                 Logout

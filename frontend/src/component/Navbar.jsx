@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { Menu, X, ChevronDown, User, Shield, LogOut } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
 
@@ -8,8 +8,14 @@ const ReViveNavbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [loginDropdownOpen, setLoginDropdownOpen] = useState(false);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Check if user is logged in
+  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+  const user = JSON.parse(localStorage.getItem("user") || "null");
 
   const navLinks = [
     { name: "Home", href: "/", hasDropdown: false },
@@ -44,7 +50,6 @@ const ReViveNavbar = () => {
       setScrollProgress(progress);
     };
 
-    // Use requestAnimationFrame for smooth performance
     let ticking = false;
     const handleScroll = () => {
       if (!ticking) {
@@ -58,8 +63,6 @@ const ReViveNavbar = () => {
 
     window.addEventListener("scroll", handleScroll);
     window.addEventListener("resize", calculateScrollProgress);
-    
-    // Initial calculation
     calculateScrollProgress();
 
     return () => {
@@ -84,6 +87,8 @@ const ReViveNavbar = () => {
       if (window.innerWidth >= 1024) {
         setMobileMenuOpen(false);
         setOpenDropdown(null);
+        setLoginDropdownOpen(false);
+        setUserDropdownOpen(false);
       }
     };
 
@@ -96,20 +101,48 @@ const ReViveNavbar = () => {
       if (openDropdown && !event.target.closest(".dropdown-container")) {
         setOpenDropdown(null);
       }
+      if (loginDropdownOpen && !event.target.closest(".login-dropdown-container")) {
+        setLoginDropdownOpen(false);
+      }
+      if (userDropdownOpen && !event.target.closest(".user-dropdown-container")) {
+        setUserDropdownOpen(false);
+      }
     };
 
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
-  }, [openDropdown]);
+  }, [openDropdown, loginDropdownOpen, userDropdownOpen]);
 
   const handleNavigation = (path) => {
     navigate(path);
     setMobileMenuOpen(false);
     setOpenDropdown(null);
+    setLoginDropdownOpen(false);
+    setUserDropdownOpen(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("loginTime");
+    setUserDropdownOpen(false);
+    navigate("/");
   };
 
   return (
     <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .font-display {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .font-mono-cw {
+          font-family: 'JetBrains Mono', monospace;
+        }
+      `}</style>
+
       {/* Scroll Progress Bar - Fixed at top */}
       <div className="fixed top-0 left-0 right-0 z-[100] h-[2px] sm:h-[3px] bg-transparent overflow-hidden">
         <div
@@ -142,12 +175,12 @@ const ReViveNavbar = () => {
               </div>
 
               <div className="min-w-0 leading-tight">
-                <h1 className="truncate text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-[#0E2A1C]">
+                <h1 className="font-display truncate text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-[#0E2A1C]">
                   Re<span className="text-[#11402D]">V</span>ive{" "}
                   <span className="text-[#11402D]">Energy</span>
                 </h1>
 
-                <p className="truncate text-[9px] sm:text-[10px] md:text-xs font-semibold uppercase italic tracking-wide text-[#11402D]">
+                <p className="font-mono-cw truncate text-[9px] sm:text-[10px] md:text-xs font-semibold uppercase italic tracking-wide text-[#11402D]">
                   TRANSFORMING WASTE
                 </p>
               </div>
@@ -165,7 +198,7 @@ const ReViveNavbar = () => {
                             openDropdown === link.name ? null : link.name
                           )
                         }
-                        className={`flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium transition ${
+                        className={`font-display flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium transition ${
                           openDropdown === link.name
                             ? "bg-[#11402D]/10 text-[#11402D]"
                             : "text-[#0E2A1C]/80 hover:bg-[#11402D]/5 hover:text-[#11402D]"
@@ -183,7 +216,7 @@ const ReViveNavbar = () => {
                         <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded-xl border border-[#0E2A1C]/10 bg-white py-2 shadow-lg">
                           <Link
                             to="/solutions"
-                            className="group flex items-center gap-3 border-b border-[#0E2A1C]/10 px-4 py-2.5 text-sm font-semibold text-[#11402D] transition hover:bg-[#11402D]/5"
+                            className="font-display group flex items-center gap-3 border-b border-[#0E2A1C]/10 px-4 py-2.5 text-sm font-semibold text-[#11402D] transition hover:bg-[#11402D]/5"
                             onClick={() => setOpenDropdown(null)}
                           >
                             <span className="text-lg">📋</span>
@@ -197,7 +230,7 @@ const ReViveNavbar = () => {
                             <Link
                               key={item.name}
                               to={item.href}
-                              className="group flex items-center gap-3 px-4 py-2.5 text-sm text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
+                              className="font-display group flex items-center gap-3 px-4 py-2.5 text-sm text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
                               onClick={() => setOpenDropdown(null)}
                             >
                               <span className="text-lg">{item.icon}</span>
@@ -213,7 +246,7 @@ const ReViveNavbar = () => {
                   ) : (
                     <Link
                       to={link.href}
-                      className="rounded-full px-3 py-2 text-sm font-medium text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
+                      className="font-display rounded-full px-3 py-2 text-sm font-medium text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
                     >
                       {link.name}
                     </Link>
@@ -234,7 +267,7 @@ const ReViveNavbar = () => {
                             openDropdown === link.name ? null : link.name
                           )
                         }
-                        className={`flex items-center gap-1 rounded-full px-2.5 py-2 text-sm font-medium transition ${
+                        className={`font-display flex items-center gap-1 rounded-full px-2.5 py-2 text-sm font-medium transition ${
                           openDropdown === link.name
                             ? "bg-[#11402D]/10 text-[#11402D]"
                             : "text-[#0E2A1C]/80 hover:bg-[#11402D]/5 hover:text-[#11402D]"
@@ -252,7 +285,7 @@ const ReViveNavbar = () => {
                         <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded-xl border border-[#0E2A1C]/10 bg-white py-2 shadow-lg">
                           <Link
                             to="/solutions"
-                            className="group flex items-center gap-3 border-b border-[#0E2A1C]/10 px-4 py-2.5 text-sm font-semibold text-[#11402D] transition hover:bg-[#11402D]/5"
+                            className="font-display group flex items-center gap-3 border-b border-[#0E2A1C]/10 px-4 py-2.5 text-sm font-semibold text-[#11402D] transition hover:bg-[#11402D]/5"
                             onClick={() => setOpenDropdown(null)}
                           >
                             <span className="text-lg">📋</span>
@@ -266,7 +299,7 @@ const ReViveNavbar = () => {
                             <Link
                               key={item.name}
                               to={item.href}
-                              className="group flex items-center gap-3 px-4 py-2.5 text-sm text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
+                              className="font-display group flex items-center gap-3 px-4 py-2.5 text-sm text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
                               onClick={() => setOpenDropdown(null)}
                             >
                               <span className="text-lg">{item.icon}</span>
@@ -282,7 +315,7 @@ const ReViveNavbar = () => {
                   ) : (
                     <Link
                       to={link.href}
-                      className="rounded-full px-2.5 py-2 text-sm font-medium text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
+                      className="font-display rounded-full px-2.5 py-2 text-sm font-medium text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
                     >
                       {link.name}
                     </Link>
@@ -293,12 +326,83 @@ const ReViveNavbar = () => {
 
             {/* Desktop Login */}
             <div className="hidden lg:flex shrink-0 items-center">
-              <Link
-                to="/login"
-                className="rounded-full border border-[#0E2A1C]/20 px-4 xl:px-5 py-2 text-sm font-semibold text-[#0E2A1C] transition hover:border-[#11402D] hover:bg-[#11402D]/5"
-              >
-                Log in
-              </Link>
+              {isAuthenticated && user ? (
+                <div className="relative user-dropdown-container">
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="font-display flex items-center gap-2 rounded-full border border-[#11402D]/20 px-4 py-2 text-sm font-semibold text-[#0E2A1C] transition hover:border-[#11402D] hover:bg-[#11402D]/5"
+                  >
+                    <User className="h-4 w-4" />
+                    <span>{user.firstName || "User"}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform duration-200 ${
+                        userDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-[#0E2A1C]/10 bg-white py-2 shadow-lg">
+                      <div className="border-b border-[#0E2A1C]/10 px-4 py-2.5">
+                        <p className="font-display text-sm font-semibold text-[#0E2A1C]">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="font-mono-cw text-xs text-[#5A7060]">{user.email}</p>
+                      </div>
+                      <Link
+                        to="/dashboard"
+                        className="font-display flex items-center gap-3 px-4 py-2.5 text-sm text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
+                        onClick={() => setUserDropdownOpen(false)}
+                      >
+                        <User className="h-4 w-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="font-display flex w-full items-center gap-3 border-t border-[#0E2A1C]/10 px-4 py-2.5 text-sm text-red-600 transition hover:bg-red-50"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative login-dropdown-container">
+                  <button
+                    onClick={() => setLoginDropdownOpen(!loginDropdownOpen)}
+                    className="font-display rounded-full border border-[#0E2A1C]/20 px-4 xl:px-5 py-2 text-sm font-semibold text-[#0E2A1C] transition hover:border-[#11402D] hover:bg-[#11402D]/5 flex items-center gap-1"
+                  >
+                    Log in
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform duration-200 ${
+                        loginDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {loginDropdownOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-[#0E2A1C]/10 bg-white py-2 shadow-lg">
+                      <Link
+                        to="/login"
+                        className="font-display flex items-center gap-3 px-4 py-2.5 text-sm text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
+                        onClick={() => setLoginDropdownOpen(false)}
+                      >
+                        <User className="h-4 w-4" />
+                        <span>User Login</span>
+                      </Link>
+                      <Link
+                        to="/adminlogin"
+                        className="font-display flex items-center gap-3 border-t border-[#0E2A1C]/10 px-4 py-2.5 text-sm text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
+                        onClick={() => setLoginDropdownOpen(false)}
+                      >
+                        <Shield className="h-4 w-4" />
+                        <span>Admin Login</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Mobile Button */}
@@ -335,7 +439,7 @@ const ReViveNavbar = () => {
                           openDropdown === link.name ? null : link.name
                         )
                       }
-                      className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D] sm:text-base"
+                      className="font-display flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D] sm:text-base"
                     >
                       <span>{link.name}</span>
                       <ChevronDown
@@ -354,7 +458,7 @@ const ReViveNavbar = () => {
                     >
                       <Link
                         to="/solutions"
-                        className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-semibold text-[#11402D] transition hover:bg-[#11402D]/5"
+                        className="font-display flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-semibold text-[#11402D] transition hover:bg-[#11402D]/5"
                         onClick={() => {
                           setMobileMenuOpen(false);
                           setOpenDropdown(null);
@@ -368,7 +472,7 @@ const ReViveNavbar = () => {
                         <Link
                           key={item.name}
                           to={item.href}
-                          className="flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-[#0E2A1C]/70 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
+                          className="font-display flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-[#0E2A1C]/70 transition hover:bg-[#11402D]/5 hover:text-[#11402D]"
                           onClick={() => {
                             setMobileMenuOpen(false);
                             setOpenDropdown(null);
@@ -383,7 +487,7 @@ const ReViveNavbar = () => {
                 ) : (
                   <Link
                     to={link.href}
-                    className="block rounded-xl px-4 py-3 text-sm font-medium text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D] sm:text-base"
+                    className="font-display block rounded-xl px-4 py-3 text-sm font-medium text-[#0E2A1C]/80 transition hover:bg-[#11402D]/5 hover:text-[#11402D] sm:text-base"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     {link.name}
@@ -392,14 +496,50 @@ const ReViveNavbar = () => {
               </div>
             ))}
 
-            <div className="mt-4 border-t border-[#0E2A1C]/10 pt-4">
-              <Link
-                to="/login"
-                className="block w-full rounded-xl border border-[#0E2A1C]/20 px-4 py-3 text-center font-semibold text-[#0E2A1C] transition hover:bg-[#11402D]/5"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Log in
-              </Link>
+            {/* Mobile Login */}
+            <div className="mt-4 border-t border-[#0E2A1C]/10 pt-4 space-y-2">
+              {isAuthenticated && user ? (
+                <>
+                  <div className="rounded-xl bg-[#11402D]/5 px-4 py-3">
+                    <p className="font-display text-sm font-semibold text-[#0E2A1C]">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="font-mono-cw text-xs text-[#5A7060]">{user.email}</p>
+                  </div>
+                  <Link
+                    to="/dashboard"
+                    className="font-display block w-full rounded-xl border border-[#0E2A1C]/20 px-4 py-3 text-center font-semibold text-[#0E2A1C] transition hover:bg-[#11402D]/5"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="font-display block w-full rounded-xl border border-red-200 px-4 py-3 text-center font-semibold text-red-600 transition hover:bg-red-50"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="font-display block w-full rounded-xl border border-[#0E2A1C]/20 px-4 py-3 text-center font-semibold text-[#0E2A1C] transition hover:bg-[#11402D]/5 flex items-center justify-center gap-2"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <User className="h-4 w-4" />
+                    User Login
+                  </Link>
+                  <Link
+                    to="/adminlogin"
+                    className="font-display block w-full rounded-xl bg-[#11402D] px-4 py-3 text-center font-semibold text-white transition hover:bg-[#0A1A0F] flex items-center justify-center gap-2"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Admin Login
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

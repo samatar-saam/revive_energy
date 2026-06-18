@@ -1,4 +1,6 @@
 import React from "react";
+import energyFacilityImage from "../assets/energy-facility.jpg";
+import renewableFieldImage from "../assets/renewable-field.jpg";
 import {
   Recycle,
   Zap,
@@ -93,6 +95,15 @@ export default function ReViveEnergyHomepage() {
     { x: 85, y: 40, name: "Recycling Plant", icon: "♻️" }
   ];
 
+  // Marquee items data
+  const marqueeItems = [
+    { icon: "🗑️", label: "Organic Waste" },
+    { icon: "🌾", label: "Agricultural Waste" },
+    { icon: "♻️", label: "Plastic Waste" },
+    { icon: "🏭", label: "Industrial Waste" },
+    { icon: "🪵", label: "Biomass Waste" },
+  ];
+
   return (
     <div className="min-h-screen bg-[#F6F8F4] text-[#142019] font-['Inter'] overflow-x-hidden">
       <style>{`
@@ -104,6 +115,24 @@ export default function ReViveEnergyHomepage() {
 
         .font-mono-cw {
           font-family: 'JetBrains Mono', monospace;
+        }
+
+        @keyframes marquee {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+
+        .marquee-track {
+          animation: marquee 25s linear infinite;
+          width: max-content;
+        }
+
+        .marquee-track:hover {
+          animation-play-state: paused;
         }
       `}</style>
 
@@ -183,32 +212,118 @@ export default function ReViveEnergyHomepage() {
               </div>
 
               <div className="relative rounded-2xl overflow-hidden h-[210px] sm:h-[190px] lg:h-[225px] group">
-                <img
-                  src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80"
-                  alt="Energy facility"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
+               <img
+              src={energyFacilityImage}
+              alt="Energy facility"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
               </div>
 
               <div className="relative rounded-2xl overflow-hidden h-[210px] sm:h-[190px] lg:h-[225px] group">
-                <img
-                  src="https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=800&q=80"
-                  alt="Renewable energy field"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
+               <img
+              src={renewableFieldImage}
+              alt="Renewable energy field"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+            />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* PROCESS - With Large Live Route Tracking Card */}
+      {/* ============ IMPACT STATS ============ */}
+      <section id="impact" className="bg-[#0E2A1C] text-white py-16 sm:py-20 lg:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="max-w-xl">
+            <p className="text-sm font-mono-cw uppercase tracking-wider text-[#9CF06B]/70 mb-3">
+              Measured Impact
+            </p>
+
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-semibold tracking-tight leading-tight">
+              Numbers that replace landfill with clean energy.
+            </h2>
+          </div>
+
+          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10 rounded-2xl overflow-hidden">
+            {impactStats.map((stat, index) => (
+              <div key={index} className="bg-[#0E2A1C] p-7 sm:p-8 hover:bg-[#11402D] transition-colors">
+                <div className="font-display text-4xl font-semibold text-[#9CF06B]">
+                  {stat.value}
+                </div>
+                <p className="mt-3 text-sm text-white/55 leading-relaxed">
+                  {stat.label}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ MARQUEE SECTION ============ */}
+      <section className="bg-[#F6F8F4] py-12 sm:py-16 lg:py-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="text-center mb-10">
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0E2A1C] tracking-tight">
+              We Revive Energy From Waste Streams
+            </h2>
+            <p className="mt-3 text-lg text-[#142019]/65 max-w-2xl mx-auto">
+              Transforming waste into clean energy, sustainable products, and a circular economy.
+            </p>
+          </div>
+
+          <div className="relative overflow-hidden">
+            {/* Gradient overlays for smooth edges */}
+            <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-[#F6F8F4] to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-[#F6F8F4] to-transparent z-10 pointer-events-none" />
+
+            {/* Marquee Track */}
+            <div className="marquee-track flex items-center gap-6">
+              {/* First set of items */}
+              {marqueeItems.map((item, index) => (
+                <React.Fragment key={`first-${index}`}>
+                  <div className="flex-shrink-0 bg-white rounded-2xl p-6 w-48 sm:w-56 shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#11402D]/5">
+                    <div className="text-5xl sm:text-6xl text-center mb-3">
+                      {item.icon}
+                    </div>
+                    <p className="font-display font-semibold text-sm sm:text-base text-[#0E2A1C] text-center">
+                      {item.label}
+                    </p>
+                  </div>
+                  {/* Separator Dot */}
+                  {index < marqueeItems.length - 1 && (
+                    <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#11402D]/30" />
+                  )}
+                </React.Fragment>
+              ))}
+
+              {/* Duplicate set for seamless loop */}
+              {marqueeItems.map((item, index) => (
+                <React.Fragment key={`second-${index}`}>
+                  <div className="flex-shrink-0 bg-white rounded-2xl p-6 w-48 sm:w-56 shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#11402D]/5">
+                    <div className="text-5xl sm:text-6xl text-center mb-3">
+                      {item.icon}
+                    </div>
+                    <p className="font-display font-semibold text-sm sm:text-base text-[#0E2A1C] text-center">
+                      {item.label}
+                    </p>
+                  </div>
+                  {index < marqueeItems.length - 1 && (
+                    <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#11402D]/30" />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ PROCESS - The ReVive Route ============ */}
       <section
         id="process"
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-12 lg:py-16"
       >
         {/* Section Header */}
-        <div className="mb-12">
+        <div className="mb-8">
           <p className="text-sm font-mono-cw uppercase tracking-wider text-[#11402D]/80 mb-3">
             The ReVive Route
           </p>
@@ -225,7 +340,7 @@ export default function ReViveEnergyHomepage() {
         </div>
 
         {/* Process Steps - 4 columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {processSteps.map((step, index) => (
             <div key={index} className="flex gap-4 group">
               <div className="w-10 h-10 rounded-full border border-[#11402D]/25 flex items-center justify-center flex-shrink-0 group-hover:bg-[#0E2A1C] transition-colors">
@@ -421,34 +536,6 @@ export default function ReViveEnergyHomepage() {
                 <span className="text-xs text-gray-600">Completed</span>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* IMPACT */}
-      <section id="impact" className="bg-[#0E2A1C] text-white py-16 sm:py-20 lg:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-          <div className="max-w-xl">
-            <p className="text-sm font-mono-cw uppercase tracking-wider text-[#9CF06B]/70 mb-3">
-              Measured Impact
-            </p>
-
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-semibold tracking-tight leading-tight">
-              Numbers that replace landfill with clean energy.
-            </h2>
-          </div>
-
-          <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10 rounded-2xl overflow-hidden">
-            {impactStats.map((stat, index) => (
-              <div key={index} className="bg-[#0E2A1C] p-7 sm:p-8 hover:bg-[#11402D] transition-colors">
-                <div className="font-display text-4xl font-semibold text-[#9CF06B]">
-                  {stat.value}
-                </div>
-                <p className="mt-3 text-sm text-white/55 leading-relaxed">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
           </div>
         </div>
       </section>

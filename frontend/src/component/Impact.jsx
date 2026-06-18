@@ -1,577 +1,644 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 import {
-  Leaf,
-  Zap,
-  TrendingUp,
-  Award,
-  BarChart3,
-  Globe,
-  Users,
-  Package,
-  Truck,
-  Factory,
-  Recycle,
-  CheckCircle,
-  ArrowRight,
-  Calendar,
-  MapPin,
-  Download,
-  Share2,
-  Heart,
-  Clock,
-  Flame,
-  Droplets,
-  Shield,
-  Target,
-  Eye,
-  FileText,
-  ChevronRight,
-  Sparkles,
-  Infinity,
-  Wind,
-  Sun,
-  Droplet,
-  TreePine,
-  Building2,
-  Home,
-  Briefcase,
-  GraduationCap,
-  HandHeart,
-  ThumbsUp,
-  Play,
-  Star,
-  Quote
+  ArrowRight, Recycle, Leaf, Zap, Droplets, Sun, Wind,
+  Truck, Factory, Package, Wheat, Users, Globe, BarChart3,
+  CheckCircle2, MapPin, Clock, Star, Shield, TrendingUp,
+  Award, Play, ChevronRight, Sparkles, Gauge, Activity,
+  Flame as FireIcon, Droplet as DropletIcon, Sprout, Circle,
+  ChevronDown, Mail, Phone, Building2, Home, Battery, ChartBar,
+  Gift, Recycle as RecycleIcon, Compass, Target, Eye,
+  Filter, Layers, Boxes, ArrowDown, ArrowUp, CircleDot,
+  Thermometer, Wind as WindIcon, Zap as ZapIcon, CloudSun,
+  TreePine, Flower2, Factory as FactoryIcon, Warehouse,
+  Building, LandPlot, Tractor, Bus, Car, Ship, Plane,
+  Coffee, Utensils, Pizza, Apple, ShoppingBag, Store, Hotel,
+  Heart, Handshake, Lightbulb, Rocket, ThumbsUp, Smile,
+  Award as AwardIcon, Trophy, Medal, Crown, Star as StarIcon
 } from "lucide-react";
 
-export default function ImpactPage() {
-  const [animatedStats, setAnimatedStats] = useState({
-    wasteDiverted: 0,
-    energyGenerated: 0,
-    co2Reduced: 0,
-    partners: 0,
-    treesPlanted: 0,
-    jobsCreated: 0,
-    householdsPowered: 0,
-    waterSaved: 0
-  });
-
-  const stats = [
-    { 
-      id: "wasteDiverted", 
-      value: 125000, 
-      label: "Tons of Waste Diverted", 
-      suffix: "+", 
-      icon: Recycle,
-      subtext: "Equivalent to 8,000 garbage trucks",
-      color: "green",
-      gradient: "from-green-500 to-emerald-500"
-    },
-    { 
-      id: "energyGenerated", 
-      value: 85000, 
-      label: "MWh Clean Energy Generated", 
-      suffix: "+", 
-      icon: Zap,
-      subtext: "Powering 25,000 homes annually",
-      color: "yellow",
-      gradient: "from-yellow-500 to-amber-500"
-    },
-    { 
-      id: "co2Reduced", 
-      value: 60000, 
-      label: "Tons CO₂ Reduced", 
-      suffix: "+", 
-      icon: Leaf,
-      subtext: "Equivalent to planting 1M trees",
-      color: "emerald",
-      gradient: "from-emerald-500 to-teal-500"
-    },
-    { 
-      id: "partners", 
-      value: 1200, 
-      label: "Active Partners", 
-      suffix: "+", 
-      icon: Users,
-      subtext: "Across 47 counties",
-      color: "blue",
-      gradient: "from-blue-500 to-cyan-500"
-    },
-    { 
-      id: "treesPlanted", 
-      value: 50000, 
-      label: "Trees Planted", 
-      suffix: "+", 
-      icon: TreePine,
-      subtext: "Through carbon offset programs",
-      color: "teal",
-      gradient: "from-teal-500 to-green-500"
-    },
-    { 
-      id: "jobsCreated", 
-      value: 350, 
-      label: "Green Jobs Created", 
-      suffix: "+", 
-      icon: Briefcase,
-      subtext: "Local employment opportunities",
-      color: "purple",
-      gradient: "from-purple-500 to-indigo-500"
-    },
-    { 
-      id: "householdsPowered", 
-      value: 25000, 
-      label: "Households Powered", 
-      suffix: "+", 
-      icon: Home,
-      subtext: "Clean energy for families",
-      color: "orange",
-      gradient: "from-orange-500 to-red-500"
-    },
-    { 
-      id: "waterSaved", 
-      value: 1800000, 
-      label: "Liters of Water Saved", 
-      suffix: "K+", 
-      icon: Droplet,
-      subtext: "In recycling processes",
-      color: "cyan",
-      gradient: "from-cyan-500 to-blue-500"
-    }
-  ];
-
+/* ─── ANIMATED COUNTER ─── */
+function Counter({ to, suffix = "", prefix = "" }) {
+  const nodeRef = useRef(null);
+  const [val, setVal] = useState(0);
   useEffect(() => {
-    const animateValue = (start, end, duration, setter) => {
-      let startTimestamp = null;
-      const step = (timestamp) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        let current = Math.floor(progress * (end - start) + start);
-        setter(current);
-        if (progress < 1) {
-          window.requestAnimationFrame(step);
-        } else {
-          setter(end);
-        }
-      };
-      window.requestAnimationFrame(step);
-    };
+    const el = nodeRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) {
+        let start = 0;
+        const duration = 2000;
+        const step = (timestamp) => {
+          if (!start) start = timestamp;
+          const progress = Math.min((timestamp - start) / duration, 1);
+          setVal(Math.floor(progress * to));
+          if (progress < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+        obs.disconnect();
+      }
+    }, { threshold: 0.5 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [to]);
+  return <span ref={nodeRef}>{prefix}{val}{suffix}</span>;
+}
 
-    animateValue(0, 125000, 2000, (val) => 
-      setAnimatedStats(prev => ({ ...prev, wasteDiverted: val }))
-    );
-    animateValue(0, 85000, 2000, (val) => 
-      setAnimatedStats(prev => ({ ...prev, energyGenerated: val }))
-    );
-    animateValue(0, 60000, 2000, (val) => 
-      setAnimatedStats(prev => ({ ...prev, co2Reduced: val }))
-    );
-    animateValue(0, 1200, 2000, (val) => 
-      setAnimatedStats(prev => ({ ...prev, partners: val }))
-    );
-    animateValue(0, 50000, 2000, (val) => 
-      setAnimatedStats(prev => ({ ...prev, treesPlanted: val }))
-    );
-    animateValue(0, 350, 2000, (val) => 
-      setAnimatedStats(prev => ({ ...prev, jobsCreated: val }))
-    );
-    animateValue(0, 25000, 2000, (val) => 
-      setAnimatedStats(prev => ({ ...prev, householdsPowered: val }))
-    );
-    animateValue(0, 1800, 2000, (val) => 
-      setAnimatedStats(prev => ({ ...prev, waterSaved: val }))
-    );
-  }, []);
+/* ─── DATA ─── */
+const IMPACT_METRICS = [
+  {
+    value: 125000,
+    suffix: "+",
+    label: "Tons Diverted From Landfills",
+    icon: Recycle,
+    detail: "Enough to fill 50 Olympic swimming pools",
+    color: "#34D399"
+  },
+  {
+    value: 850,
+    suffix: " GWh",
+    label: "Clean Energy Generated",
+    icon: Zap,
+    detail: "Powering 150,000+ homes annually",
+    color: "#F59E0B"
+  },
+  {
+    value: 45000,
+    suffix: "+",
+    label: "Tons CO₂ Reduced",
+    icon: Leaf,
+    detail: "Equivalent to removing 10,000 cars",
+    color: "#60A5FA"
+  },
+  {
+    value: 2500,
+    suffix: "+",
+    label: "Partners Connected",
+    icon: Users,
+    detail: "Across 8 African countries",
+    color: "#818CF8"
+  }
+];
 
-  const liveMetrics = [
-    { label: "Current Processing Rate", value: "12.5 tons/hr", icon: Package, trend: "+8%" },
-    { label: "Active Collections", value: "47", icon: Truck, trend: "+3" },
-    { label: "Energy Output Today", value: "284 MWh", icon: Zap, trend: "+12%" },
-    { label: "CO₂ Saved Today", value: "164 tons", icon: Leaf, trend: "+5%" }
-  ];
+const SDG_GOALS = [
+  { number: 7, title: "Affordable & Clean Energy", icon: Zap, color: "#F59E0B", description: "Providing renewable energy access to communities across Africa." },
+  { number: 9, title: "Industry, Innovation & Infrastructure", icon: Factory, color: "#F97316", description: "Building modern waste-to-energy infrastructure that drives sustainable industrialization." },
+  { number: 11, title: "Sustainable Cities & Communities", icon: Building2, color: "#FBBF24", description: "Creating cleaner, greener urban environments through waste management." },
+  { number: 12, title: "Responsible Consumption & Production", icon: Recycle, color: "#34D399", description: "Promoting circular economy principles and reducing waste." },
+  { number: 13, title: "Climate Action", icon: Globe, color: "#60A5FA", description: "Reducing greenhouse gas emissions through waste conversion." },
+  { number: 15, title: "Life on Land", icon: TreePine, color: "#34D399", description: "Protecting ecosystems by reducing landfill waste and pollution." }
+];
 
-  const impactAreas = [
-    {
-      title: "Environmental Restoration",
-      icon: TreePine,
-      color: "green",
-      gradient: "from-green-500 to-emerald-500",
-      stats: [
-        { label: "Landfill Space Saved", value: "850,000 m³", change: "+12%" },
-        { label: "Water Pollution Reduced", value: "92%", change: "+5%" },
-        { label: "Methane Emissions Avoided", value: "45,000 tons", change: "+18%" },
-        { label: "Biodiversity Protected", value: "15,000 acres", change: "+7%" }
-      ]
-    },
-    {
-      title: "Economic Empowerment",
-      icon: TrendingUp,
-      color: "blue",
-      gradient: "from-blue-500 to-cyan-500",
-      stats: [
-        { label: "Value Created", value: "KES 320M+", change: "+22%" },
-        { label: "Cost Savings", value: "KES 180M+", change: "+15%" },
-        { label: "Revenue Generated", value: "KES 95M+", change: "+28%" },
-        { label: "Local Investment", value: "KES 50M+", change: "+10%" }
-      ]
-    },
-    {
-      title: "Social Development",
-      icon: HandHeart,
-      color: "purple",
-      gradient: "from-purple-500 to-pink-500",
-      stats: [
-        { label: "Households Benefited", value: "25,000+", change: "+30%" },
-        { label: "Communities Served", value: "127", change: "+12" },
-        { label: "Training Programs", value: "48", change: "+6" },
-        { label: "Women Empowered", value: "180+", change: "+15%" }
-      ]
-    }
-  ];
+const IMPACT_STORIES = [
+  {
+    title: "Kenya's First Large-Scale Biogas Plant",
+    description: "ReVive Energy's biogas facility in Thika processes 100 tonnes of organic waste daily, powering 5,000 homes and creating 50 jobs.",
+    image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?auto=format&fit=crop&w=800&q=85",
+    metrics: ["100T/day", "5,000 homes", "50 jobs"],
+    color: "#34D399"
+  },
+  {
+    title: "Plastic Recycling Revolution",
+    description: "Our Mombasa facility recycles 50,000 tonnes of plastic annually, creating 200 jobs and reducing ocean plastic pollution by 40%.",
+    image: "https://images.unsplash.com/photo-1604187351574-c75ca79f5807?auto=format&fit=crop&w=800&q=85",
+    metrics: ["50K tonnes", "200 jobs", "40% reduction"],
+    color: "#60A5FA"
+  },
+  {
+    title: "Empowering Smallholder Farmers",
+    description: "Over 1,200 farmers across Kenya now use our organic fertilizer, increasing crop yields by 30% and reducing chemical fertilizer use.",
+    image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=800&q=85",
+    metrics: ["1,200 farmers", "30% yield", "8 counties"],
+    color: "#F59E0B"
+  }
+];
 
-  const testimonials = [
-    {
-      quote: "ReVive Energy has transformed how we handle waste. Our landfill costs dropped by 60% and we're now powering our facility with renewable energy.",
-      author: "James Mwangi",
-      role: "Facility Manager, Nairobi Serena Hotel",
-      rating: 5,
-      image: "https://randomuser.me/api/portraits/men/32.jpg"
-    },
-    {
-      quote: "The carbon tracking dashboard helped us achieve our ESG targets six months early. Excellent platform with real impact data.",
-      author: "Dr. Sarah Wanjiku",
-      role: "Sustainability Director, GreenGrid Co.",
-      rating: 5,
-      image: "https://randomuser.me/api/portraits/women/44.jpg"
-    },
-    {
-      quote: "Working with ReVive Energy opened new revenue streams from our agricultural waste. Best decision we made for our farm.",
-      author: "Peter Ochieng",
-      role: "Owner, Green Valley Farms",
-      rating: 5,
-      image: "https://randomuser.me/api/portraits/men/67.jpg"
-    }
-  ];
+const ENVIRONMENTAL_IMPACT = [
+  {
+    icon: TreePine,
+    label: "Trees Saved",
+    value: "750,000",
+    description: "Equivalent to preserving 750,000 trees annually"
+  },
+  {
+    icon: DropletIcon,
+    label: "Water Saved",
+    value: "12M",
+    description: "Liters of water saved through recycling processes"
+  },
+  {
+    icon: Wind,
+    label: "Air Quality Improvement",
+    value: "45%",
+    description: "Reduction in air pollutants in partner communities"
+  },
+  {
+    icon: Heart,
+    label: "Lives Impacted",
+    value: "500K+",
+    description: "People benefiting from clean energy and cleaner environments"
+  }
+];
 
-  const sdgGoals = [
-    { goal: "SDG 7", title: "Affordable & Clean Energy", icon: Zap, progress: 85, description: "Expanding clean energy access" },
-    { goal: "SDG 9", title: "Industry & Innovation", icon: Factory, progress: 78, description: "Sustainable infrastructure" },
-    { goal: "SDG 11", title: "Sustainable Cities", icon: Building2, progress: 82, description: "Urban waste management" },
-    { goal: "SDG 12", title: "Responsible Consumption", icon: Recycle, progress: 88, description: "Circular economy" },
-    { goal: "SDG 13", title: "Climate Action", icon: Leaf, progress: 75, description: "Emission reduction" },
-    { goal: "SDG 17", title: "Partnerships", icon: HandHeart, progress: 80, description: "Global collaboration" }
-  ];
-
-  const certifications = [
-    { name: "ISO 14001", issuer: "Environmental Management", icon: Shield },
-    { name: "Certified B Corp", issuer: "Social & Environmental Impact", icon: Award },
-    { name: "Gold Standard", issuer: "Carbon Credits", icon: Leaf },
-    { name: "UN Global Compact", issuer: "Sustainable Development", icon: Globe }
-  ];
-
-  const formatNumber = (num) => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + "M";
-    }
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + "K";
-    }
-    return num.toString();
-  };
+/* ─── MAIN IMPACT PAGE ─── */
+export default function ImpactPage() {
+  const { scrollYProgress } = useScroll();
+  const progressWidth = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
+  const [activeStory, setActiveStory] = useState(0);
 
   return (
-    <div className="min-h-screen bg-[#F6F8F4] text-[#142019] font-['Inter'] overflow-x-hidden">
+    <div className="min-h-screen bg-[#F6F8F4] text-[#142019] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
-        .font-display { font-family: 'Space Grotesk', sans-serif; }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .font-display {
+          font-family: 'Space Grotesk', sans-serif;
         }
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
+
+        .font-mono-cw {
+          font-family: 'JetBrains Mono', monospace;
         }
       `}</style>
 
-      {/* Hero Section with Particle Effect */}
-      <section className="relative bg-gradient-to-br from-[#0E2A1C] via-[#11402D] to-[#1a5c3e] text-white py-24 lg:py-32 overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=1920')] bg-cover bg-center" />
-        </div>
-        {/* Animated particles */}
+      {/* ── SCROLL PROGRESS ── */}
+      <motion.div className="fixed top-0 left-0 h-0.5 bg-[#9CF06B] z-50 origin-left"
+        style={{ width: progressWidth }} />
+
+      {/* ============ HERO SECTION ============ */}
+      <section className="relative min-h-[55vh] flex items-center bg-white pt-0">
         <div className="absolute inset-0 overflow-hidden">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-[#9CF06B] rounded-full animate-pulse"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 3}s`,
-                opacity: 0.3 + Math.random() * 0.5
-              }}
-            />
-          ))}
+          <div className="absolute top-20 right-10 w-96 h-96 bg-[#9CF06B]/5 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 left-10 w-80 h-80 bg-[#11402D]/5 rounded-full blur-3xl" />
         </div>
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full mb-6">
-              <Sparkles className="w-4 h-4 text-[#9CF06B]" />
-              <span className="text-sm font-semibold font-mono-cw">REAL-TIME IMPACT METRICS</span>
-            </div>
-            <h1 className="font-display text-5xl lg:text-6xl xl:text-7xl font-bold mb-6 leading-tight">
-              Creating Measurable
-              <br />
-              <span className="text-[#9CF06B]">Environmental & Social Impact</span>
-            </h1>
-            <p className="text-xl text-white/80 max-w-3xl mx-auto leading-relaxed">
-              Every ton of waste processed contributes to a cleaner environment,
-              economic growth, and sustainable communities across Kenya.
-            </p>
-          </div>
-        </div>
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 rounded-full border-2 border-white/30 flex justify-center">
-            <div className="w-1 h-2 bg-white/50 rounded-full mt-2 animate-pulse" />
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-8 lg:py-12">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl text-[#0E2A1C] leading-[1.1] tracking-tight mb-6">
+                Creating Impact
+                <span className="relative inline-block mx-3">
+                  <span className="relative z-10 text-[#11402D]">Together.</span>
+                  <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 300 10" preserveAspectRatio="none">
+                    <path d="M2 6C60 2 240 2 298 6" stroke="#9CF06B" strokeWidth="5" strokeLinecap="round" fill="none" />
+                  </svg>
+                </span>
+              </h1>
+
+              <p className="text-xl text-[#142019]/65 leading-relaxed max-w-lg mb-8">
+                ReVive Energy is committed to creating lasting environmental and social impact across Africa — one tonne of waste at a time.
+              </p>
+
+              <div className="flex flex-wrap gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  className="bg-[#11402D] text-white font-display font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
+                >
+                  Explore Our Impact <ArrowRight className="w-4 h-4" />
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  className="border-2 border-[#11402D]/20 text-[#11402D] font-display font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
+                >
+                  Download Report
+                </motion.button>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="relative"
+            >
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+                <img
+                  src="https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=1200&q=85"
+                  alt="Impact"
+                  className="w-full h-auto"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/50 via-transparent to-transparent" />
+              </div>
+              <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-xl p-4 border border-[#11402D]/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#11402D] flex items-center justify-center">
+                    <Globe className="w-5 h-5 text-[#9CF06B]" />
+                  </div>
+                  <div>
+                    <div className="font-display font-bold text-[#0E2A1C]">UN SDGs Aligned</div>
+                    <div className="text-xs text-[#5A7060]">6 sustainable goals impacted</div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Live Metrics Bar */}
-      <section className="bg-white border-b border-gray-100 py-4 sticky top-20 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {liveMetrics.map((metric, idx) => {
-              const Icon = metric.icon;
+      {/* ============ IMPACT METRICS ============ */}
+      <section className="py-24 bg-[#0E2A1C]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-3xl mx-auto mb-12"
+          >
+            <div className="flex justify-center mb-6">
+              <div className="w-12 h-px bg-[#9CF06B]/30" />
+            </div>
+            <p className="font-mono-cw text-sm uppercase tracking-wider text-[#9CF06B]/70 mb-3">
+              Our Impact
+            </p>
+            <h2 className="font-display text-4xl sm:text-5xl text-white mb-4">
+              The Numbers Behind Our Mission
+            </h2>
+            <p className="text-lg text-white/50 max-w-2xl mx-auto">
+              Real change measured in real numbers — our impact speaks for itself.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {IMPACT_METRICS.map((stat, i) => {
+              const Icon = stat.icon;
               return (
-                <div key={idx} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-green-600" />
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="text-center bg-white/5 rounded-2xl p-6 backdrop-blur border border-white/10 hover:bg-white/10 transition-all group"
+                >
+                  <div className="w-14 h-14 rounded-full bg-[#9CF06B]/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                    <Icon className="w-7 h-7 text-[#9CF06B]" />
                   </div>
-                  <div>
-                    <div className="text-xs text-gray-500 font-mono-cw">{metric.label}</div>
-                    <div className="font-display font-semibold text-[#0E2A1C]">{metric.value}</div>
-                    <div className="text-[10px] text-green-600">{metric.trend}</div>
+                  <div className="font-display text-4xl md:text-5xl font-bold text-[#9CF06B] mb-2">
+                    <Counter to={stat.value} suffix={stat.suffix} />
                   </div>
-                </div>
+                  <div className="text-sm text-white/60 font-medium">{stat.label}</div>
+                  <div className="text-xs text-white/30 mt-1">{stat.detail}</div>
+                </motion.div>
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* Stats Grid - 8 cards */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {stats.map((stat, idx) => {
-            const Icon = stat.icon;
-            const animatedValue = animatedStats[stat.id];
-            const displayValue = stat.id === "waterSaved" 
-              ? (animatedValue / 1000).toFixed(1) + "K"
-              : formatNumber(animatedValue);
-            return (
-              <div
-                key={idx}
-                className="group relative bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden"
-              >
-                <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.gradient} opacity-5 rounded-full -translate-y-8 translate-x-8 group-hover:scale-150 transition-transform duration-500`} />
-                <div className={`w-12 h-12 rounded-xl bg-${stat.color}-100 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                  <Icon className={`w-6 h-6 text-${stat.color}-600`} />
-                </div>
-                <div className="font-display text-3xl font-bold text-[#0E2A1C]">
-                  {displayValue}
-                  {stat.suffix}
-                </div>
-                <div className="text-sm font-medium text-gray-700 mt-2">{stat.label}</div>
-                <div className="text-[11px] text-gray-400 mt-1">{stat.subtext}</div>
-              </div>
-            );
-          })}
+      {/* ============ SDG GOALS ============ */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
+            <div className="flex justify-center mb-6">
+              <div className="w-12 h-px bg-[#11402D]" />
+            </div>
+            <p className="font-mono-cw text-sm uppercase tracking-wider text-[#11402D]/80 mb-3">
+              UN Sustainable Development Goals
+            </p>
+            <h2 className="font-display text-4xl sm:text-5xl text-[#0E2A1C] mb-4">
+              Aligned with Global Goals
+            </h2>
+            <p className="text-lg text-[#142019]/65">
+              Our work directly contributes to achieving the United Nations Sustainable Development Goals.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {SDG_GOALS.map((goal, i) => {
+              const Icon = goal.icon;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                  className="bg-[#F6F8F4] rounded-2xl p-6 hover:shadow-xl transition-all border border-[#11402D]/5 group"
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"
+                      style={{ background: `${goal.color}15` }}>
+                      <Icon className="w-6 h-6" style={{ color: goal.color }} />
+                    </div>
+                    <div>
+                      <div className="font-mono-cw text-xs font-bold text-[#11402D]">SDG {goal.number}</div>
+                      <h3 className="font-display font-bold text-[#0E2A1C] text-sm">{goal.title}</h3>
+                      <p className="text-xs text-[#142019]/55 mt-1">{goal.description}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* Impact Areas - Enhanced */}
-      <section className="bg-gradient-to-b from-white to-gray-50 py-20 lg:py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-green-100 px-4 py-2 rounded-full mb-4">
-              <Target className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-semibold text-green-700">OUR IMPACT FRAMEWORK</span>
+      {/* ============ IMPACT STORIES ============ */}
+      <section className="py-24 bg-[#F6F8F4]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
+            <div className="flex justify-center mb-6">
+              <div className="w-12 h-px bg-[#11402D]" />
             </div>
-            <h2 className="font-display text-3xl lg:text-4xl font-bold text-[#0E2A1C] mb-4">
-              Triple Bottom Line Impact
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Our work creates value across environmental, economic, and social dimensions
+            <p className="font-mono-cw text-sm uppercase tracking-wider text-[#11402D]/80 mb-3">
+              Real Stories
             </p>
-          </div>
+            <h2 className="font-display text-4xl sm:text-5xl text-[#0E2A1C] mb-4">
+              Impact in Action
+            </h2>
+            <p className="text-lg text-[#142019]/65">
+              See how our work is transforming communities and environments across Africa.
+            </p>
+          </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {impactAreas.map((area, idx) => {
-              const Icon = area.icon;
-              return (
-                <div key={idx} className="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-2">
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-r ${area.gradient} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}>
-                    <Icon className="w-7 h-7 text-white" />
+          <div className="grid md:grid-cols-3 gap-6">
+            {IMPACT_STORIES.map((story, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                whileHover={{ y: -8 }}
+                className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-[#11402D]/5 group"
+              >
+                <div className="relative h-48 overflow-hidden">
+                  <img src={story.image} alt={story.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/60 via-transparent to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <h3 className="text-white font-display font-bold text-lg">{story.title}</h3>
                   </div>
-                  <h3 className="font-display text-xl font-semibold text-[#0E2A1C] mb-5">{area.title}</h3>
-                  <div className="space-y-3">
-                    {area.stats.map((stat, i) => (
-                      <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-                        <span className="text-sm text-gray-600">{stat.label}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-green-600">{stat.value}</span>
-                          <span className="text-[10px] text-green-500">{stat.change}</span>
-                        </div>
+                </div>
+                <div className="p-6">
+                  <p className="text-sm text-[#142019]/55 leading-relaxed mb-4">{story.description}</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {story.metrics.map((metric, j) => (
+                      <div key={j} className="text-center bg-[#F6F8F4] rounded-lg p-2">
+                        <div className="font-mono-cw text-xs font-bold text-[#11402D]">{metric}</div>
                       </div>
                     ))}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* SDG Contribution - Enhanced */}
-      <section className="bg-[#0E2A1C] text-white py-20 lg:py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full mb-4">
-              <Globe className="w-4 h-4 text-[#9CF06B]" />
-              <span className="text-sm font-semibold">UN SUSTAINABLE DEVELOPMENT GOALS</span>
-            </div>
-            <h2 className="font-display text-3xl lg:text-4xl font-bold mb-4">
-              Contributing to Global Goals
-            </h2>
-            <p className="text-white/70 max-w-2xl mx-auto">
-              Our work directly supports multiple UN Sustainable Development Goals
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sdgGoals.map((goal, idx) => {
-              const Icon = goal.icon;
-              return (
-                <div key={idx} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 hover:-translate-y-1 group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-[#9CF06B]/20 flex items-center justify-center group-hover:scale-110 transition">
-                      <Icon className="w-6 h-6 text-[#9CF06B]" />
-                    </div>
-                    <span className="text-xs font-mono-cw text-white/40">{goal.goal}</span>
-                  </div>
-                  <h3 className="font-semibold text-lg mb-2">{goal.title}</h3>
-                  <p className="text-sm text-white/50 mb-4">{goal.description}</p>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-white/50">Progress</span>
-                      <span className="text-[#9CF06B]">{goal.progress}%</span>
-                    </div>
-                    <div className="w-full bg-white/10 rounded-full h-2">
-                      <div className="bg-[#9CF06B] h-2 rounded-full transition-all duration-1000" style={{ width: `${goal.progress}%` }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Certifications */}
-      <section className="bg-white py-16">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="text-center mb-10">
-            <h2 className="font-display text-2xl lg:text-3xl font-bold text-[#0E2A1C] mb-2">
-              Certified Excellence
-            </h2>
-            <p className="text-gray-600">Recognized for our commitment to sustainability and impact</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {certifications.map((cert, idx) => {
-              const Icon = cert.icon;
-              return (
-                <div key={idx} className="text-center group">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-3 group-hover:bg-green-200 transition">
-                    <Icon className="w-8 h-8 text-green-600" />
-                  </div>
-                  <h3 className="font-semibold text-[#0E2A1C] text-sm">{cert.name}</h3>
-                  <p className="text-xs text-gray-500">{cert.issuer}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section className="bg-[#F6F8F4] py-20 lg:py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-green-100 px-4 py-2 rounded-full mb-4">
-              <Quote className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-semibold text-green-700">PARTNER TESTIMONIALS</span>
-            </div>
-            <h2 className="font-display text-3xl lg:text-4xl font-bold text-[#0E2A1C] mb-4">
-              What Our Partners Say
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Real stories from businesses making a difference
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, idx) => (
-              <div key={idx} className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300">
-                <div className="flex items-center gap-2 mb-3">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-gray-600 text-sm italic mb-4 leading-relaxed">"{testimonial.quote}"</p>
-                <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <span className="font-semibold text-green-600 text-sm">{testimonial.author.charAt(0)}</span>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-[#0E2A1C] text-sm">{testimonial.author}</h4>
-                    <p className="text-xs text-gray-500">{testimonial.role}</p>
-                  </div>
-                </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="bg-white py-20">
-        <div className="max-w-5xl mx-auto px-6 lg:px-10 text-center">
-          <div className="bg-gradient-to-r from-[#0E2A1C] to-[#11402D] rounded-3xl p-10 lg:p-16 relative overflow-hidden">
-            <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#9CF06B]/10" />
-            <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-[#9CF06B]/10" />
-            <div className="relative">
-              <div className="w-20 h-20 mx-auto bg-[#9CF06B]/20 rounded-full flex items-center justify-center mb-6">
-                <FileText className="w-10 h-10 text-[#9CF06B]" />
-              </div>
-              <h2 className="font-display text-3xl lg:text-4xl font-bold text-white mb-4">
-                Ready to Make an Impact?
-              </h2>
-              <p className="text-white/70 mb-8 max-w-md mx-auto">
-                Join our network of partners and start turning waste into value today.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button className="px-8 py-3 bg-[#9CF06B] text-[#0E2A1C] font-semibold rounded-full hover:bg-[#8ae05a] transition-all hover:scale-105 flex items-center justify-center gap-2">
-                  Get Started <ArrowRight className="w-4 h-4" />
-                </button>
-                <button className="px-8 py-3 border border-white/30 text-white font-semibold rounded-full hover:bg-white/10 transition-all hover:scale-105 flex items-center justify-center gap-2">
-                  <Download className="w-4 h-4" />
-                  Download Impact Report
-                </button>
-              </div>
+      {/* ============ ENVIRONMENTAL IMPACT ============ */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
+            <div className="flex justify-center mb-6">
+              <div className="w-12 h-px bg-[#11402D]" />
             </div>
+            <p className="font-mono-cw text-sm uppercase tracking-wider text-[#11402D]/80 mb-3">
+              Environmental Impact
+            </p>
+            <h2 className="font-display text-4xl sm:text-5xl text-[#0E2A1C] mb-4">
+              Beyond Carbon Reduction
+            </h2>
+            <p className="text-lg text-[#142019]/65">
+              Our impact extends beyond carbon reduction to create lasting environmental benefits.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-4 gap-6">
+            {ENVIRONMENTAL_IMPACT.map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="text-center bg-[#F6F8F4] rounded-2xl p-6 hover:shadow-xl transition-all border border-[#11402D]/5 group"
+                >
+                  <div className="w-14 h-14 rounded-full bg-[#11402D]/10 flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                    <Icon className="w-7 h-7 text-[#11402D]" />
+                  </div>
+                  <div className="font-display text-3xl font-bold text-[#11402D] mb-1">{item.value}</div>
+                  <div className="font-bold text-[#0E2A1C] text-sm mb-1">{item.label}</div>
+                  <p className="text-xs text-[#142019]/55">{item.description}</p>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
       </section>
+
+      {/* ============ COMMUNITY IMPACT ============ */}
+      <section className="py-24 bg-[#0E2A1C]">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-3xl mx-auto mb-12"
+          >
+            <div className="flex justify-center mb-6">
+              <div className="w-12 h-px bg-[#9CF06B]/30" />
+            </div>
+            <p className="font-mono-cw text-sm uppercase tracking-wider text-[#9CF06B]/70 mb-3">
+              Community Impact
+            </p>
+            <h2 className="font-display text-4xl sm:text-5xl text-white mb-4">
+              Building Stronger Communities
+            </h2>
+            <p className="text-lg text-white/50 max-w-2xl mx-auto">
+              Our work creates jobs, empowers local economies, and builds resilience in the communities we serve.
+            </p>
+          </motion.div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { icon: Users, value: "500+", label: "Direct Jobs Created", detail: "In recycling and energy facilities" },
+              { icon: AwardIcon, value: "200+", label: "Training Programs", detail: "For local workforce development" },
+              { icon: Handshake, value: "2,500+", label: "Partners Engaged", detail: "Across the value chain" },
+              { icon: Rocket, value: "50+", label: "SMEs Supported", detail: "In waste management and recycling" },
+            ].map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="text-center bg-white/5 rounded-2xl p-6 backdrop-blur border border-white/10 hover:bg-white/10 transition-all group"
+                >
+                  <div className="w-12 h-12 rounded-full bg-[#9CF06B]/10 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                    <Icon className="w-6 h-6 text-[#9CF06B]" />
+                  </div>
+                  <div className="font-display text-2xl font-bold text-[#9CF06B] mb-1">{item.value}</div>
+                  <div className="text-sm text-white/60 font-medium">{item.label}</div>
+                  <div className="text-xs text-white/30 mt-1">{item.detail}</div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ CERTIFICATIONS ============ */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
+            <div className="flex justify-center mb-6">
+              <div className="w-12 h-px bg-[#11402D]" />
+            </div>
+            <p className="font-mono-cw text-sm uppercase tracking-wider text-[#11402D]/80 mb-3">
+              Recognized Excellence
+            </p>
+            <h2 className="font-display text-4xl sm:text-5xl text-[#0E2A1C] mb-4">
+              Certifications & Recognition
+            </h2>
+            <p className="text-lg text-[#142019]/65">
+              Our commitment to quality and sustainability is recognized by leading global organizations.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: Shield, title: "ISO 14001", desc: "Environmental Management", color: "#34D399" },
+              { icon: Award, title: "B-Corp Certified", desc: "Social & Environmental Performance", color: "#F59E0B" },
+              { icon: Medal, title: "Gold Standard", desc: "Carbon Credit Certification", color: "#60A5FA" },
+            ].map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-[#F6F8F4] rounded-2xl p-8 text-center hover:shadow-xl transition-all border border-[#11402D]/5 group"
+                >
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform"
+                    style={{ background: `${item.color}15` }}>
+                    <Icon className="w-8 h-8" style={{ color: item.color }} />
+                  </div>
+                  <h3 className="font-display font-bold text-[#0E2A1C] text-lg">{item.title}</h3>
+                  <p className="text-sm text-[#142019]/55 mt-1">{item.desc}</p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ CTA SECTION ============ */}
+      <section className="py-20 bg-[#0E2A1C]">
+        <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <div className="w-20 h-20 rounded-full bg-[#9CF06B]/10 flex items-center justify-center mx-auto mb-6">
+              <Heart className="w-10 h-10 text-[#9CF06B]" />
+            </div>
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl text-white mb-4">
+              Join Our Impact Journey
+            </h2>
+            <p className="text-lg text-white/60 max-w-2xl mx-auto mb-8">
+              Become part of the solution. Partner with ReVive Energy to create lasting environmental and social impact across Africa.
+            </p>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                className="bg-[#9CF06B] text-[#0E2A1C] font-display font-bold px-8 py-4 rounded-full text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+              >
+                Partner With Us <ArrowRight className="w-4 h-4" />
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                className="border-2 border-white/20 text-white font-display font-bold px-8 py-4 rounded-full text-sm hover:bg-white/10 transition-all flex items-center gap-2"
+              >
+                <Phone className="w-4 h-4" /> Contact Us
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ============ FOOTER ============ */}
+      <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
+                  <Recycle className="w-5 h-5 text-[#9CF06B]" />
+                </div>
+                <span className="font-display text-xl font-semibold">
+                  ReVive Energy
+                </span>
+              </div>
+              <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+                Transforming waste into clean energy, fertilizer, and sustainable products for a circular economy across Africa.
+              </p>
+            </div>
+
+            {[
+              ["Company", ["About Us", "Careers", "Impact", "Resources"]],
+              ["Solutions", ["Organic Waste", "Plastic Recycling", "Industrial Waste", "Agricultural Waste"]],
+              ["Connect", ["info@reviveenergy.com", "+254 700 123 456", "Privacy Policy", "Terms of Service"]],
+            ].map(([title, links], index) => (
+              <div key={index}>
+                <h3 className="font-display font-semibold mb-4">{title}</h3>
+                <ul className="space-y-2.5 text-sm text-white/50">
+                  {links.map((link, i) => (
+                    <li key={i}>
+                      <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                        {link}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
+            <span>© 2026 ReVive Energy. All rights reserved.</span>
+            <div className="flex flex-wrap justify-center gap-5">
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                Privacy Policy
+              </a>
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                Terms of Service
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

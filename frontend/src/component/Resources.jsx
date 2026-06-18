@@ -210,12 +210,12 @@ function ResourceCard({ resource, i }) {
     >
       <div className="relative h-48 overflow-hidden">
         <img src={resource.image} alt={resource.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1A0F]/70 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/70 via-transparent to-transparent" />
         
         {/* Type Badge */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/50 backdrop-blur rounded-full px-3 py-1.5">
           <Icon className="w-3.5 h-3.5" style={{ color: resource.color }} />
-          <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+          <span className="font-mono-cw text-[10px] font-bold text-white uppercase tracking-wider">
             {resource.type.replace("-", " ")}
           </span>
         </div>
@@ -223,7 +223,7 @@ function ResourceCard({ resource, i }) {
         {/* Featured Badge */}
         {resource.featured && (
           <div className="absolute top-3 right-3">
-            <span className="text-[9px] font-black px-2.5 py-1 rounded-full bg-[#9CF06B] text-[#0A1A0F]">
+            <span className="font-mono-cw text-[9px] font-black px-2.5 py-1 rounded-full bg-[#9CF06B] text-[#0A1A0F]">
               Featured
             </span>
           </div>
@@ -232,22 +232,22 @@ function ResourceCard({ resource, i }) {
         {/* Rating */}
         <div className="absolute bottom-3 left-3 flex items-center gap-1.5 bg-black/50 backdrop-blur rounded-full px-2.5 py-1">
           <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-          <span className="text-xs font-bold text-white">{resource.rating}</span>
+          <span className="font-display text-xs font-bold text-white">{resource.rating}</span>
         </div>
       </div>
 
       <div className="p-5 flex flex-col flex-1">
-        <h3 className="font-bold text-[#0A1A0F] text-sm leading-snug mb-2 line-clamp-2">{resource.title}</h3>
+        <h3 className="font-display font-bold text-[#0A1A0F] text-sm leading-snug mb-2 line-clamp-2">{resource.title}</h3>
         
-        <p className="text-xs text-[#5A7060] leading-relaxed mb-3 line-clamp-2">{resource.description}</p>
+        <p className="text-xs text-[#142019]/65 leading-relaxed mb-3 line-clamp-2">{resource.description}</p>
         
         <div className="flex flex-wrap gap-1.5 mb-3">
           {resource.tags.map((tag, j) => (
-            <span key={j} className="text-[8px] font-bold uppercase tracking-wider bg-[#F6F8F4] text-[#5A7060] px-2 py-0.5 rounded-full border border-black/5">{tag}</span>
+            <span key={j} className="font-mono-cw text-[8px] font-bold uppercase tracking-wider bg-[#F6F8F4] text-[#142019]/55 px-2 py-0.5 rounded-full border border-black/5">{tag}</span>
           ))}
         </div>
         
-        <div className="flex items-center justify-between text-[11px] text-[#5A7060] mb-3">
+        <div className="flex items-center justify-between text-[11px] text-[#142019]/55 mb-3">
           <span className="flex items-center gap-1.5">
             <User className="w-3 h-3" />
             {resource.author}
@@ -259,7 +259,7 @@ function ResourceCard({ resource, i }) {
         </div>
         
         <div className="flex items-center justify-between pt-3 border-t border-[#11402D]/10">
-          <div className="flex items-center gap-3 text-[11px] text-[#5A7060]">
+          <div className="flex items-center gap-3 text-[11px] text-[#142019]/55">
             <span className="flex items-center gap-1">
               <Download className="w-3 h-3" />
               {resource.downloads}
@@ -273,7 +273,7 @@ function ResourceCard({ resource, i }) {
             onClick={() => setSaved(!saved)}
             className="p-1.5 rounded-lg hover:bg-[#F6F8F4] transition-colors"
           >
-            <Bookmark className={`w-4 h-4 ${saved ? "fill-[#11402D] text-[#11402D]" : "text-[#5A7060]"}`} />
+            <Bookmark className={`w-4 h-4 ${saved ? "fill-[#11402D] text-[#11402D]" : "text-[#142019]/55"}`} />
           </button>
         </div>
       </div>
@@ -302,10 +302,18 @@ export default function ResourcesPage() {
   const featuredResources = RESOURCES.filter(r => r.featured);
 
   return (
-    <div className="min-h-screen bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="min-h-screen bg-[#F6F8F4] text-[#142019] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800;900&display=swap');
-        .font-serif-display { font-family: 'DM Serif Display', serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        .font-display {
+          font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .font-mono-cw {
+          font-family: 'JetBrains Mono', monospace;
+        }
+
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;
@@ -319,25 +327,20 @@ export default function ResourcesPage() {
         style={{ width: progressWidth }} />
 
       {/* ============ HERO SECTION ============ */}
-      <section className="relative min-h-[40vh] flex items-center bg-white">
+      <section className="relative min-h-[40vh] flex items-center bg-white pt-0">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 right-10 w-96 h-96 bg-[#9CF06B]/5 rounded-full blur-3xl" />
           <div className="absolute bottom-20 left-10 w-80 h-80 bg-[#11402D]/5 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-12">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-8 lg:py-12">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="max-w-3xl"
           >
-            <div className="inline-flex items-center gap-2 mb-4">
-              <span className="w-8 h-px bg-[#11402D]" />
-              <span className="text-xs font-bold tracking-wider text-[#11402D] uppercase">Resources</span>
-            </div>
-            
-            <h1 className="font-serif-display text-5xl sm:text-6xl lg:text-7xl text-[#0A1A0F] leading-[1.1] tracking-tight mb-4">
+            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl text-[#0E2A1C] leading-[1.1] tracking-tight mb-4">
               Learn, grow,
               <span className="relative inline-block mx-3">
                 <span className="relative z-10 text-[#11402D]">sustain.</span>
@@ -347,7 +350,7 @@ export default function ResourcesPage() {
               </span>
             </h1>
             
-            <p className="text-lg text-[#5A7060] leading-relaxed max-w-2xl">
+            <p className="text-lg text-[#142019]/65 leading-relaxed max-w-2xl">
               Access our library of guides, case studies, videos, and insights to accelerate your circular economy journey.
             </p>
           </motion.div>
@@ -355,7 +358,7 @@ export default function ResourcesPage() {
       </section>
 
       {/* ============ STATS BANNER ============ */}
-      <section className="bg-[#11402D] py-6">
+      <section className="bg-[#0E2A1C] py-6">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {QUICK_STATS.map((stat, i) => (
@@ -366,7 +369,7 @@ export default function ResourcesPage() {
                 transition={{ delay: i * 0.1 }}
                 className="text-center"
               >
-                <div className="text-2xl md:text-3xl font-bold text-[#9CF06B]">
+                <div className="font-display text-2xl md:text-3xl font-bold text-[#9CF06B]">
                   <Counter to={stat.value} suffix={stat.suffix} />
                 </div>
                 <div className="text-xs text-white/50 mt-1">{stat.label}</div>
@@ -378,11 +381,11 @@ export default function ResourcesPage() {
 
       {/* ============ FEATURED RESOURCES ============ */}
       {featuredResources.length > 0 && (
-        <section className="py-12 bg-[#F6F8F4]">
+        <section className="py-12 bg-white">
           <div className="max-w-7xl mx-auto px-6 lg:px-12">
             <div className="flex items-center gap-3 mb-8">
               <Award className="w-6 h-6 text-[#11402D]" />
-              <h2 className="font-bold text-xl text-[#0A1A0F]">Featured Resources</h2>
+              <h2 className="font-display font-bold text-xl text-[#0E2A1C]">Featured Resources</h2>
             </div>
             
             <div className="grid md:grid-cols-2 gap-5">
@@ -395,31 +398,31 @@ export default function ResourcesPage() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1 }}
-                    className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all border border-[#11402D]/5 group"
+                    className="bg-[#F6F8F4] rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all border border-[#11402D]/5 group"
                   >
                     <div className="flex flex-col md:flex-row">
                       <div className="relative md:w-1/3 h-48 md:h-auto overflow-hidden">
                         <img src={resource.image} alt={resource.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0A1A0F]/30 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/30 via-transparent to-transparent" />
                         <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/50 backdrop-blur rounded-full px-3 py-1.5">
                           <Icon className="w-3.5 h-3.5" style={{ color: resource.color }} />
-                          <span className="text-[9px] font-bold text-white uppercase tracking-wider">
+                          <span className="font-mono-cw text-[9px] font-bold text-white uppercase tracking-wider">
                             {resource.type.replace("-", " ")}
                           </span>
                         </div>
                       </div>
                       <div className="p-6 md:w-2/3 flex flex-col justify-between">
                         <div>
-                          <h3 className="font-bold text-[#0A1A0F] text-lg mb-2">{resource.title}</h3>
-                          <p className="text-sm text-[#5A7060] leading-relaxed mb-3">{resource.description}</p>
+                          <h3 className="font-display font-bold text-[#0E2A1C] text-lg mb-2">{resource.title}</h3>
+                          <p className="text-sm text-[#142019]/65 leading-relaxed mb-3">{resource.description}</p>
                           <div className="flex flex-wrap gap-1.5 mb-3">
                             {resource.tags.map((tag, j) => (
-                              <span key={j} className="text-[8px] font-bold uppercase tracking-wider bg-[#F6F8F4] text-[#5A7060] px-2 py-0.5 rounded-full border border-black/5">{tag}</span>
+                              <span key={j} className="font-mono-cw text-[8px] font-bold uppercase tracking-wider bg-white text-[#142019]/55 px-2 py-0.5 rounded-full border border-black/5">{tag}</span>
                             ))}
                           </div>
                         </div>
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 text-xs text-[#5A7060]">
+                          <div className="flex items-center gap-3 text-xs text-[#142019]/55">
                             <span className="flex items-center gap-1">
                               <User className="w-3 h-3" />
                               {resource.author}
@@ -429,7 +432,7 @@ export default function ResourcesPage() {
                               {resource.readTime}
                             </span>
                           </div>
-                          <button className="text-[#11402D] font-bold text-xs flex items-center gap-1 hover:gap-2 transition-all">
+                          <button className="text-[#11402D] font-display font-bold text-xs flex items-center gap-1 hover:gap-2 transition-all">
                             Read More <ArrowRight className="w-3 h-3" />
                           </button>
                         </div>
@@ -444,32 +447,32 @@ export default function ResourcesPage() {
       )}
 
       {/* ============ SEARCH & FILTERS ============ */}
-      <section className="py-6 bg-white border-b border-[#11402D]/5">
+      <section className="py-6 bg-[#F6F8F4] border-b border-[#11402D]/5">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex flex-col md:flex-row gap-4 items-center">
             {/* Search */}
             <div className="flex-1 w-full relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#5A7060]" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#142019]/55" />
               <input
                 type="text"
                 placeholder="Search resources, topics, or keywords..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-[#F6F8F4] text-sm"
+                className="w-full pl-11 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-white text-sm text-[#142019] placeholder:text-[#142019]/55"
               />
             </div>
             
             {/* View Toggle */}
-            <div className="flex items-center gap-2 bg-[#F6F8F4] rounded-xl border border-[#11402D]/10 p-1">
+            <div className="flex items-center gap-2 bg-white rounded-xl border border-[#11402D]/10 p-1">
               <button
                 onClick={() => setViewMode("grid")}
-                className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-[#11402D] text-white" : "text-[#5A7060] hover:text-[#11402D]"}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-[#11402D] text-white" : "text-[#142019]/55 hover:text-[#11402D]"}`}
               >
                 <Grid3x3 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-[#11402D] text-white" : "text-[#5A7060] hover:text-[#11402D]"}`}
+                className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-[#11402D] text-white" : "text-[#142019]/55 hover:text-[#11402D]"}`}
               >
                 <List className="w-4 h-4" />
               </button>
@@ -478,7 +481,7 @@ export default function ResourcesPage() {
             {/* Filter Button */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 bg-[#11402D] text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-[#0A1A0F] transition-colors"
+              className="flex items-center gap-2 bg-[#11402D] text-white px-5 py-3 rounded-xl text-sm font-display font-bold hover:bg-[#0A1A0F] transition-colors"
             >
               <Filter className="w-4 h-4" />
               Filters
@@ -489,7 +492,7 @@ export default function ResourcesPage() {
       </section>
 
       {/* ============ CATEGORIES ============ */}
-      <section className="py-6 bg-[#F6F8F4] border-b border-[#11402D]/5">
+      <section className="py-6 bg-white border-b border-[#11402D]/5">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((cat) => {
@@ -499,10 +502,10 @@ export default function ResourcesPage() {
                 <button
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-display font-bold transition-all ${
                     isActive 
                       ? "bg-[#11402D] text-white shadow-lg" 
-                      : "bg-white text-[#5A7060] hover:bg-[#11402D]/10"
+                      : "bg-[#F6F8F4] text-[#142019]/65 hover:bg-[#11402D]/10"
                   }`}
                 >
                   <Icon className="w-4 h-4" style={{ color: isActive ? "#9CF06B" : "#11402D" }} />
@@ -519,10 +522,10 @@ export default function ResourcesPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="font-bold text-xl text-[#0A1A0F]">
+              <h2 className="font-display font-bold text-xl text-[#0E2A1C]">
                 {filteredResources.length} Resources Found
               </h2>
-              <p className="text-sm text-[#5A7060]">Curated content to accelerate your circular economy journey</p>
+              <p className="text-sm text-[#142019]/55">Curated content to accelerate your circular economy journey</p>
             </div>
           </div>
 
@@ -541,10 +544,10 @@ export default function ResourcesPage() {
               className="text-center py-16"
             >
               <div className="w-20 h-20 rounded-full bg-[#11402D]/5 flex items-center justify-center mx-auto mb-4">
-                <Search className="w-10 h-10 text-[#5A7060]" />
+                <Search className="w-10 h-10 text-[#142019]/55" />
               </div>
-              <h3 className="font-bold text-xl text-[#0A1A0F] mb-2">No resources found</h3>
-              <p className="text-[#5A7060]">Try adjusting your search or filters</p>
+              <h3 className="font-display font-bold text-xl text-[#0E2A1C] mb-2">No resources found</h3>
+              <p className="text-[#142019]/55">Try adjusting your search or filters</p>
             </motion.div>
           )}
 
@@ -556,7 +559,7 @@ export default function ResourcesPage() {
               viewport={{ once: true }}
               className="mt-12 text-center"
             >
-              <button className="inline-flex items-center gap-2 border-2 border-[#11402D]/12 text-[#11402D] font-black px-8 py-3.5 rounded-xl text-sm hover:bg-[#11402D] hover:text-white hover:border-[#11402D] transition-all">
+              <button className="inline-flex items-center gap-2 border-2 border-[#11402D]/12 text-[#11402D] font-display font-black px-8 py-3.5 rounded-xl text-sm hover:bg-[#11402D] hover:text-white hover:border-[#11402D] transition-all">
                 Load More Resources <ChevronDown className="w-4 h-4" />
               </button>
             </motion.div>
@@ -565,25 +568,23 @@ export default function ResourcesPage() {
       </section>
 
       {/* ============ NEWSLETTER SECTION ============ */}
-      <section className="py-16 bg-[#0A1A0F]">
+      <section className="py-16 bg-[#0E2A1C]">
         <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-          
-            <h2 className="font-serif-display text-3xl sm:text-4xl text-white mb-4">
+            <h2 className="font-display text-3xl sm:text-4xl text-white mb-4">
               Stay Updated
             </h2>
             <p className="text-lg text-white/60 max-w-2xl mx-auto mb-8">
               Subscribe to our newsletter for the latest resources, case studies, and insights on waste-to-value innovation.
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-            
               <motion.button 
                 whileHover={{ scale: 1.05 }}
-                className="bg-[#9CF06B] text-[#11402D] font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
+                className="bg-[#9CF06B] text-[#0E2A1C] font-display font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
               >
                 Subscribe <ArrowRight className="w-4 h-4" />
               </motion.button>
@@ -603,7 +604,7 @@ export default function ResourcesPage() {
             <div className="w-16 h-16 rounded-full bg-[#9CF06B]/10 flex items-center justify-center mx-auto mb-6">
               <Lightbulb className="w-8 h-8 text-[#9CF06B]" />
             </div>
-            <h2 className="font-serif-display text-3xl sm:text-4xl text-white mb-4">
+            <h2 className="font-display text-3xl sm:text-4xl text-white mb-4">
               Have a resource to share?
             </h2>
             <p className="text-lg text-white/60 max-w-2xl mx-auto mb-8">
@@ -612,13 +613,13 @@ export default function ResourcesPage() {
             <div className="flex flex-wrap gap-4 justify-center">
               <motion.button 
                 whileHover={{ scale: 1.05 }}
-                className="bg-[#9CF06B] text-[#11402D] font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
+                className="bg-[#9CF06B] text-[#0E2A1C] font-display font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
               >
                 Submit Resource <ArrowRight className="w-4 h-4" />
               </motion.button>
               <motion.button 
                 whileHover={{ scale: 1.05 }}
-                className="border-2 border-white/20 text-white font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
+                className="border-2 border-white/20 text-white font-display font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
               >
                 <MessageCircle className="w-4 h-4" /> Contact Team
               </motion.button>
