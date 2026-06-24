@@ -1,149 +1,176 @@
-// Signup.jsx
-import { useState, useEffect } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+// frontend/src/pages/Signup.jsx
+import { useState } from "react";
+import { useNavigate, Link, useParams } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { 
-  Recycle, 
-  Mail, 
-  Lock, 
-  User, 
-  Phone, 
-  ArrowRight, 
-  Sparkles,
-  Truck,
-  ShieldCheck,
-  Headphones,
-  Star,
-  Leaf,
-  Zap,
-  Users,
+import {
+  Recycle,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  User,
+  Phone,
   Building2,
   MapPin,
+  Briefcase,
   CheckCircle,
-  Globe // Changed from Chrome to Globe
+  AlertCircle,
+  Truck,
+  Zap,
+  Building
 } from "lucide-react";
 
-const USERS_API = "http://localhost:5000/users";
+const API_URL = "http://localhost:5000/api";
 
 function Signup() {
   const navigate = useNavigate();
-  const location = useLocation();
-
+  const { role } = useParams(); // Get role from URL: /signup/waste-supplier
+  
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    full_name: "",
     email: "",
-    phone: "",
-    company: "",
     password: "",
     confirmPassword: "",
+    phone: "",
+    role: role || "waste-supplier",
+    business_name: "",
+    business_type: "",
+    location: "",
+    waste_types: ""
   });
-
+  
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("waste-producer");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    if (location.state?.email) {
-      setFormData(prev => ({ ...prev, email: location.state.email }));
-      window.history.replaceState({}, document.title);
+  const roleOptions = {
+    "waste-supplier": {
+      label: "Waste Supplier",
+      icon: Building,
+      description: "Hotels, Farms, Markets, Factories, Restaurants",
+      businessTypes: ["Hotel", "Farm", "Market", "Factory", "Restaurant", "Other"]
+    },
+    "energy-producer": {
+      label: "Energy Producer",
+      icon: Zap,
+      description: "Biogas Plants, Recycling Companies, WtE Plants",
+      businessTypes: ["Biogas Plant", "Recycling Company", "Biomass Company", "Waste-to-Energy Plant", "Other"]
+    },
+    "transport-partner": {
+      label: "Transport Partner",
+      icon: Truck,
+      description: "Logistics Companies, Truck Owners, Collection Agents",
+      businessTypes: ["Logistics Company", "Truck Owner", "Collection Agent", "Other"]
     }
-  }, [location.state]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
   };
 
-  const handleSignup = async (e) => {
-    e.preventDefault();
+  const currentRole = roleOptions[formData.role] || roleOptions["waste-supplier"];
 
-    if (!formData.email.trim() || !formData.password.trim()) {
-      toast.error("Please enter email and password");
+  const handleChange = (e) => {
+    setError("");
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess(false);
+
+    // Validation
+    if (!formData.full_name.trim()) {
+      setError("Full name is required");
+      toast.error("Full name is required");
       return;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
+    if (!formData.email.trim() || !formData.email.includes("@")) {
+      setError("Valid email is required");
+      toast.error("Valid email is required");
       return;
     }
 
     if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
       toast.error("Password must be at least 6 characters");
       return;
     }
 
-    if (!formData.email.includes("@") || !formData.email.includes(".")) {
-      toast.error("Please enter a valid email address");
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (!formData.phone.trim()) {
+      setError("Phone number is required");
+      toast.error("Phone number is required");
       return;
     }
 
     try {
       setIsSubmitting(true);
 
-      const checkResponse = await fetch(USERS_API);
-      const existingUsers = await checkResponse.json();
-      
-      const userExists = existingUsers.some(
-        user => user.email?.toLowerCase() === formData.email.toLowerCase()
-      );
-
-      if (userExists) {
-        toast.error("Email already exists. Please login instead.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const newUser = {
-        id: Date.now().toString(),
-        firstName: formData.firstName.trim() || "Partner",
-        lastName: formData.lastName.trim() || "",
+      // Prepare data for API
+      const userData = {
+        full_name: formData.full_name.trim(),
         email: formData.email.trim().toLowerCase(),
-        phone: formData.phone.trim() || "",
-        company: formData.company.trim() || "",
-        role: selectedRole,
-        status: "active",
-        createdAt: new Date().toISOString(),
+        password: formData.password,
+        phone: formData.phone.trim(),
+        role: formData.role,
+        business_name: formData.business_name.trim() || "",
+        business_type: formData.business_type || "",
+        location: formData.location.trim() || "",
+        waste_types: formData.waste_types || ""
       };
 
-      const response = await fetch(USERS_API, {
+      console.log("Sending data:", userData); // Debug log
+
+      const response = await fetch(`${API_URL}/register`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(newUser),
+        body: JSON.stringify(userData)
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to create account");
+      const data = await response.json();
+      console.log("Response:", data); // Debug log
+
+      if (response.ok) {
+        setSuccess(true);
+        toast.success("Account created successfully!");
+        
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          navigate("/login", {
+            state: {
+              message: "Account created! Please login.",
+              email: formData.email
+            }
+          });
+        }, 2000);
+      } else {
+        setError(data.message || "Registration failed");
+        toast.error(data.message || "Registration failed. Please try again.");
       }
-
-      toast.success("Account created successfully! Please login.");
-
-      navigate("/login", {
-        state: {
-          message: "Account created successfully! Please login.",
-          email: formData.email,
-        },
-      });
-
-    } catch (err) {
-      console.error("Signup error:", err);
-      toast.error("Failed to create account. Please try again.");
+    } catch (error) {
+      console.error("Signup error:", error);
+      setError("Connection error. Please check your server.");
+      toast.error("Connection error. Please check your server.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    toast.info("Google login coming soon! Please use email signup.");
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-8">
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -157,317 +184,252 @@ function Signup() {
         theme="colored"
       />
 
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100">
-        {/* Left Side - Green Gradient Brand Section */}
-        <div className="hidden lg:flex relative bg-gradient-to-br from-[#0E2A1C] via-[#11402D] to-[#1a5c3e] p-10 text-white flex-col justify-between">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full blur-2xl" />
-          <div className="absolute bottom-0 left-0 w-60 h-60 bg-white/5 rounded-full blur-3xl" />
-          
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm border border-white/20">
-              <Recycle className="w-6 h-6" />
-              <span className="font-semibold text-lg">ReVive Energy</span>
-            </div>
-
-            <div className="mt-16">
-              <p className="text-sm uppercase tracking-[0.25em] text-green-200">
-                Join the Circular Economy
-              </p>
-              <h1 className="mt-4 text-4xl font-bold leading-tight">
-                Turn waste into
-                <br />
-                <span className="text-[#9CF06B]">value & impact.</span>
-              </h1>
-              <p className="mt-5 text-green-200 text-base leading-7 max-w-lg">
-                Create an account to start transforming waste into clean energy, 
-                connect with partners, and track your environmental impact.
-              </p>
-            </div>
+      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100 p-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] flex items-center justify-center text-white shadow-lg">
+            <Recycle className="w-7 h-7" />
           </div>
-
-          {/* Stats Grid */}
-          <div className="relative z-10 grid grid-cols-2 gap-4 mt-12">
-            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
-              <p className="text-2xl font-bold">1,200+</p>
-              <p className="text-sm text-green-200">Active Partners</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
-              <p className="text-2xl font-bold">125K+</p>
-              <p className="text-sm text-green-200">Tons Processed</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
-              <p className="text-2xl font-bold">85K+</p>
-              <p className="text-sm text-green-200">MWh Generated</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-4 backdrop-blur-sm border border-white/20">
-              <p className="text-2xl font-bold">24/7</p>
-              <p className="text-sm text-green-200">Support</p>
-            </div>
-          </div>
-
-          {/* Features */}
-          <div className="relative z-10 mt-8 space-y-3">
-            <div className="flex items-center gap-3 text-sm text-green-200">
-              <Truck className="w-4 h-4" />
-              <span>Free collection for qualified partners</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-green-200">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Verified waste streams & processing</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-green-200">
-              <Headphones className="w-4 h-4" />
-              <span>24/7 customer support</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-green-200">
-              <Leaf className="w-4 h-4" />
-              <span>Real-time carbon impact tracking</span>
-            </div>
-          </div>
+          <h1 className="font-display text-2xl font-bold text-slate-900">
+            Create Your Account
+          </h1>
+          <p className="mt-1 text-slate-500">
+            Join as a <span className="font-semibold text-[#11402D]">{currentRole.label}</span>
+          </p>
+          <p className="text-sm text-slate-400">{currentRole.description}</p>
         </div>
 
-        {/* Right Side - Sign Up Form */}
-        <div className="p-6 sm:p-10 lg:p-14 flex items-center">
-          <div className="w-full max-w-md mx-auto">
-            {/* Mobile Logo */}
-            <div className="lg:hidden mb-8 text-center">
-              <div className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] flex items-center justify-center text-white shadow-lg">
-                <Recycle className="w-7 h-7" />
-              </div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Re<span className="text-green-600">V</span>ive{" "}
-                <span className="text-green-600">Energy</span>
-              </h1>
-              <p className="text-xs text-green-600 mt-1 tracking-wider">TRANSFORMING WASTE</p>
+        {success ? (
+          <div className="text-center py-8">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-
-            <p className="text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">
-              Sign Up
-            </p>
-            <h2 className="mt-3 text-3xl font-bold text-slate-900">
-              Create your account
-            </h2>
-            <p className="mt-3 text-slate-500 leading-6">
-              Join ReVive Energy to start transforming waste into value and track your environmental impact.
-            </p>
-
-            {/* Role Selection */}
-            <div className="mt-6">
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                I am a <span className="text-green-600">*</span>
+            <h2 className="font-display text-xl font-bold text-slate-900">Account Created!</h2>
+            <p className="text-slate-500 mt-2">Redirecting to login...</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Full Name */}
+            <div>
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                Full Name *
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                <User className="w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  name="full_name"
+                  placeholder="Enter your full name"
+                  value={formData.full_name}
+                  onChange={handleChange}
+                  required
+                  className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                Email Address *
+              </label>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                <Mail className="w-5 h-5 text-slate-400" />
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                  className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                Phone Number *
+              </label>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                <Phone className="w-5 h-5 text-slate-400" />
+                <input
+                  type="tel"
+                  name="phone"
+                  placeholder="Enter your phone number"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  required
+                  className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                Password *
+              </label>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                <Lock className="w-5 h-5 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  placeholder="Min 6 characters"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  minLength={6}
+                  className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                />
                 <button
                   type="button"
-                  onClick={() => setSelectedRole("waste-producer")}
-                  className={`py-3 rounded-xl font-semibold transition-all duration-200 ${
-                    selectedRole === "waste-producer"
-                      ? "bg-green-600 text-white shadow-md"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-slate-400 hover:text-slate-600"
                 >
-                  Waste Producer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole("energy-buyer")}
-                  className={`py-3 rounded-xl font-semibold transition-all duration-200 ${
-                    selectedRole === "energy-buyer"
-                      ? "bg-green-600 text-white shadow-md"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                  }`}
-                >
-                  Energy Buyer
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
 
-            {/* Google Sign In Button */}
-            <button
-              onClick={handleGoogleLogin}
-              className="mt-6 w-full flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3.5 font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all"
-            >
-              <Globe className="w-5 h-5 text-green-600" />
-              <span>Continue with Google</span>
-            </button>
-
-            {/* Divider */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-4 text-slate-400">or sign up with email</span>
+            {/* Confirm Password */}
+            <div>
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                Confirm Password *
+              </label>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                <Lock className="w-5 h-5 text-slate-400" />
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="text-slate-400 hover:text-slate-600"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 
-            <form onSubmit={handleSignup} className="space-y-4">
-              {/* Name Fields */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    First Name
-                  </label>
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
-                    <User className="w-5 h-5 text-slate-400" />
-                    <input
-                      type="text"
-                      name="firstName"
-                      placeholder="First Name"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      autoComplete="given-name"
-                      className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Last Name
-                  </label>
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
-                    <User className="w-5 h-5 text-slate-400" />
-                    <input
-                      type="text"
-                      name="lastName"
-                      placeholder="Last Name"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      autoComplete="family-name"
-                      className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
-                    />
-                  </div>
-                </div>
+            {/* Business Name */}
+            <div>
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                Business/Organization Name
+              </label>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                <Building2 className="w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  name="business_name"
+                  placeholder="Enter your business name"
+                  value={formData.business_name}
+                  onChange={handleChange}
+                  className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                />
               </div>
+            </div>
 
-              {/* Email Field */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Email Address <span className="text-green-600">*</span>
-                </label>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
-                  <Mail className="w-5 h-5 text-slate-400" />
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email Address"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    autoComplete="off"
-                    className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
-                  />
-                </div>
+            {/* Business Type */}
+            <div>
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                Business Type
+              </label>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                <Briefcase className="w-5 h-5 text-slate-400" />
+                <select
+                  name="business_type"
+                  value={formData.business_type}
+                  onChange={handleChange}
+                  className="w-full bg-transparent outline-none text-slate-700"
+                >
+                  <option value="">Select business type</option>
+                  {currentRole.businessTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
               </div>
+            </div>
 
-              {/* Phone Field */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Phone Number
-                </label>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
-                  <Phone className="w-5 h-5 text-slate-400" />
-                  <input
-                    type="tel"
-                    name="phone"
-                    placeholder="Phone Number"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    autoComplete="tel"
-                    className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
-                  />
-                </div>
+            {/* Location */}
+            <div>
+              <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                Location
+              </label>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                <MapPin className="w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  name="location"
+                  placeholder="Enter your location (city, region)"
+                  value={formData.location}
+                  onChange={handleChange}
+                  className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                />
               </div>
+            </div>
 
-              {/* Company Name - For Business Partners */}
+            {/* Waste Types (for waste suppliers) */}
+            {formData.role === "waste-supplier" && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Company/Business Name
+                <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                  Types of Waste You Supply
                 </label>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
-                  <Building2 className="w-5 h-5 text-slate-400" />
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                  <Recycle className="w-5 h-5 text-slate-400" />
                   <input
                     type="text"
-                    name="company"
-                    placeholder="Company Name"
-                    value={formData.company}
+                    name="waste_types"
+                    placeholder="e.g. Organic, Plastic, Paper, Glass"
+                    value={formData.waste_types}
                     onChange={handleChange}
                     className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
                   />
                 </div>
               </div>
+            )}
 
-              {/* Password Field */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Password <span className="text-green-600">*</span>
-                </label>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
-                  <Lock className="w-5 h-5 text-slate-400" />
-                  <input
-                    type="password"
-                    name="password"
-                    placeholder="Create a password (min. 6 characters)"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    autoComplete="new-password"
-                    className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
-                  />
-                </div>
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                {error}
               </div>
+            )}
 
-              {/* Confirm Password Field */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Confirm Password <span className="text-green-600">*</span>
-                </label>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
-                  <Lock className="w-5 h-5 text-slate-400" />
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                    autoComplete="new-password"
-                    className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
-                  />
-                </div>
-              </div>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0E2A1C] to-[#11402D] px-5 py-3.5 font-display font-semibold text-white shadow-lg hover:from-[#1a5c3e] hover:to-[#0E2A1C] transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  Create Account
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+        )}
 
-              {/* Sign Up Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0E2A1C] to-[#11402D] px-5 py-3.5 font-semibold text-white shadow-lg hover:from-[#1a5c3e] hover:to-[#0E2A1C] transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Creating account...
-                  </>
-                ) : (
-                  <>
-                    Create Account
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Login Link */}
-            <p className="mt-6 text-sm text-slate-600 text-center">
-              Already have an account?{" "}
-              <Link
-                to="/login"
-                className="font-semibold text-green-600 hover:text-green-700"
-              >
-                Login
-              </Link>
-            </p>
-          </div>
+        <div className="mt-6 text-center">
+          <p className="font-display text-sm text-slate-600">
+            Already have an account?{" "}
+            <Link to="/login" className="font-semibold text-green-600 hover:text-green-700">
+              Login here
+            </Link>
+          </p>
         </div>
       </div>
     </div>

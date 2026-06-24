@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import energyFacilityImage from "../assets/energy-facility.jpg";
 import renewableFieldImage from "../assets/renewable-field.jpg";
 import {
@@ -19,10 +19,18 @@ import {
   Building2,
   Landmark,
   Clock,
+  Mail,
+  Phone,
+  MessageCircle,
+  Calculator,
+  Plus,
+  X,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ReViveEnergyHomepage() {
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+
   const processSteps = [
     {
       icon: Truck,
@@ -95,13 +103,19 @@ export default function ReViveEnergyHomepage() {
     { x: 85, y: 40, name: "Recycling Plant", icon: "♻️" }
   ];
 
-  // Marquee items data
   const marqueeItems = [
     { icon: "🗑️", label: "Organic Waste" },
     { icon: "🌾", label: "Agricultural Waste" },
     { icon: "♻️", label: "Plastic Waste" },
     { icon: "🏭", label: "Industrial Waste" },
     { icon: "🪵", label: "Biomass Waste" },
+  ];
+
+  const quickActions = [
+    { icon: Mail, label: "Email", color: "#34D399" },
+    { icon: Phone, label: "Call Us", color: "#60A5FA" },
+    { icon: MessageCircle, label: "Live Chat", color: "#F59E0B" },
+    { icon: Calculator, label: "Impact Calculator", color: "#818CF8" },
   ];
 
   return (
@@ -136,7 +150,7 @@ export default function ReViveEnergyHomepage() {
         }
       `}</style>
 
-      {/* HERO - moved up significantly with minimal top padding */}
+      {/* HERO */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-0 sm:pt-0 lg:pt-0 pb-14 sm:pb-16 lg:pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           <div className="lg:col-span-6">
@@ -212,26 +226,71 @@ export default function ReViveEnergyHomepage() {
               </div>
 
               <div className="relative rounded-2xl overflow-hidden h-[210px] sm:h-[190px] lg:h-[225px] group">
-               <img
-              src={energyFacilityImage}
-              alt="Energy facility"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            />
+                <img
+                  src={energyFacilityImage}
+                  alt="Energy facility"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
               </div>
 
+              {/* Bottom Image with Vertical Quick Actions */}
               <div className="relative rounded-2xl overflow-hidden h-[210px] sm:h-[190px] lg:h-[225px] group">
-               <img
-              src={renewableFieldImage}
-              alt="Renewable energy field"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            />
+                <img
+                  src={renewableFieldImage}
+                  alt="Renewable energy field"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                />
+                
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/50 via-transparent to-transparent" />
+                
+                {/* Quick Actions - Vertical Stack, Larger Icons */}
+                <AnimatePresence>
+                  {isQuickActionsOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute bottom-16 right-4 flex flex-col items-end gap-3 z-20"
+                    >
+                      {quickActions.map((action, index) => {
+                        const Icon = action.icon;
+                        return (
+                          <button
+                            key={index}
+                            className="flex items-center gap-3 text-white hover:text-[#9CF06B] transition-colors group"
+                          >
+                            <span className="font-display text-sm font-medium text-white/90 group-hover:text-white">
+                              {action.label}
+                            </span>
+                            <Icon className="w-6 h-6" style={{ color: action.color }} />
+                          </button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Plus / X Button - Bottom Right */}
+                <button
+                  onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
+                  className={`absolute bottom-3 right-3 w-10 h-10 rounded-full bg-[#11402D] flex items-center justify-center shadow-lg hover:bg-[#0E2A1C] transition-all duration-300 z-10 ${
+                    isQuickActionsOpen ? 'rotate-45' : ''
+                  }`}
+                >
+                  {isQuickActionsOpen ? (
+                    <X className="w-5 h-5 text-white" />
+                  ) : (
+                    <Plus className="w-5 h-5 text-white" />
+                  )}
+                </button>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ============ IMPACT STATS ============ */}
+      {/* IMPACT STATS */}
       <section id="impact" className="bg-[#0E2A1C] text-white py-16 sm:py-20 lg:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
           <div className="max-w-xl">
@@ -259,7 +318,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* ============ MARQUEE SECTION ============ */}
+      {/* MARQUEE SECTION */}
       <section className="bg-[#F6F8F4] py-12 sm:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
           <div className="text-center mb-10">
@@ -272,15 +331,12 @@ export default function ReViveEnergyHomepage() {
           </div>
 
           <div className="relative overflow-hidden">
-            {/* Gradient overlays for smooth edges */}
             <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-[#F6F8F4] to-transparent z-10 pointer-events-none" />
             <div className="absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-[#F6F8F4] to-transparent z-10 pointer-events-none" />
 
-            {/* Marquee Track */}
             <div className="marquee-track flex items-center gap-6">
-              {/* First set of items */}
-              {marqueeItems.map((item, index) => (
-                <React.Fragment key={`first-${index}`}>
+              {[...marqueeItems, ...marqueeItems].map((item, index) => (
+                <React.Fragment key={index}>
                   <div className="flex-shrink-0 bg-white rounded-2xl p-6 w-48 sm:w-56 shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#11402D]/5">
                     <div className="text-5xl sm:text-6xl text-center mb-3">
                       {item.icon}
@@ -289,25 +345,7 @@ export default function ReViveEnergyHomepage() {
                       {item.label}
                     </p>
                   </div>
-                  {/* Separator Dot */}
-                  {index < marqueeItems.length - 1 && (
-                    <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#11402D]/30" />
-                  )}
-                </React.Fragment>
-              ))}
-
-              {/* Duplicate set for seamless loop */}
-              {marqueeItems.map((item, index) => (
-                <React.Fragment key={`second-${index}`}>
-                  <div className="flex-shrink-0 bg-white rounded-2xl p-6 w-48 sm:w-56 shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#11402D]/5">
-                    <div className="text-5xl sm:text-6xl text-center mb-3">
-                      {item.icon}
-                    </div>
-                    <p className="font-display font-semibold text-sm sm:text-base text-[#0E2A1C] text-center">
-                      {item.label}
-                    </p>
-                  </div>
-                  {index < marqueeItems.length - 1 && (
+                  {index < marqueeItems.length * 2 - 1 && (
                     <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#11402D]/30" />
                   )}
                 </React.Fragment>
@@ -317,12 +355,11 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* ============ PROCESS - The ReVive Route ============ */}
+      {/* PROCESS - The ReVive Route */}
       <section
         id="process"
         className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-12 lg:py-16"
       >
-        {/* Section Header */}
         <div className="mb-8">
           <p className="text-sm font-mono-cw uppercase tracking-wider text-[#11402D]/80 mb-3">
             The ReVive Route
@@ -339,7 +376,6 @@ export default function ReViveEnergyHomepage() {
           </p>
         </div>
 
-        {/* Process Steps - 4 columns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {processSteps.map((step, index) => (
             <div key={index} className="flex gap-4 group">
@@ -359,9 +395,7 @@ export default function ReViveEnergyHomepage() {
           ))}
         </div>
 
-        {/* Large Live Route Tracking Card - Using Framer Motion */}
         <div className="w-full bg-white rounded-3xl shadow-2xl border border-[#142019]/10 overflow-hidden">
-          {/* Card Header */}
           <div className="bg-gradient-to-r from-[#0E2A1C] to-[#11402D] px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -382,9 +416,7 @@ export default function ReViveEnergyHomepage() {
             </div>
           </div>
 
-          {/* Map Area - Using Framer Motion for truck animation */}
           <div className="relative w-full h-[500px] bg-gradient-to-br from-green-50 to-white overflow-hidden">
-            {/* Background Map Pattern */}
             <div className="absolute inset-0 opacity-10">
               <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <defs>
@@ -396,7 +428,6 @@ export default function ReViveEnergyHomepage() {
               </svg>
             </div>
 
-            {/* Route Points */}
             {route.map((point, index) => (
               <motion.div
                 key={point.name}
@@ -431,7 +462,6 @@ export default function ReViveEnergyHomepage() {
               </motion.div>
             ))}
 
-            {/* Route Line - SVG with animated dash */}
             <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
               <motion.path
                 d="M 10 50 Q 20 40 30 30 Q 45 50 60 70 Q 72 55 85 40"
@@ -455,7 +485,6 @@ export default function ReViveEnergyHomepage() {
               />
             </svg>
 
-            {/* Animated Truck using Framer Motion */}
             <motion.div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20"
               animate={{
@@ -473,12 +502,9 @@ export default function ReViveEnergyHomepage() {
                 animate={{ rotate: [0, -5, 5, -3, 0] }}
                 transition={{ duration: 0.5, repeat: Infinity }}
               >
-                {/* Truck SVG */}
                 <div className="bg-white shadow-xl rounded-full p-2 border-2 border-[#9CF06B]">
                   <Truck className="w-8 h-8 text-[#11402D]" />
                 </div>
-                
-                {/* Exhaust Animation */}
                 <motion.div
                   className="absolute -left-2 top-1"
                   animate={{ opacity: [0.2, 0.6, 0.2], scale: [0.5, 1, 0.5] }}
@@ -486,8 +512,6 @@ export default function ReViveEnergyHomepage() {
                 >
                   <div className="w-2 h-2 bg-gray-400 rounded-full opacity-50"></div>
                 </motion.div>
-                
-                {/* Trail effect */}
                 <motion.div
                   className="absolute -top-1 -left-1 w-10 h-10 rounded-full bg-[#9CF06B]/20"
                   animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0.1, 0.3] }}
@@ -496,7 +520,6 @@ export default function ReViveEnergyHomepage() {
               </motion.div>
             </motion.div>
 
-            {/* Live dots at route points */}
             {route.map((point, index) => (
               <motion.div
                 key={`dot-${index}`}
@@ -508,7 +531,6 @@ export default function ReViveEnergyHomepage() {
             ))}
           </div>
 
-          {/* Bottom Status Bar */}
           <div className="bg-white border-t border-[#142019]/10 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-[#0E2A1C]">
