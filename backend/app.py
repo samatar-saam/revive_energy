@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
-from flask_mail import Mail            # ✅ ADDED
+from flask_mail import Mail
 from config import Config
 from database import db
 from sqlalchemy import func
@@ -13,7 +13,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ─── All models ───────────────────────────────────────────────
 from models import (
     User,
     Collection,
@@ -30,7 +29,6 @@ from models import (
     Message,
 )
 
-# ─── Blueprints ──────────────────────────────────────────────
 from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
 from routes.supplier import supplier_bp
@@ -55,9 +53,8 @@ def create_app():
     db.init_app(app)
     JWTManager(app)
 
-    # ─── Flask-Mail Initialization ───────────────────────────
     mail = Mail(app)
-    app.extensions['mail'] = mail        # for email_service to access
+    app.extensions["mail"] = mail
 
     app.register_blueprint(auth_bp, url_prefix="/api")
     app.register_blueprint(dashboard_bp, url_prefix="/api")
@@ -65,7 +62,12 @@ def create_app():
     app.register_blueprint(producer_bp, url_prefix="/api")
     app.register_blueprint(transporter_bp, url_prefix="/api")
     app.register_blueprint(notifications_bp, url_prefix="/api")
-    app.register_blueprint(payments_bp, url_prefix="/api")
+
+    # ✅ IMPORTANT:
+    # routes/payments.py already has url_prefix="/api/payments"
+    # so do NOT add url_prefix="/api" here.
+    app.register_blueprint(payments_bp)
+
     app.register_blueprint(invoices_bp, url_prefix="/api")
     app.register_blueprint(messages_bp, url_prefix="/api")
 
@@ -234,7 +236,7 @@ def create_app():
     @jwt_required()
     def initiate_payment():
         user_id = int(get_jwt_identity())
-        data = request.get_json()
+        data = request.get_json() or {}
 
         supplier_id = data.get("supplier_id")
         amount = data.get("amount")
@@ -254,8 +256,11 @@ def create_app():
             supplier_id=supplier_id,
             producer_id=user_id,
             amount=amount,
+            total_amount=amount,
             payment_status="pending",
             status="pending",
+            escrow_status="waiting",
+            phone_number=phone,
         )
 
         db.session.add(payment)
@@ -266,6 +271,7 @@ def create_app():
             payment.merchant_request_id = f"MOCK-MERCHANT-{payment.id}"
             payment.payment_status = "completed"
             payment.status = "paid"
+            payment.escrow_status = "held"
             payment.completed_at = datetime.utcnow()
             payment.mpesa_receipt = f"MOCK-RECEIPT-{payment.id}"
             payment.transaction_id = f"TXN-{payment.id}"
@@ -277,7 +283,9 @@ def create_app():
 
             db.session.commit()
 
-            payment.generate_receipt()
+            if hasattr(payment, "generate_receipt"):
+                payment.generate_receipt()
+
             generate_qr_code(payment)
 
             return jsonify({
@@ -298,7 +306,6 @@ def create_app():
             if response.get("CheckoutRequestID"):
                 payment.checkout_request_id = response["CheckoutRequestID"]
                 payment.merchant_request_id = response.get("MerchantRequestID")
-
                 db.session.commit()
 
                 return jsonify({
@@ -385,13 +392,12 @@ def create_app():
     @jwt_required()
     def update_user():
         user_id = int(get_jwt_identity())
-
         user = User.query.get(user_id)
 
         if not user:
             return jsonify({"message": "User not found"}), 404
 
-        data = request.get_json()
+        data = request.get_json() or {}
 
         updatable_fields = [
             "full_name",
@@ -430,7 +436,7 @@ def create_app():
 
         for rule in app.url_map.iter_rules():
             methods = ",".join(sorted(rule.methods))
-            print(f"   {rule.rule:50} [{methods}]")
+            print(f"   {rule.rule:55} [{methods}]")
 
         print()
 
