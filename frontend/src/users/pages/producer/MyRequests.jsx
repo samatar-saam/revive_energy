@@ -144,12 +144,22 @@ export default function MyRequests() {
   };
 
   const normalizePhone = (phone) => {
-    const cleaned = phone.replace(/\s+/g, "").replace("+", "");
-
-    if (cleaned.startsWith("07")) return `254${cleaned.slice(1)}`;
-    if (cleaned.startsWith("01")) return `254${cleaned.slice(1)}`;
-    if (cleaned.startsWith("254")) return cleaned;
-
+    if (!phone) return "";
+    // Remove all non-digit characters
+    let cleaned = phone.replace(/\D/g, "");
+    // If it starts with 0, replace with 254
+    if (cleaned.startsWith("0")) {
+      cleaned = "254" + cleaned.substring(1);
+    }
+    // If it starts with 7 or 1 and length is 9, add 254
+    if (cleaned.length === 9 && (cleaned.startsWith("7") || cleaned.startsWith("1"))) {
+      cleaned = "254" + cleaned;
+    }
+    // If it already starts with 254, keep it
+    if (cleaned.startsWith("254") && cleaned.length === 12) {
+      return cleaned;
+    }
+    // If it's 10 digits and starts with 07 or 01, we already handled that
     return cleaned;
   };
 
@@ -202,36 +212,43 @@ export default function MyRequests() {
       const token = getToken();
       if (!token) throw new Error("Not authenticated");
 
+      const payload = {
+        request_id: selectedRequest.id,
+        listing_id: selectedRequest.listing_id,
+        supplier_id: selectedRequest.supplier_id,
+        amount: totalAmount,           // total amount to pay
+        waste_amount: wasteAmount,
+        transport_fee: transportFee,
+        platform_fee: platformFee,
+        total_amount: totalAmount,
+        phone: normalizedPhone,
+        description: `Payment for ${selectedRequest.waste_type || "waste request"}`,
+      };
+
+      console.log("📤 Payment payload:", payload);
+
       const response = await fetch(`${API_URL}/payments/initiate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          request_id: selectedRequest.id,
-          listing_id: selectedRequest.listing_id,
-          supplier_id: selectedRequest.supplier_id,
-          amount: totalAmount,
-          waste_amount: wasteAmount,
-          transport_fee: transportFee,
-          platform_fee: platformFee,
-          total_amount: totalAmount,
-          phone: normalizedPhone,
-          description: `Payment for ${selectedRequest.waste_type || "waste request"}`,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json().catch(() => ({}));
+      console.log("📥 Payment response:", response.status, data);
 
       if (!response.ok) {
-        throw new Error(data.message || "Payment failed");
+        // If the backend returns a specific error message, use it
+        throw new Error(data.message || data.error || "Payment failed");
       }
 
       toast.success(data.message || "Payment request sent. Check your phone.");
       setShowPayModal(false);
-      await fetchRequests();
+      await fetchRequests(); // refresh list
     } catch (err) {
+      console.error("❌ Payment error:", err);
       toast.error(err.message);
     } finally {
       setPaying(false);
