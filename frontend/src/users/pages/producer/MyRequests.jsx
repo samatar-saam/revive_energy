@@ -145,40 +145,27 @@ export default function MyRequests() {
 
   const normalizePhone = (phone) => {
     if (!phone) return "";
-    // Remove all non-digit characters
     let cleaned = phone.replace(/\D/g, "");
-    // If it starts with 0, replace with 254
     if (cleaned.startsWith("0")) {
       cleaned = "254" + cleaned.substring(1);
     }
-    // If it starts with 7 or 1 and length is 9, add 254
     if (cleaned.length === 9 && (cleaned.startsWith("7") || cleaned.startsWith("1"))) {
       cleaned = "254" + cleaned;
     }
-    // If it already starts with 254, keep it
     if (cleaned.startsWith("254") && cleaned.length === 12) {
       return cleaned;
     }
-    // If it's 10 digits and starts with 07 or 01, we already handled that
     return cleaned;
   };
 
-  const calculateAmounts = (req) => {
-    const quantity = Number(req.quantity || 0);
-
-    const wasteAmount = req.waste_amount
-      ? Number(req.waste_amount)
-      : Math.max(quantity * 10, 500);
-
-    const transportFee = req.transport_fee
-      ? Number(req.transport_fee)
-      : Math.max(quantity * 2, 300);
-
-    const platformFee = req.platform_fee
-      ? Number(req.platform_fee)
-      : Math.round((wasteAmount + transportFee) * 0.05);
-
-    const totalAmount = wasteAmount + transportFee + platformFee;
+  // ─── FIXED AMOUNTS (use backend values) ─────────────────────
+  const getAmounts = (req) => {
+    // Use the fixed values from the backend (they are already calculated)
+    // Fallback to the fixed KES values if missing
+    const wasteAmount = req.waste_value || 1000;
+    const transportFee = req.transport_fee || 500;
+    const platformFee = req.platform_fee || 500;
+    const totalAmount = req.total_amount || 2000;
 
     return {
       wasteAmount,
@@ -204,7 +191,7 @@ export default function MyRequests() {
     }
 
     const { wasteAmount, transportFee, platformFee, totalAmount } =
-      calculateAmounts(selectedRequest);
+      getAmounts(selectedRequest);
 
     setPaying(true);
 
@@ -216,7 +203,7 @@ export default function MyRequests() {
         request_id: selectedRequest.id,
         listing_id: selectedRequest.listing_id,
         supplier_id: selectedRequest.supplier_id,
-        amount: totalAmount,           // total amount to pay
+        amount: totalAmount,
         waste_amount: wasteAmount,
         transport_fee: transportFee,
         platform_fee: platformFee,
@@ -240,13 +227,12 @@ export default function MyRequests() {
       console.log("📥 Payment response:", response.status, data);
 
       if (!response.ok) {
-        // If the backend returns a specific error message, use it
         throw new Error(data.message || data.error || "Payment failed");
       }
 
       toast.success(data.message || "Payment request sent. Check your phone.");
       setShowPayModal(false);
-      await fetchRequests(); // refresh list
+      await fetchRequests();
     } catch (err) {
       console.error("❌ Payment error:", err);
       toast.error(err.message);
@@ -280,7 +266,6 @@ export default function MyRequests() {
 
   const formatDate = (isoString) => {
     if (!isoString) return "N/A";
-
     return new Date(isoString).toLocaleDateString("en-KE", {
       day: "2-digit",
       month: "short",
@@ -469,7 +454,7 @@ export default function MyRequests() {
       {showPayModal && selectedRequest && (
         <PaymentModal
           request={selectedRequest}
-          amounts={calculateAmounts(selectedRequest)}
+          amounts={getAmounts(selectedRequest)}
           phoneNumber={phoneNumber}
           setPhoneNumber={setPhoneNumber}
           paying={paying}
@@ -481,7 +466,7 @@ export default function MyRequests() {
       {showDetailsModal && selectedRequest && (
         <DetailsModal
           request={selectedRequest}
-          amounts={calculateAmounts(selectedRequest)}
+          amounts={getAmounts(selectedRequest)}
           onClose={closeModals}
           onPay={() => {
             setShowDetailsModal(false);

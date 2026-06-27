@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from database import db
 from models import User, WasteListing, WasteRequest, TransportJob, Notification
@@ -20,22 +20,31 @@ def current_user_id():
 @role_required("supplier")
 def supplier_dashboard():
     user_id = current_user_id()
+    current_app.logger.info(f"📊 Supplier dashboard requested for user_id: {user_id}")
 
     listings_query = WasteListing.query.filter_by(supplier_id=user_id)
-    requests_query = WasteRequest.query.join(WasteListing).filter(
-        WasteListing.supplier_id == user_id
-    )
+    total_listings = listings_query.count()
+    current_app.logger.info(f"📋 Total listings for user {user_id}: {total_listings}")
 
-    active_listings = listings_query.filter(
-        WasteListing.status.in_(["available", "requested", "assigned", "collected"])
+    active_statuses = ["available", "requested", "assigned", "collected"]
+    active_listings = listings_query.filter(WasteListing.status.in_(active_statuses)).count()
+    current_app.logger.info(f"📋 Active listings: {active_listings}")
+
+    completed_listings = listings_query.filter(WasteListing.status == "completed").count()
+
+    pending_requests = WasteRequest.query.join(WasteListing).filter(
+        WasteListing.supplier_id == user_id,
+        WasteRequest.status == "pending"
     ).count()
+    current_app.logger.info(f"📩 Pending requests: {pending_requests}")
 
-    pending_requests = requests_query.filter(WasteRequest.status == "pending").count()
-    completed_collections = listings_query.filter(WasteListing.status == "completed").count()
+    recent_listings = listings_query.order_by(
+        WasteListing.created_at.desc()
+    ).limit(5).all()
 
-    recent_listings = listings_query.order_by(WasteListing.created_at.desc()).limit(5).all()
-
-    upcoming_pickups = TransportJob.query.filter_by(supplier_id=user_id).filter(
+    upcoming_pickups = TransportJob.query.filter_by(
+        supplier_id=user_id
+    ).filter(
         TransportJob.status.in_(["open", "accepted", "picked_up", "in_transit"])
     ).order_by(TransportJob.created_at.desc()).limit(5).all()
 
@@ -46,10 +55,11 @@ def supplier_dashboard():
 
     return jsonify({
         "stats": {
+            "totalListings": total_listings,
             "myListings": active_listings,
             "collectionRequests": pending_requests,
             "pendingCollections": pending_requests,
-            "completedCollections": completed_collections,
+            "completedCollections": completed_listings,
         },
         "recentListings": [
             {
@@ -59,6 +69,7 @@ def supplier_dashboard():
                 "unit": item.unit,
                 "location": item.location,
                 "status": item.status,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
             }
             for item in recent_listings
         ],
@@ -94,6 +105,7 @@ def create_listing():
         user_id = current_user_id()
         data = request.get_json() or {}
 
+        # ─── Required fields ──────────────────────────────────
         required_fields = ["waste_type", "quantity", "location"]
 
         for field in required_fields:
@@ -111,6 +123,13 @@ def create_listing():
             description=data.get("description"),
             image_url=data.get("image_url"),
             status="available",
+            # ─── Auto-pricing will be set by the platform ──
+            price_per_unit=0.0,
+            transport_rate_per_unit=0.0,
+            waste_value=0.0,
+            collection_fee=0.0,
+            platform_fee=0.0,
+            total_amount=0.0,
         )
 
         db.session.add(listing)
@@ -149,9 +168,13 @@ def get_listings():
         {
             "id": item.id,
             "waste_type": item.waste_type,
+            "category": item.category,
             "quantity": item.quantity,
             "unit": item.unit,
             "location": item.location,
+            "pickup_address": item.pickup_address,
+            "description": item.description,
+            "image_url": item.image_url,
             "status": item.status,
             "created_at": item.created_at.isoformat() if item.created_at else None,
         }
@@ -184,11 +207,24 @@ def update_listing(listing_id):
 
     for field in allowed_fields:
         if field in data:
-            setattr(listing, field, data[field])
+            if field == "quantity":
+                setattr(listing, field, float(data[field]))
+            else:
+                setattr(listing, field, data[field])
 
     db.session.commit()
 
-    return jsonify({"message": "Listing updated successfully"}), 200
+    return jsonify({
+        "message": "Listing updated successfully",
+        "listing": {
+            "id": listing.id,
+            "waste_type": listing.waste_type,
+            "quantity": listing.quantity,
+            "unit": listing.unit,
+            "location": listing.location,
+            "status": listing.status,
+        }
+    }), 200
 
 
 @supplier_bp.route("/supplier/listings/<int:listing_id>", methods=["DELETE"])
@@ -221,19 +257,20 @@ def get_requests():
         WasteListing.supplier_id == user_id
     ).order_by(WasteRequest.created_at.desc()).all()
 
-    return jsonify([
-        {
+    result = []
+    for item in requests:
+        listing = item.listing
+        result.append({
             "id": item.id,
             "listing_id": item.listing_id,
-            "waste_type": item.listing.waste_type if item.listing else None,
+            "waste_type": listing.waste_type if listing else None,
             "producer_name": item.producer.full_name if item.producer else "Unknown Producer",
             "producer_id": item.producer_id,
             "status": item.status,
             "message": item.message,
             "created_at": item.created_at.isoformat() if item.created_at else None,
-        }
-        for item in requests
-    ]), 200
+        })
+    return jsonify(result), 200
 
 
 @supplier_bp.route("/supplier/requests/<int:request_id>/approve", methods=["PATCH"])

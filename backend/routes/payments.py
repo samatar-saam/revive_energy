@@ -9,6 +9,12 @@ import uuid
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/api/payments")
 
+# ─── FIXED AMOUNTS ──────────────────────────────────────────────
+FIXED_WASTE_AMOUNT = 1000.0
+FIXED_TRANSPORT_FEE = 500.0
+FIXED_PLATFORM_FEE = 500.0
+FIXED_TOTAL_AMOUNT = FIXED_WASTE_AMOUNT + FIXED_TRANSPORT_FEE + FIXED_PLATFORM_FEE  # 2000.0
+
 
 def current_user_id():
     return int(get_jwt_identity())
@@ -114,14 +120,10 @@ def normalize_phone(phone):
 
 def validate_payment_payload(data):
     supplier_id = safe_int(data.get("supplier_id"), 0)
-    amount = safe_float(data.get("amount"), 0)
     phone = normalize_phone(data.get("phone") or data.get("phone_number"))
 
     if supplier_id <= 0:
         return "supplier_id is required"
-
-    if amount <= 0:
-        return "amount must be greater than 0"
 
     if not phone:
         return "M-Pesa phone number is required"
@@ -129,6 +131,7 @@ def validate_payment_payload(data):
     if not phone.startswith("254") or len(phone) != 12:
         return "Invalid phone number. Use format 2547XXXXXXXX"
 
+    # No need to validate amounts because they are fixed
     return None
 
 
@@ -157,7 +160,7 @@ def _create_transport_job(payment):
             listing_id=payment.listing_id,
             supplier_id=payment.supplier_id,
             producer_id=payment.producer_id,
-            pickup_location=listing.location or listing.address or "Supplier location",
+            pickup_location=listing.location or listing.pickup_address or "Supplier location",
             delivery_location=(producer.location if producer else None) or "Producer location",
             waste_type=listing.waste_type,
             quantity=listing.quantity,
@@ -216,8 +219,13 @@ def create_payment():
             return jsonify({"message": error}), 400
 
         supplier_id = safe_int(data.get("supplier_id"))
-        amount = safe_float(data.get("amount"))
         phone = normalize_phone(data.get("phone") or data.get("phone_number"))
+
+        # ─── FIXED AMOUNTS ──────────────────────────────────────
+        waste_amount = FIXED_WASTE_AMOUNT
+        transport_fee = FIXED_TRANSPORT_FEE
+        platform_fee = FIXED_PLATFORM_FEE
+        total_amount = FIXED_TOTAL_AMOUNT
 
         payment = Payment(
             payer_id=user_id,
@@ -227,14 +235,14 @@ def create_payment():
             request_id=safe_int(data.get("request_id"), 0),
             transport_job_id=safe_int(data.get("transport_job_id"), 0),
             transporter_id=safe_int(data.get("transporter_id"), None),
-            amount=amount,
-            total_amount=safe_float(data.get("total_amount"), amount),
-            waste_amount=safe_float(data.get("waste_amount"), amount),
-            transport_fee=safe_float(data.get("transport_fee"), 0),
-            platform_fee=safe_float(data.get("platform_fee"), 0),
-            commission=safe_float(data.get("platform_fee"), 0),
-            supplier_amount=safe_float(data.get("waste_amount"), amount),
-            transporter_amount=safe_float(data.get("transport_fee"), 0),
+            amount=total_amount,
+            total_amount=total_amount,
+            waste_amount=waste_amount,
+            transport_fee=transport_fee,
+            platform_fee=platform_fee,
+            commission=platform_fee,
+            supplier_amount=waste_amount,
+            transporter_amount=transport_fee,
             payment_method=data.get("payment_method", "mpesa"),
             payment_status="pending",
             status="pending",
@@ -274,11 +282,11 @@ def initiate_payment():
         supplier_id = safe_int(data.get("supplier_id"))
         phone = normalize_phone(data.get("phone") or data.get("phone_number"))
 
-        amount = safe_float(data.get("amount"), 0)
-        waste_amount = safe_float(data.get("waste_amount"), amount)
-        transport_fee = safe_float(data.get("transport_fee"), 0)
-        platform_fee = safe_float(data.get("platform_fee"), 0)
-        total_amount = safe_float(data.get("total_amount"), amount)
+        # ─── FIXED AMOUNTS ──────────────────────────────────────
+        waste_amount = FIXED_WASTE_AMOUNT
+        transport_fee = FIXED_TRANSPORT_FEE
+        platform_fee = FIXED_PLATFORM_FEE
+        total_amount = FIXED_TOTAL_AMOUNT
 
         request_id = safe_int(data.get("request_id"), 0)
         listing_id = safe_int(data.get("listing_id"), 0)

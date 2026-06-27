@@ -81,7 +81,6 @@ export default function ProducerMarketplace() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-
       filtered = filtered.filter(
         (item) =>
           item.waste_type?.toLowerCase().includes(q) ||
@@ -94,19 +93,14 @@ export default function ProducerMarketplace() {
     return filtered;
   }, [listings, searchQuery, filterStatus, filterLocation]);
 
-  const estimateAmounts = (item) => {
-    const quantity = Number(item.quantity || 0);
-
-    const wasteAmount = item.waste_amount
-      ? Number(item.waste_amount)
-      : Math.max(quantity * 10, 500);
-
-    const transportFee = item.transport_fee
-      ? Number(item.transport_fee)
-      : Math.max(quantity * 2, 300);
-
-    const platformFee = Math.round((wasteAmount + transportFee) * 0.05);
-    const totalAmount = wasteAmount + transportFee + platformFee;
+  // ─── FIXED AMOUNTS (use backend values) ─────────────────────
+  const getAmounts = (item) => {
+    // Use the fixed values from the backend (they are already calculated)
+    // Fallback to the fixed KES values if missing
+    const wasteAmount = item.waste_value || 1000;
+    const transportFee = item.transport_fee || 500;
+    const platformFee = item.platform_fee || 500;
+    const totalAmount = item.total_amount || 2000;
 
     return {
       wasteAmount,
@@ -176,7 +170,6 @@ export default function ProducerMarketplace() {
 
   const formatDate = (isoString) => {
     if (!isoString) return "N/A";
-
     return new Date(isoString).toLocaleDateString("en-KE", {
       day: "2-digit",
       month: "short",
@@ -303,7 +296,7 @@ export default function ProducerMarketplace() {
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredListings.map((item) => {
-            const amounts = estimateAmounts(item);
+            const amounts = getAmounts(item);
 
             return (
               <div
@@ -330,7 +323,7 @@ export default function ProducerMarketplace() {
                   <Info icon={Package} label="Quantity" value={`${item.quantity} ${item.unit || "kg"}`} />
                   <Info icon={Building2} label="Supplier" value={item.supplier_name || "Unknown Supplier"} />
                   <Info icon={Clock} label="Listed" value={formatDate(item.created_at)} />
-                  <Info icon={CreditCard} label="Estimated Total" value={formatCurrency(amounts.totalAmount)} strong />
+                  <Info icon={CreditCard} label="Total Amount" value={formatCurrency(amounts.totalAmount)} strong />
                 </div>
 
                 <div className="mt-4 rounded-2xl bg-[#F4FBF6] p-3 text-xs text-gray-600">
@@ -385,7 +378,7 @@ export default function ProducerMarketplace() {
       {selectedListing && (
         <ListingDetailsModal
           listing={selectedListing}
-          amounts={estimateAmounts(selectedListing)}
+          amounts={getAmounts(selectedListing)}
           requesting={requesting}
           onClose={() => setSelectedListing(null)}
           onRequest={() => handleRequest(selectedListing.id)}
@@ -445,6 +438,32 @@ function ListingDetailsModal({
           </button>
         </div>
 
+        {/* ─── IMAGE ───────────────────────────────────────────────────── */}
+        <div className="mb-4 rounded-2xl overflow-hidden bg-gray-100 h-48 flex items-center justify-center relative">
+          {listing.image_url ? (
+            <img
+              src={listing.image_url}
+              alt={listing.waste_type}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                const parent = e.target.parentElement;
+                if (parent) {
+                  const placeholder = parent.querySelector('.placeholder-fallback');
+                  if (placeholder) placeholder.style.display = 'flex';
+                }
+              }}
+            />
+          ) : null}
+          <div
+            className={`placeholder-fallback ${listing.image_url ? 'hidden' : 'flex'} absolute inset-0 flex-col items-center justify-center text-gray-400`}
+            style={{ display: listing.image_url ? 'none' : 'flex' }}
+          >
+            <Package className="w-16 h-16 mb-2" />
+            <span className="text-sm">No image provided</span>
+          </div>
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl bg-gray-50 p-4">
             <h3 className="mb-3 font-bold text-gray-900">Waste Information</h3>
@@ -463,7 +482,7 @@ function ListingDetailsModal({
               <Row label="Transport Fee" value={formatCurrency(amounts.transportFee)} />
               <Row label="Platform Fee" value={formatCurrency(amounts.platformFee)} />
               <div className="border-t border-green-100 pt-2">
-                <Row label="Total Estimate" value={formatCurrency(amounts.totalAmount)} strong />
+                <Row label="Total Amount" value={formatCurrency(amounts.totalAmount)} strong />
               </div>
             </div>
           </div>

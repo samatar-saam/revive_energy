@@ -234,7 +234,7 @@ export default function PostWaste() {
         <div>
           <h1 className="text-2xl font-black text-gray-900">Post Waste Listing</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Add waste details so energy producers can request it.
+            Add waste details so energy producers can request it. Pricing is automatically calculated by the platform.
           </p>
         </div>
       </div>
@@ -305,7 +305,7 @@ export default function PostWaste() {
                 </Field>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Quantity" error={formErrors.quantity}>
                   <input
                     type="number"
@@ -331,19 +331,14 @@ export default function PostWaste() {
                     <option value="cubic_metres">Cubic Metres</option>
                   </select>
                 </Field>
+              </div>
 
-                <Field label="Availability Window">
-                  <select
-                    name="availability_window"
-                    value={formData.availability_window}
-                    onChange={handleChange}
-                    className={inputClass("availability_window")}
-                  >
-                    <option value="business_hours">Business Hours</option>
-                    <option value="any_time">Any Time</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </Field>
+              <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
+                <p className="font-medium">💡 Platform Pricing</p>
+                <p className="mt-1 text-xs">
+                  The platform automatically calculates the <strong>waste value</strong> and <strong>transport fee</strong> based on the waste type and quantity.<br />
+                  A <strong>5% platform fee</strong> is added to the total.
+                </p>
               </div>
 
               <button

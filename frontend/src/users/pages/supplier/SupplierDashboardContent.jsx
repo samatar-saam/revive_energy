@@ -11,10 +11,30 @@ import {
   DollarSign,
   FileText,
   Calendar,
-  MapPin
+  MapPin,
+  TrendingUp,
+  BarChart3,
+  PieChart as PieChartIcon,
 } from 'lucide-react';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from 'recharts';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const COLORS = ['#11402D', '#34D399', '#60A5FA', '#FBBF24', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const SupplierDashboardContent = () => {
   const [loading, setLoading] = useState(true);
@@ -43,7 +63,7 @@ const SupplierDashboardContent = () => {
       if (!token) throw new Error('Not authenticated');
 
       const response = await fetch(`${API_URL}/supplier/dashboard`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) throw new Error('Failed to load dashboard');
@@ -56,6 +76,28 @@ const SupplierDashboardContent = () => {
       setLoading(false);
     }
   };
+
+  // ─── Chart Data ──────────────────────────────────────────────
+  const wasteTypeData = dashboardData.recentListings.reduce((acc, item) => {
+    const existing = acc.find((d) => d.name === item.waste_type);
+    if (existing) {
+      existing.value += Number(item.quantity);
+    } else {
+      acc.push({ name: item.waste_type, value: Number(item.quantity) });
+    }
+    return acc;
+  }, []);
+
+  // Sample trend data (in real app, fetch from backend)
+  const trendData = [
+    { day: 'Mon', listings: 2, pickups: 1 },
+    { day: 'Tue', listings: 4, pickups: 3 },
+    { day: 'Wed', listings: 3, pickups: 2 },
+    { day: 'Thu', listings: 5, pickups: 4 },
+    { day: 'Fri', listings: 7, pickups: 6 },
+    { day: 'Sat', listings: 3, pickups: 2 },
+    { day: 'Sun', listings: 1, pickups: 1 },
+  ];
 
   if (loading) {
     return (
@@ -88,148 +130,240 @@ const SupplierDashboardContent = () => {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <Package className="w-6 h-6 text-emerald-600" />
-            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">{stats.myListings}</span>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-gray-900">{stats.myListings}</p>
-          <p className="text-sm text-gray-500">My Listings</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <Truck className="w-6 h-6 text-blue-600" />
-            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{stats.collectionRequests}</span>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-gray-900">{stats.collectionRequests}</p>
-          <p className="text-sm text-gray-500">Collection Requests</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <Clock className="w-6 h-6 text-yellow-600" />
-            <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">{stats.pendingCollections}</span>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-gray-900">{stats.pendingCollections}</p>
-          <p className="text-sm text-gray-500">Pending Collections</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <CheckCircle className="w-6 h-6 text-green-600" />
-            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">{stats.completedCollections}</span>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-gray-900">{stats.completedCollections}</p>
-          <p className="text-sm text-gray-500">Completed Collections</p>
-        </div>
+      {/* ─── STAT CARDS ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={Package}
+          label="Total Listings"
+          value={stats.myListings}
+          color="emerald"
+        />
+        <StatCard
+          icon={Truck}
+          label="Collection Requests"
+          value={stats.collectionRequests}
+          color="blue"
+        />
+        <StatCard
+          icon={Clock}
+          label="Pending Collections"
+          value={stats.pendingCollections}
+          color="yellow"
+        />
+        <StatCard
+          icon={CheckCircle}
+          label="Completed"
+          value={stats.completedCollections}
+          color="green"
+        />
       </div>
 
-      {/* Recent Listings & Upcoming Pickups */}
+      {/* ─── CHARTS ROW ──────────────────────────────────────────── */}
       <div className="grid lg:grid-cols-2 gap-6">
+        {/* Pie Chart – Waste Type Distribution */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-semibold text-gray-900">Recent Waste Listings</h3>
-            <Link to="/dashboard/listings" className="text-sm text-[#11402D] hover:underline">View All</Link>
+            <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-[#11402D]" />
+              Waste Type Distribution
+            </h3>
+            <span className="text-xs text-gray-400">by quantity (kg)</span>
           </div>
-          {recentListings.length === 0 ? (
-            <p className="text-gray-500 text-sm py-4 text-center">No listings yet.</p>
+          {wasteTypeData.length === 0 ? (
+            <p className="text-gray-500 text-sm py-8 text-center">No data to display</p>
           ) : (
-            <div className="space-y-3">
-              {recentListings.slice(0, 5).map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                  <div>
-                    <p className="font-medium text-gray-900">{item.waste_type}</p>
-                    <p className="text-sm text-gray-500">{item.quantity} {item.unit || 'kg'} • {item.location}</p>
-                  </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                    item.status === 'available' ? 'bg-green-100 text-green-700' :
-                    item.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
-                    {item.status}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie
+                  data={wasteTypeData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ name }) => name}
+                >
+                  {wasteTypeData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => `${value} kg`} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           )}
         </div>
 
+        {/* Area/Bar Chart – Activity Trend */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-semibold text-gray-900">Upcoming Pickups</h3>
-            <Link to="/dashboard/collections" className="text-sm text-[#11402D] hover:underline">View All</Link>
+            <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#11402D]" />
+              Weekly Activity
+            </h3>
+            <span className="text-xs text-gray-400">last 7 days</span>
           </div>
-          {upcomingPickups.length === 0 ? (
-            <p className="text-gray-500 text-sm py-4 text-center">No upcoming pickups.</p>
-          ) : (
-            <div className="space-y-3">
-              {upcomingPickups.slice(0, 5).map((item) => (
-                <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                  <Calendar className="w-5 h-5 text-[#11402D]" />
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{item.waste_type}</p>
-                    <p className="text-sm text-gray-500 flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> {item.location}
-                    </p>
-                  </div>
-                  <div className="text-right text-sm">
-                    <p className="font-medium text-gray-900">{item.pickup_date}</p>
-                    <p className="text-xs text-gray-500">{item.pickup_time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <Tooltip />
+              <Legend />
+              <Area
+                type="monotone"
+                dataKey="listings"
+                stackId="1"
+                stroke="#11402D"
+                fill="#11402D"
+                fillOpacity={0.3}
+                name="Listings"
+              />
+              <Area
+                type="monotone"
+                dataKey="pickups"
+                stackId="1"
+                stroke="#34D399"
+                fill="#34D399"
+                fillOpacity={0.3}
+                name="Pickups"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* ─── TABLE: Recent Listings ──────────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#11402D]" />
+            Recent Listings
+          </h3>
+          <Link to="/dashboard/listings" className="text-sm text-[#11402D] hover:underline">
+            View All
+          </Link>
+        </div>
+        {recentListings.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 text-sm">No listings yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600 font-medium">
+                <tr>
+                  <th className="px-6 py-3 text-left">Waste Type</th>
+                  <th className="px-6 py-3 text-left">Quantity</th>
+                  <th className="px-6 py-3 text-left">Location</th>
+                  <th className="px-6 py-3 text-left">Status</th>
+                  <th className="px-6 py-3 text-left">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {recentListings.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50/50 transition">
+                    <td className="px-6 py-3 font-medium text-gray-900">{item.waste_type}</td>
+                    <td className="px-6 py-3 text-gray-700">
+                      {item.quantity} {item.unit || 'kg'}
+                    </td>
+                    <td className="px-6 py-3 text-gray-700">{item.location}</td>
+                    <td className="px-6 py-3">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                          item.status === 'available'
+                            ? 'bg-green-100 text-green-700'
+                            : item.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-gray-500">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ─── QUICK ACTIONS ────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <h3 className="font-display font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link to="/dashboard/post-waste" className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition">
-            <Plus className="w-5 h-5 text-emerald-600" />
-            <span className="font-medium text-gray-900 text-sm">Post Waste</span>
-          </Link>
-          <Link to="/dashboard/requests" className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition">
-            <Eye className="w-5 h-5 text-blue-600" />
-            <span className="font-medium text-gray-900 text-sm">View Requests</span>
-          </Link>
-          <Link to="/dashboard/tracking" className="flex items-center gap-3 p-4 rounded-xl bg-yellow-50 hover:bg-yellow-100 transition">
-            <Truck className="w-5 h-5 text-yellow-600" />
-            <span className="font-medium text-gray-900 text-sm">Track Collection</span>
-          </Link>
-          <Link to="/dashboard/payments" className="flex items-center gap-3 p-4 rounded-xl bg-green-50 hover:bg-green-100 transition">
-            <DollarSign className="w-5 h-5 text-green-600" />
-            <span className="font-medium text-gray-900 text-sm">View Payments</span>
-          </Link>
+          <ActionButton
+            to="/dashboard/post-waste"
+            icon={Plus}
+            label="Post Waste"
+            color="emerald"
+          />
+          <ActionButton
+            to="/dashboard/requests"
+            icon={Eye}
+            label="View Requests"
+            color="blue"
+          />
+          <ActionButton
+            to="/dashboard/tracking"
+            icon={Truck}
+            label="Track Collection"
+            color="yellow"
+          />
+          <ActionButton
+            to="/dashboard/payments"
+            icon={DollarSign}
+            label="View Payments"
+            color="green"
+          />
         </div>
       </div>
-
-      {/* Notifications (optional) */}
-      {notifications && notifications.length > 0 && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-display font-semibold text-gray-900 mb-4">Recent Notifications</h3>
-          <div className="space-y-2">
-            {notifications.slice(0, 3).map((n) => (
-              <div key={n.id} className="flex items-start gap-3 p-3 rounded-xl bg-gray-50">
-                <div className="mt-0.5">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900 text-sm">{n.title}</p>
-                  <p className="text-sm text-gray-500">{n.message}</p>
-                  <p className="text-xs text-gray-400 mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <Link to="/dashboard/notifications" className="mt-3 inline-block text-sm text-[#11402D] hover:underline">
-            View all notifications
-          </Link>
-        </div>
-      )}
     </div>
+  );
+};
+
+// ─── Sub‑components ─────────────────────────────────────────────
+
+const StatCard = ({ icon: Icon, label, value, color }) => {
+  const colorMap = {
+    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100' },
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' },
+    yellow: { bg: 'bg-yellow-50', text: 'text-yellow-600', border: 'border-yellow-100' },
+    green: { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-100' },
+  };
+  const style = colorMap[color] || colorMap.blue;
+
+  return (
+    <div className={`bg-white rounded-2xl p-5 shadow-sm border ${style.border}`}>
+      <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center`}>
+        <Icon className={`w-5 h-5 ${style.text}`} />
+      </div>
+      <p className="mt-3 font-display text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-sm text-gray-500">{label}</p>
+    </div>
+  );
+};
+
+const ActionButton = ({ to, icon: Icon, label, color }) => {
+  const colorMap = {
+    emerald: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600',
+    blue: 'bg-blue-50 hover:bg-blue-100 text-blue-600',
+    yellow: 'bg-yellow-50 hover:bg-yellow-100 text-yellow-600',
+    green: 'bg-green-50 hover:bg-green-100 text-green-600',
+  };
+  const style = colorMap[color] || colorMap.blue;
+
+  return (
+    <Link
+      to={to}
+      className={`flex items-center gap-3 p-4 rounded-xl ${style} transition`}
+    >
+      <Icon className="w-5 h-5" />
+      <span className="font-medium text-gray-900 text-sm">{label}</span>
+    </Link>
   );
 };
 

@@ -14,7 +14,6 @@ def current_user_id():
 def get_user_name(user_id, fallback="Unknown"):
     if not user_id:
         return fallback
-
     user = db.session.get(User, int(user_id))
     return user.full_name if user else fallback
 
@@ -22,12 +21,63 @@ def get_user_name(user_id, fallback="Unknown"):
 def get_listing(listing_id):
     if not listing_id:
         return None
-
     return db.session.get(WasteListing, int(listing_id))
 
 
 def iso(dt):
     return dt.isoformat() if dt else None
+
+
+def calculate_amounts(listing):
+    """
+    Return fixed pricing amounts regardless of the listing.
+    """
+    # ─── FIXED VALUES ──────────────────────────────────────────
+    waste_value = 1000.00
+    transport_fee = 500.00
+    platform_fee = 500.00
+    total_amount = waste_value + transport_fee + platform_fee  # 2000.00
+
+    return {
+        "waste_value": waste_value,
+        "transport_fee": transport_fee,
+        "platform_fee": platform_fee,
+        "total_amount": total_amount,
+        "price_per_unit": 0.0,
+        "transport_rate_per_unit": 0.0,
+    }
+
+
+def listing_to_dict(listing, include_supplier=True):
+    """Convert a WasteListing to a dictionary with all fields."""
+    if not listing:
+        return None
+
+    supplier_name = get_user_name(listing.supplier_id, "Unknown Supplier")
+    amounts = calculate_amounts(listing)
+
+    return {
+        "id": listing.id,
+        "supplier_id": listing.supplier_id,
+        "supplier_name": supplier_name if include_supplier else None,
+        "waste_type": listing.waste_type,
+        "category": listing.category,
+        "quantity": listing.quantity,
+        "unit": listing.unit,
+        "location": listing.location,
+        "pickup_address": listing.pickup_address,
+        "description": listing.description,
+        "image_url": listing.image_url,
+        "status": listing.status,
+        "created_at": iso(listing.created_at),
+        # ─── Fixed pricing ──────────────────────────────────
+        "price_per_unit": amounts["price_per_unit"],
+        "transport_rate_per_unit": amounts["transport_rate_per_unit"],
+        "waste_value": amounts["waste_value"],
+        "transport_fee": amounts["transport_fee"],
+        "platform_fee": amounts["platform_fee"],
+        "total_amount": amounts["total_amount"],
+    }
 
 
 # ─── PRODUCER DASHBOARD ──────────────────────────────────────
@@ -86,21 +136,7 @@ def producer_dashboard():
             .all()
         )
 
-        available_waste_data = []
-        for w in available_waste:
-            supplier_name = get_user_name(getattr(w, "supplier_id", None), "Unknown Supplier")
-
-            available_waste_data.append({
-                "id": w.id,
-                "waste_type": w.waste_type,
-                "quantity": w.quantity,
-                "unit": w.unit,
-                "location": w.location,
-                "supplier_id": getattr(w, "supplier_id", None),
-                "supplier_name": supplier_name,
-                "status": w.status,
-                "created_at": iso(w.created_at),
-            })
+        available_waste_data = [listing_to_dict(w) for w in available_waste]
 
         recent_requests_data = []
         for r in recent_requests:
@@ -178,23 +214,7 @@ def get_available_waste():
             .all()
         )
 
-        result = []
-
-        for l in listings:
-            supplier_name = get_user_name(getattr(l, "supplier_id", None), "Unknown Supplier")
-
-            result.append({
-                "id": l.id,
-                "supplier_id": getattr(l, "supplier_id", None),
-                "waste_type": l.waste_type,
-                "quantity": l.quantity,
-                "unit": l.unit,
-                "location": l.location,
-                "description": getattr(l, "description", ""),
-                "supplier_name": supplier_name,
-                "status": l.status,
-                "created_at": iso(l.created_at),
-            })
+        result = [listing_to_dict(l) for l in listings]
 
         return jsonify(result), 200
 
@@ -278,6 +298,7 @@ def get_my_requests():
         for r in requests:
             listing = get_listing(r.listing_id)
             supplier = db.session.get(User, r.supplier_id) if r.supplier_id else None
+            amounts = calculate_amounts(listing)
 
             result.append({
                 "id": r.id,
@@ -291,6 +312,13 @@ def get_my_requests():
                 "status": r.status,
                 "message": r.message,
                 "created_at": iso(r.created_at),
+                # ─── Fixed pricing ──────────────────────────
+                "price_per_unit": amounts["price_per_unit"],
+                "transport_rate_per_unit": amounts["transport_rate_per_unit"],
+                "waste_value": amounts["waste_value"],
+                "transport_fee": amounts["transport_fee"],
+                "platform_fee": amounts["platform_fee"],
+                "total_amount": amounts["total_amount"],
             })
 
         return jsonify(result), 200

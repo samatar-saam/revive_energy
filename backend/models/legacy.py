@@ -1,5 +1,3 @@
-# backend/models/legacy.py
-
 from datetime import datetime
 from database import db
 
@@ -123,6 +121,16 @@ class WasteListing(db.Model):
     status = db.Column(db.String(20), default="available")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # ─── NEW DYNAMIC PRICING FIELDS ──────────────────────────
+    price_per_unit = db.Column(db.Float, default=0.0)           # KSh per kg (or per unit)
+    transport_rate_per_unit = db.Column(db.Float, default=0.0)  # KSh per kg for transport
+
+    # Legacy fields (kept for backward compatibility, but will be calculated dynamically)
+    waste_value = db.Column(db.Float, default=0.0)
+    collection_fee = db.Column(db.Float, default=0.0)
+    platform_fee = db.Column(db.Float, default=0.0)
+    total_amount = db.Column(db.Float, default=0.0)
+
     requests = db.relationship(
         "WasteRequest",
         backref="listing",
@@ -134,6 +142,30 @@ class WasteListing(db.Model):
         backref="listing",
         lazy=True
     )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "supplier_id": self.supplier_id,
+            "waste_type": self.waste_type,
+            "category": self.category,
+            "quantity": self.quantity,
+            "unit": self.unit,
+            "location": self.location,
+            "pickup_address": self.pickup_address,
+            "description": self.description,
+            "image_url": self.image_url,
+            "status": self.status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            # ─── NEW FIELDS ──────────────────────────────────
+            "price_per_unit": self.price_per_unit,
+            "transport_rate_per_unit": self.transport_rate_per_unit,
+            # Legacy (kept for compatibility)
+            "waste_value": self.waste_value,
+            "collection_fee": self.collection_fee,
+            "platform_fee": self.platform_fee,
+            "total_amount": self.total_amount,
+        }
 
 
 # ========== WASTE REQUEST ==========
