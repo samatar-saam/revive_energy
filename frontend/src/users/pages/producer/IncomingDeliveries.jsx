@@ -1,6 +1,5 @@
 // src/users/pages/producer/IncomingDeliveries.jsx
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   Truck,
   Package,
@@ -18,7 +17,10 @@ import {
   ShieldCheck,
   CreditCard,
   Route,
+  X,
+  Loader,
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -28,6 +30,12 @@ export default function IncomingDeliveries() {
   const [deliveries, setDeliveries] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // ─── Modal states ────────────────────────────────────────
+  const [selectedDelivery, setSelectedDelivery] = useState(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const fetchDeliveries = async () => {
     setLoading(true);
@@ -69,7 +77,6 @@ export default function IncomingDeliveries() {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-
       filtered = filtered.filter((item) =>
         [
           item.waste_type,
@@ -98,25 +105,17 @@ export default function IncomingDeliveries() {
       completed: "bg-indigo-100 text-indigo-700",
       cancelled: "bg-red-100 text-red-700",
     };
-
     return map[status] || "bg-gray-100 text-gray-700";
   };
 
   const getStatusIcon = (status) => {
-    if (status === "delivered" || status === "completed") {
-      return <CheckCircle className="h-4 w-4" />;
-    }
-
-    if (status === "cancelled") {
-      return <AlertCircle className="h-4 w-4" />;
-    }
-
+    if (status === "delivered" || status === "completed") return <CheckCircle className="h-4 w-4" />;
+    if (status === "cancelled") return <AlertCircle className="h-4 w-4" />;
     return <Clock className="h-4 w-4" />;
   };
 
   const formatDate = (isoString) => {
     if (!isoString) return "N/A";
-
     return new Date(isoString).toLocaleDateString("en-KE", {
       day: "2-digit",
       month: "short",
@@ -131,6 +130,61 @@ export default function IncomingDeliveries() {
 
   const formatCurrency = (amount) =>
     `KSh ${Number(amount || 0).toLocaleString("en-KE")}`;
+
+  // ─── Handlers ─────────────────────────────────────────────
+  const openDetailsModal = (delivery) => {
+    setSelectedDelivery(delivery);
+    setShowDetailsModal(true);
+  };
+
+  const openConfirmModal = (delivery) => {
+    setSelectedDelivery(delivery);
+    setShowConfirmModal(true);
+  };
+
+  const closeModals = () => {
+    setShowDetailsModal(false);
+    setShowConfirmModal(false);
+    setSelectedDelivery(null);
+  };
+
+  const handleConfirmDelivery = async () => {
+    if (!selectedDelivery) return;
+    setConfirming(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Not authenticated");
+
+      const paymentId = selectedDelivery.payment_id;
+      if (!paymentId) {
+        throw new Error("No payment associated with this delivery");
+      }
+
+      const response = await fetch(`${API_URL}/payments/confirm-delivery/${paymentId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to confirm delivery");
+      }
+
+      toast.success("Delivery confirmed! Escrow has been released.");
+      setShowConfirmModal(false);
+      await fetchDeliveries();
+    } catch (err) {
+      console.error("Confirm delivery error:", err);
+      toast.error(err.message);
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   const statusOptions = [
     "all",
@@ -313,17 +367,17 @@ export default function IncomingDeliveries() {
               </div>
 
               <div className="mt-5 flex gap-3">
-                <Link
-                  to={`/dashboard/deliveries/${delivery.id}`}
+                <button
+                  onClick={() => openDetailsModal(delivery)}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50"
                 >
                   <Eye className="h-4 w-4" />
                   Details
-                </Link>
+                </button>
 
                 {delivery.status === "delivered" ? (
                   <button
-                    type="button"
+                    onClick={() => openConfirmModal(delivery)}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-sm font-bold text-white hover:bg-green-700"
                   >
                     <CheckCircle className="h-4 w-4" />
@@ -342,6 +396,28 @@ export default function IncomingDeliveries() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* ─── Details Modal ──────────────────────────────────────── */}
+      {showDetailsModal && selectedDelivery && (
+        <DetailsModal
+          delivery={selectedDelivery}
+          onClose={closeModals}
+          formatDate={formatDate}
+          formatCurrency={formatCurrency}
+          formatStatus={formatStatus}
+        />
+      )}
+
+      {/* ─── Confirm Modal ──────────────────────────────────────── */}
+      {showConfirmModal && selectedDelivery && (
+        <ConfirmModal
+          delivery={selectedDelivery}
+          onClose={closeModals}
+          onConfirm={handleConfirmDelivery}
+          confirming={confirming}
+          formatCurrency={formatCurrency}
+        />
       )}
     </div>
   );
@@ -392,7 +468,6 @@ function ProgressTimeline({ status }) {
       <div className="flex flex-wrap gap-2">
         {steps.map((step, index) => {
           const active = index <= currentIndex;
-
           return (
             <div
               key={step.key}
@@ -405,6 +480,131 @@ function ProgressTimeline({ status }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ─── Details Modal ──────────────────────────────────────────────
+function DetailsModal({ delivery, onClose, formatDate, formatCurrency, formatStatus }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl">
+          <h2 className="text-xl font-bold text-gray-900">Delivery Details</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Detail label="Delivery ID" value={`#${delivery.id}`} />
+              <Detail label="Waste Type" value={delivery.waste_type || "N/A"} />
+              <Detail label="Quantity" value={`${delivery.quantity || "N/A"} ${delivery.unit || "kg"}`} />
+              <Detail label="Status" value={formatStatus(delivery.status)} badge />
+            </div>
+            <div className="space-y-2">
+              <Detail label="Supplier" value={delivery.supplier_name || "Unknown"} />
+              <Detail label="Transporter" value={delivery.transporter_name || "Not assigned"} />
+              <Detail label="Transport Fee" value={formatCurrency(delivery.transport_fee || 0)} />
+              <Detail label="Date" value={formatDate(delivery.created_at)} />
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4">
+            <h4 className="font-semibold text-gray-700 mb-2">Route</h4>
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">Pickup:</span> {delivery.pickup_location || "Not specified"}
+            </p>
+            <p className="text-sm text-gray-600 mt-1">
+              <span className="font-medium">Delivery:</span> {delivery.delivery_location || "Not specified"}
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-gray-100">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-xl border border-gray-200 font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Confirm Modal ──────────────────────────────────────────────
+function ConfirmModal({ delivery, onClose, onConfirm, confirming, formatCurrency }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900">Confirm Delivery</h3>
+          <p className="text-sm text-gray-500 mt-2">
+            Are you sure you want to confirm delivery of <strong>{delivery.waste_type}</strong>?
+            <br />
+            This will release escrow payments to the supplier and transporter.
+          </p>
+          <div className="mt-4 bg-gray-50 rounded-xl p-4 text-sm">
+            <p className="font-semibold text-gray-700">Amount to be released:</p>
+            <p className="text-2xl font-bold text-[#11402D] mt-1">
+              {formatCurrency(delivery.transport_fee || 0)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className="flex-1 py-3 rounded-xl border border-gray-200 font-semibold text-gray-700 hover:bg-gray-50"
+            disabled={confirming}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={confirming}
+            className="flex-1 py-3 rounded-xl bg-[#11402D] text-white font-semibold hover:bg-[#0E2A1C] transition disabled:opacity-70 flex items-center justify-center gap-2"
+          >
+            {confirming ? (
+              <>
+                <Loader className="w-5 h-5 animate-spin" />
+                Confirming...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-5 h-5" />
+                Confirm
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ label, value, badge }) {
+  if (badge) {
+    return (
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-gray-500">{label}</span>
+        <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+          {value}
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-gray-500">{label}</span>
+      <span className="text-sm text-gray-800">{value}</span>
     </div>
   );
 }

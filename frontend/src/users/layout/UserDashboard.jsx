@@ -5,7 +5,6 @@ import {
   Package,
   CreditCard,
   Bell,
-  Settings,
   LogOut,
   Search,
   ChevronLeft,
@@ -37,7 +36,8 @@ export default function UserDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [userName, setUserName] = useState("ReVive User");
-  const [userRole, setUserRole] = useState("supplier");
+  const [userRole, setUserRole] = useState(null); // start as null
+  const [loading, setLoading] = useState(true); // add loading state
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -59,88 +59,79 @@ export default function UserDashboard() {
           "ReVive User"
       );
 
-      setUserRole(user.role || user.user_role || "supplier");
+      // ─── Normalize role ──────────────────────────────────────
+      const rawRole = user.role || user.user_role || "supplier";
+      const roleMap = {
+        "waste-supplier": "supplier",
+        "energy-producer": "producer",
+        "transport-partner": "transporter",
+        supplier: "supplier",
+        producer: "producer",
+        transporter: "transporter",
+      };
+      const normalizedRole = roleMap[rawRole] || "supplier";
+      setUserRole(normalizedRole);
     } catch (error) {
       console.error("Error parsing user data:", error);
       navigate("/login", { replace: true });
+    } finally {
+      setLoading(false); // loading complete
     }
   }, [navigate]);
 
   const getRoleLabel = () => {
-    if (userRole === "producer" || userRole === "energy-producer") {
-      return "Energy Producer";
-    }
-
-    if (userRole === "transporter" || userRole === "transport-partner") {
-      return "Transport Partner";
-    }
-
+    if (userRole === "producer") return "Energy Producer";
+    if (userRole === "transporter") return "Transport Partner";
     return "Waste Supplier";
   };
 
   const getNavItems = () => {
-    if (userRole === "producer" || userRole === "energy-producer") {
-      return [
-        { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, end: true },
-        { name: "Marketplace", path: "/dashboard/marketplace", icon: Store },
-        { name: "My Requests", path: "/dashboard/my-requests", icon: ClipboardList },
-        { name: "Incoming Deliveries", path: "/dashboard/incoming-deliveries", icon: Truck },
-        { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
-        { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
-        { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
-        { name: "Messages", path: "/dashboard/messages", icon: MessageCircle },
-        { name: "Profile", path: "/dashboard/profile", icon: User },
-        { name: "Settings", path: "/dashboard/settings", icon: Settings },
-      ];
-    }
-
-    if (userRole === "transporter" || userRole === "transport-partner") {
-      return [
-        { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, end: true },
-        { name: "Available Jobs", path: "/dashboard/jobs", icon: ClipboardList },
-        { name: "Accepted Jobs", path: "/dashboard/accepted-jobs", icon: CheckCircle },
-        { name: "Active Deliveries", path: "/dashboard/deliveries", icon: Truck },
-        { name: "Route Tracking", path: "/dashboard/routes", icon: MapPin },
-        { name: "Earnings", path: "/dashboard/earnings", icon: DollarSign },
-        { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
-        { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
-        { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
-        { name: "Messages", path: "/dashboard/messages", icon: MessageCircle },
-        { name: "Profile", path: "/dashboard/profile", icon: User },
-        { name: "Settings", path: "/dashboard/settings", icon: Settings },
-      ];
-    }
-
-    return [
+    // Common items (Settings removed)
+    const commonItems = [
       { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, end: true },
-      { name: "Post Waste", path: "/dashboard/post-waste", icon: Trash2 },
-      { name: "My Listings", path: "/dashboard/listings", icon: Package },
-      { name: "Collection Requests", path: "/dashboard/requests", icon: ClipboardList },
-      { name: "Collection Tracking", path: "/dashboard/tracking", icon: Truck },
       { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
       { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
       { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
       { name: "Messages", path: "/dashboard/messages", icon: MessageCircle },
       { name: "Profile", path: "/dashboard/profile", icon: User },
-      { name: "Settings", path: "/dashboard/settings", icon: Settings },
+    ];
+
+    if (userRole === "producer") {
+      return [
+        ...commonItems,
+        { name: "Marketplace", path: "/dashboard/marketplace", icon: Store },
+        { name: "My Requests", path: "/dashboard/my-requests", icon: ClipboardList },
+        { name: "Incoming Deliveries", path: "/dashboard/incoming-deliveries", icon: Truck },
+      ];
+    }
+    if (userRole === "transporter") {
+      return [
+        ...commonItems,
+        { name: "Available Jobs", path: "/dashboard/jobs", icon: ClipboardList },
+        { name: "Accepted Jobs", path: "/dashboard/accepted-jobs", icon: CheckCircle },
+        { name: "Active Deliveries", path: "/dashboard/deliveries", icon: Truck },
+        { name: "Route Tracking", path: "/dashboard/routes", icon: MapPin },
+        { name: "Earnings", path: "/dashboard/earnings", icon: DollarSign },
+      ];
+    }
+    // Supplier default
+    return [
+      ...commonItems,
+      { name: "Post Waste", path: "/dashboard/post-waste", icon: Trash2 },
+      { name: "My Listings", path: "/dashboard/listings", icon: Package },
+      { name: "Collection Requests", path: "/dashboard/requests", icon: ClipboardList },
+      { name: "Collection Tracking", path: "/dashboard/tracking", icon: Truck },
     ];
   };
 
   const renderDashboardContent = () => {
-    if (userRole === "producer" || userRole === "energy-producer") {
-      return <ProducerDashboardContent />;
-    }
-
-    if (userRole === "transporter" || userRole === "transport-partner") {
-      return <TransportDashboardContent />;
-    }
-
-    return <SupplierDashboardContent />;
+    if (userRole === "producer") return <ProducerDashboardContent />;
+    if (userRole === "transporter") return <TransportDashboardContent />;
+    return <SupplierDashboardContent />; // supplier or fallback
   };
 
   const getPageTitle = () => {
     const path = location.pathname;
-
     if (path === "/dashboard") return "Dashboard Overview";
     if (path.includes("/marketplace")) return "Marketplace";
     if (path.includes("/my-requests")) return "My Requests";
@@ -159,8 +150,6 @@ export default function UserDashboard() {
     if (path.includes("/messages")) return "Messages";
     if (path.includes("/notifications")) return "Notifications";
     if (path.includes("/profile")) return "Profile";
-    if (path.includes("/settings")) return "Settings";
-
     return "User Dashboard";
   };
 
@@ -176,6 +165,18 @@ export default function UserDashboard() {
   const mainMargin = isCollapsed ? "lg:ml-20" : "lg:ml-72";
   const navItems = getNavItems();
 
+  // ─── Show loading spinner while determining role ────────────
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#11402D] border-t-[#9CF06B] rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-gray-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="h-screen overflow-hidden bg-gray-50"
@@ -183,39 +184,13 @@ export default function UserDashboard() {
     >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-        .font-display {
-          font-family: 'Space Grotesk', sans-serif;
-        }
-
-        .font-mono-cw {
-          font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* Thin scrollbar for modern browsers */
-        ::-webkit-scrollbar {
-          width: 4px;
-          height: 4px;
-        }
-
-        ::-webkit-scrollbar-track {
-          background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-          background: #ccc;
-          border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-          background: #999;
-        }
-
-        /* Firefox */
-        * {
-          scrollbar-width: thin;
-          scrollbar-color: #ccc transparent;
-        }
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #999; }
+        * { scrollbar-width: thin; scrollbar-color: #ccc transparent; }
       `}</style>
 
       {sidebarOpen && (
@@ -255,7 +230,6 @@ export default function UserDashboard() {
               >
                 {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
               </button>
-
               <button
                 onClick={() => setSidebarOpen(false)}
                 className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/10 lg:hidden"
@@ -270,7 +244,6 @@ export default function UserDashboard() {
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-
               return (
                 <NavLink
                   key={item.name}
@@ -306,7 +279,6 @@ export default function UserDashboard() {
               <p className="mt-0.5 text-[10px] text-[#9CF06B]">{getRoleLabel()}</p>
             </div>
           )}
-
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/20 px-3 py-2.5 text-sm font-semibold text-red-400 transition hover:bg-red-500 hover:text-white"
@@ -327,7 +299,6 @@ export default function UserDashboard() {
               >
                 <Menu size={18} />
               </button>
-
               <div>
                 <h2 className="font-display text-lg font-black text-gray-900 lg:text-xl">
                   {getPageTitle()}
@@ -347,7 +318,6 @@ export default function UserDashboard() {
                   className="h-9 w-48 rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm outline-none transition focus:border-green-500 focus:bg-white lg:w-64"
                 />
               </div>
-
               <NavLink
                 to="/dashboard/messages"
                 className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
@@ -355,7 +325,6 @@ export default function UserDashboard() {
                 <MessageCircle size={16} />
                 <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-green-500" />
               </NavLink>
-
               <NavLink
                 to="/dashboard/notifications"
                 className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
@@ -363,14 +332,12 @@ export default function UserDashboard() {
                 <Bell size={16} />
                 <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500" />
               </NavLink>
-
               <NavLink
                 to="/dashboard/profile"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
               >
                 <User size={16} />
               </NavLink>
-
               <button
                 onClick={handleLogout}
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-lg transition hover:scale-[1.02] hover:bg-red-700"
@@ -392,14 +359,11 @@ export default function UserDashboard() {
               <Recycle size={12} className="text-[#0E2A1C]" />
               <p>© 2026 ReVive Energy.</p>
             </div>
-
             <div className="flex items-center gap-3">
               <NavLink to="/dashboard/profile" className="transition hover:text-[#0E2A1C]">
                 Profile
               </NavLink>
-              <NavLink to="/dashboard/settings" className="transition hover:text-[#0E2A1C]">
-                Settings
-              </NavLink>
+              {/* Settings link removed to avoid errors */}
               <span className="font-mono-cw text-[10px]">v2.0.0</span>
             </div>
           </div>

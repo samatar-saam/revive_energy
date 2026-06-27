@@ -1,3 +1,4 @@
+// src/users/pages/transporter/TransportDashboardContent.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -13,10 +14,29 @@ import {
   Plus,
   Eye,
   FileText,
-  AlertCircle
+  AlertCircle,
+  BarChart3,
+  PieChart as PieChartIcon,
 } from 'lucide-react';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+} from 'recharts';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+const COLORS = ['#11402D', '#34D399', '#60A5FA', '#FBBF24', '#F59E0B', '#EF4444'];
 
 const TransportDashboardContent = () => {
   const [loading, setLoading] = useState(true);
@@ -58,6 +78,29 @@ const TransportDashboardContent = () => {
     }
   };
 
+  // ─── Chart Data ──────────────────────────────────────────────
+  // Pie chart: job status distribution
+  const pieData = [
+    { name: 'Open', value: dashboardData.open_jobs_count || 0 },
+    { name: 'Accepted', value: dashboardData.accepted_jobs_count || 0 },
+    { name: 'Active Deliveries', value: dashboardData.active_deliveries_count || 0 },
+    { name: 'Completed', value: dashboardData.completed_deliveries_count || 0 },
+  ].filter(d => d.value > 0);
+
+  // Weekly activity – mock data (in a real app, fetch from backend)
+  const weeklyData = [
+    { day: 'Mon', jobs: 2, earnings: 1500 },
+    { day: 'Tue', jobs: 4, earnings: 3200 },
+    { day: 'Wed', jobs: 3, earnings: 2100 },
+    { day: 'Thu', jobs: 5, earnings: 4500 },
+    { day: 'Fri', jobs: 7, earnings: 6200 },
+    { day: 'Sat', jobs: 2, earnings: 1800 },
+    { day: 'Sun', jobs: 1, earnings: 900 },
+  ];
+
+  // Recent accepted jobs (for table)
+  const recentJobs = dashboardData.accepted_jobs.slice(0, 5);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -98,127 +141,185 @@ const TransportDashboardContent = () => {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
+      {/* ─── STAT CARDS ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <Package className="w-6 h-6 text-blue-600" />
-            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">{open_jobs_count}</span>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-gray-900">{open_jobs_count}</p>
-          <p className="text-sm text-gray-500">Available Jobs</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <Clock className="w-6 h-6 text-yellow-600" />
-            <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">{accepted_jobs_count}</span>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-gray-900">{accepted_jobs_count}</p>
-          <p className="text-sm text-gray-500">Accepted Jobs</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <Truck className="w-6 h-6 text-indigo-600" />
-            <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">{active_deliveries_count}</span>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-gray-900">{active_deliveries_count}</p>
-          <p className="text-sm text-gray-500">Active Deliveries</p>
-        </div>
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between">
-            <CheckCircle className="w-6 h-6 text-green-600" />
-            <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">{completed_deliveries_count}</span>
-          </div>
-          <p className="mt-3 font-display text-2xl font-bold text-gray-900">{completed_deliveries_count}</p>
-          <p className="text-sm text-gray-500">Completed Deliveries</p>
-        </div>
+        <StatCard
+          icon={Package}
+          label="Available Jobs"
+          value={open_jobs_count}
+          color="blue"
+          badge={open_jobs_count}
+        />
+        <StatCard
+          icon={Clock}
+          label="Accepted Jobs"
+          value={accepted_jobs_count}
+          color="yellow"
+          badge={accepted_jobs_count}
+        />
+        <StatCard
+          icon={Truck}
+          label="Active Deliveries"
+          value={active_deliveries_count}
+          color="indigo"
+          badge={active_deliveries_count}
+        />
+        <StatCard
+          icon={CheckCircle}
+          label="Completed Deliveries"
+          value={completed_deliveries_count}
+          color="green"
+          badge={completed_deliveries_count}
+        />
       </div>
 
-      {/* Jobs & Deliveries */}
+      {/* ─── CHARTS ROW ──────────────────────────────────────────── */}
       <div className="grid lg:grid-cols-2 gap-6">
+        {/* Pie Chart – Job Status Distribution */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-semibold text-gray-900">Open Jobs</h3>
-            <Link to="/dashboard/jobs" className="text-sm text-[#11402D] hover:underline">View All</Link>
+            <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-[#11402D]" />
+              Job Status Distribution
+            </h3>
+            <span className="text-xs text-gray-400">current status</span>
           </div>
-          {open_jobs.length === 0 ? (
-            <p className="text-gray-500 text-sm py-4 text-center">No open jobs available.</p>
+          {pieData.length === 0 ? (
+            <p className="text-gray-500 text-sm py-8 text-center">No job data to display</p>
           ) : (
-            <div className="space-y-3">
-              {open_jobs.slice(0, 4).map((job) => (
-                <div key={job.id} className="p-3 rounded-xl bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-900">{job.waste_type}</p>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> {job.pickup_location} → {job.delivery_location}
-                      </p>
-                    </div>
-                    <span className="text-sm font-semibold text-[#11402D]">{job.quantity}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={2}
+                  dataKey="value"
+                  label={({ name }) => name}
+                >
+                  {pieData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => `${value} jobs`} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           )}
         </div>
 
+        {/* Area/Bar Chart – Weekly Activity */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-semibold text-gray-900">Accepted Jobs</h3>
-            <Link to="/dashboard/accepted-jobs" className="text-sm text-[#11402D] hover:underline">View All</Link>
+            <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#11402D]" />
+              Weekly Activity
+            </h3>
+            <span className="text-xs text-gray-400">jobs accepted</span>
           </div>
-          {accepted_jobs.length === 0 ? (
-            <p className="text-gray-500 text-sm py-4 text-center">No accepted jobs yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {accepted_jobs.slice(0, 4).map((job) => (
-                <div key={job.id} className="p-3 rounded-xl bg-gray-50">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-900">{job.waste_type}</p>
-                      <p className="text-sm text-gray-500 flex items-center gap-1">
-                        <MapPin className="w-3 h-3" /> {job.pickup_location} → {job.delivery_location}
-                      </p>
-                    </div>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      job.status === 'accepted' ? 'bg-yellow-100 text-yellow-700' :
-                      job.status === 'picked_up' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-700'
-                    }`}>
-                      {job.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={weeklyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 10 }} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="jobs" fill="#11402D" radius={[4, 4, 0, 0]} name="Jobs Accepted" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* ─── TABLE: Recent Accepted Jobs ────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-[#11402D]" />
+            Recently Accepted Jobs
+          </h3>
+          <Link to="/dashboard/accepted-jobs" className="text-sm text-[#11402D] hover:underline">
+            View All
+          </Link>
+        </div>
+        {recentJobs.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 text-sm">No accepted jobs yet.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600 font-medium">
+                <tr>
+                  <th className="px-6 py-3 text-left">Waste Type</th>
+                  <th className="px-6 py-3 text-left">Quantity</th>
+                  <th className="px-6 py-3 text-left">Route</th>
+                  <th className="px-6 py-3 text-left">Status</th>
+                  <th className="px-6 py-3 text-left">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {recentJobs.map((job) => (
+                  <tr key={job.id} className="hover:bg-gray-50/50 transition">
+                    <td className="px-6 py-3 font-medium text-gray-900">{job.waste_type}</td>
+                    <td className="px-6 py-3 text-gray-700">{job.quantity}</td>
+                    <td className="px-6 py-3 text-gray-700 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-gray-400" />
+                      {job.pickup_location} → {job.delivery_location}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
+                        job.status === 'accepted' ? 'bg-yellow-100 text-yellow-700' :
+                        job.status === 'picked_up' ? 'bg-blue-100 text-blue-700' :
+                        job.status === 'in_transit' ? 'bg-indigo-100 text-indigo-700' :
+                        job.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {job.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3 text-gray-500">
+                      {new Date(job.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ─── QUICK ACTIONS ────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <h3 className="font-display font-semibold text-gray-900 mb-4">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Link to="/dashboard/jobs" className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 transition">
-            <Plus className="w-5 h-5 text-emerald-600" />
-            <span className="font-medium text-gray-900 text-sm">Accept Job</span>
-          </Link>
-          <Link to="/dashboard/deliveries" className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 hover:bg-blue-100 transition">
-            <Eye className="w-5 h-5 text-blue-600" />
-            <span className="font-medium text-gray-900 text-sm">Track Delivery</span>
-          </Link>
-          <Link to="/dashboard/earnings" className="flex items-center gap-3 p-4 rounded-xl bg-yellow-50 hover:bg-yellow-100 transition">
-            <DollarSign className="w-5 h-5 text-yellow-600" />
-            <span className="font-medium text-gray-900 text-sm">View Earnings</span>
-          </Link>
-          <Link to="/dashboard/invoices" className="flex items-center gap-3 p-4 rounded-xl bg-green-50 hover:bg-green-100 transition">
-            <FileText className="w-5 h-5 text-green-600" />
-            <span className="font-medium text-gray-900 text-sm">View Invoices</span>
-          </Link>
+          <ActionButton
+            to="/dashboard/jobs"
+            icon={Plus}
+            label="Accept Job"
+            color="emerald"
+          />
+          <ActionButton
+            to="/dashboard/deliveries"
+            icon={Eye}
+            label="Track Delivery"
+            color="blue"
+          />
+          <ActionButton
+            to="/dashboard/earnings"
+            icon={DollarSign}
+            label="View Earnings"
+            color="yellow"
+          />
+          <ActionButton
+            to="/dashboard/invoices"
+            icon={FileText}
+            label="View Invoices"
+            color="green"
+          />
         </div>
       </div>
 
-      {/* Notifications (if you want to show them on the dashboard) */}
+      {/* ─── NOTIFICATIONS ────────────────────────────────────────── */}
       {notifications && notifications.length > 0 && (
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h3 className="font-display font-semibold text-gray-900 mb-4">Recent Notifications</h3>
@@ -242,6 +343,55 @@ const TransportDashboardContent = () => {
         </div>
       )}
     </div>
+  );
+};
+
+// ─── Sub‑components ─────────────────────────────────────────────
+
+const StatCard = ({ icon: Icon, label, value, color, badge }) => {
+  const colorMap = {
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100' },
+    yellow: { bg: 'bg-yellow-50', text: 'text-yellow-600', border: 'border-yellow-100' },
+    indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100' },
+    green: { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-100' },
+  };
+  const style = colorMap[color] || colorMap.blue;
+
+  return (
+    <div className={`bg-white rounded-2xl p-5 shadow-sm border ${style.border}`}>
+      <div className="flex items-center justify-between">
+        <div className={`w-10 h-10 rounded-xl ${style.bg} flex items-center justify-center`}>
+          <Icon className={`w-5 h-5 ${style.text}`} />
+        </div>
+        {badge !== undefined && (
+          <span className={`text-xs ${style.text} ${style.bg} px-2 py-1 rounded-full`}>
+            {badge}
+          </span>
+        )}
+      </div>
+      <p className="mt-3 font-display text-2xl font-bold text-gray-900">{value}</p>
+      <p className="text-sm text-gray-500">{label}</p>
+    </div>
+  );
+};
+
+const ActionButton = ({ to, icon: Icon, label, color }) => {
+  const colorMap = {
+    emerald: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600',
+    blue: 'bg-blue-50 hover:bg-blue-100 text-blue-600',
+    yellow: 'bg-yellow-50 hover:bg-yellow-100 text-yellow-600',
+    green: 'bg-green-50 hover:bg-green-100 text-green-600',
+  };
+  const style = colorMap[color] || colorMap.blue;
+
+  return (
+    <Link
+      to={to}
+      className={`flex items-center gap-3 p-4 rounded-xl ${style} transition`}
+    >
+      <Icon className="w-5 h-5" />
+      <span className="font-medium text-gray-900 text-sm">{label}</span>
+    </Link>
   );
 };
 
