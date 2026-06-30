@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from database import db
-from models import User, WasteListing, WasteRequest, TransportJob, Payment, Notification
+from models import User, WasteListing, WasteRequest, TransportJob, Payment, Notification, Receipt
 from services.mpesa import MpesaService
 from datetime import datetime
 import time
@@ -68,6 +68,31 @@ def create_notification(user_id, title, message, notification_type="payment", re
         current_app.logger.warning(f"Notification skipped: {e}")
 
 
+def generate_receipt_for_payment(payment):
+    """Create a receipt for a payment if one doesn't already exist."""
+    existing = Receipt.query.filter_by(payment_id=payment.id).first()
+    if existing:
+        return existing
+
+    # Generate a unique receipt number
+    receipt_number = f"REV-{payment.id:06d}"
+    # Ensure uniqueness (just in case)
+    counter = 1
+    while Receipt.query.filter_by(receipt_number=receipt_number).first():
+        receipt_number = f"REV-{payment.id:06d}-{counter}"
+        counter += 1
+
+    receipt = Receipt(
+        payment_id=payment.id,
+        receipt_number=receipt_number,
+        qr_code_path=None,
+        generated_at=datetime.utcnow()
+    )
+    db.session.add(receipt)
+    db.session.commit()
+    return receipt
+
+
 def payment_to_dict(payment):
     if hasattr(payment, "to_dict"):
         return payment.to_dict()
@@ -131,7 +156,6 @@ def validate_payment_payload(data):
     if not phone.startswith("254") or len(phone) != 12:
         return "Invalid phone number. Use format 2547XXXXXXXX"
 
-    # No need to validate amounts because they are fixed
     return None
 
 
@@ -350,6 +374,9 @@ def initiate_payment():
             payment.completed_at = now()
             payment.updated_at = now()
 
+            # ─── Generate receipt for mock payment ────────────────
+            generate_receipt_for_payment(payment)
+
             _create_transport_job(payment)
 
             db.session.commit()
@@ -451,6 +478,9 @@ def mpesa_callback():
 
             if parsed.get("phone_number"):
                 payment.phone_number = str(parsed.get("phone_number"))
+
+            # ─── Generate receipt for successful payment ──────────
+            generate_receipt_for_payment(payment)
 
             _create_transport_job(payment)
 
@@ -608,3 +638,32 @@ def delete_payment(payment_id):
         db.session.rollback()
         current_app.logger.error(f"delete_payment error: {e}", exc_info=True)
         return jsonify({"message": str(e)}), 500
+
+
+# ─── NEW: RECEIPT ENDPOINT ──────────────────────────────────
+@payments_bp.route("/receipt/<int:payment_id>", methods=["GET"])
+@jwt_required()
+def get_receipt(payment_id):
+    user_id = current_user_id()
+
+    payment = Payment.query.get(payment_id)
+    if not payment:
+        return jsonify({"message": "Payment not found"}), 404
+
+    # Check user is a participant
+    allowed_users = [
+        payment.payer_id,
+        payment.producer_id,
+        payment.supplier_id,
+        payment.transporter_id,
+    ]
+    if user_id not in allowed_users:
+        return jsonify({"message": "Unauthorized"}), 403
+
+    # Generate receipt if missing
+    receipt = generate_receipt_for_payment(payment)
+
+    return jsonify({
+        "payment": payment_to_dict(payment),
+        "receipt": receipt.to_dict(),
+    }), 200

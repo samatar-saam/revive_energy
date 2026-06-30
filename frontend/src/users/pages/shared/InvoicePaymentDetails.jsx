@@ -1,230 +1,306 @@
-import { useNavigate, useParams } from "react-router-dom";
+// src/users/pages/shared/InvoicePaymentDetails.jsx
+import { useState, useEffect } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   ArrowLeft,
-  CheckCircle,
-  CreditCard,
   Download,
-  FileText,
-  MapPin,
-  Phone,
   Printer,
+  AlertCircle,
   Receipt,
-  ShieldCheck,
+  CreditCard,
   Truck,
   User,
+  CheckCircle,
 } from "lucide-react";
+import { toast } from "react-toastify";
+import { QRCodeSVG } from "qrcode.react";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+// ─── Helpers ──────────────────────────────────────────────────
+const formatCurrency = (amount) =>
+  `KES ${Number(amount || 0).toLocaleString("en-KE")}`;
+
+const formatDate = (date) => {
+  if (!date) return "N/A";
+  return new Date(date).toLocaleString("en-KE", {
+    dateStyle: "long",
+    timeStyle: "short",
+  });
+};
+
+const getStatusBadge = (status) => {
+  const s = String(status || "").toLowerCase();
+  if (s === "paid" || s === "completed" || s === "released")
+    return "bg-green-100 text-green-700";
+  if (s === "pending" || s === "waiting") return "bg-yellow-100 text-yellow-700";
+  if (s === "failed") return "bg-red-100 text-red-700";
+  if (s === "held") return "bg-purple-100 text-purple-700";
+  return "bg-gray-100 text-gray-700";
+};
+
+const getEscrowLabel = (status) => {
+  const s = String(status || "").toLowerCase();
+  if (s === "held") return "Funds Held Securely";
+  if (s === "released") return "Funds Released";
+  if (s === "waiting") return "Awaiting Payment";
+  return "Unknown";
+};
+
+const pretty = (value) => {
+  if (!value) return "pending";
+  return String(value).replaceAll("_", " ");
+};
 
 export default function InvoicePaymentDetails() {
   const navigate = useNavigate();
   const { paymentId } = useParams();
+  const location = useLocation();
 
-  const payment = {
-    invoiceNumber: `REV-INV-${paymentId || "000154"}`,
-    receiptNumber: "REV-RCT-000154",
-    status: "Paid",
-    escrowStatus: "Funds Held Securely",
-    mpesaReceipt: "SGK72JH3DF",
-    phone: "254712345678",
-    wasteValue: 50000,
-    transportFee: 5000,
-    platformFee: 2000,
-    total: 57000,
-    supplier: "Green Farms Ltd",
-    producer: "Eco Biogas Ltd",
-    transporter: "Fast Waste Logistics",
-    wasteType: "Food Waste",
-    quantity: "5,000 kg",
-    pickup: "Nairobi Market",
-    destination: "Eco Biogas Plant",
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [data, setData] = useState(null);
+
+  const isInvoice = new URLSearchParams(location.search).get("invoice") === "true";
+
+  useEffect(() => {
+    const fetchReceipt = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) throw new Error("Not authenticated");
+
+        const res = await fetch(`${API_URL}/payments/receipt/${paymentId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const result = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(result.message || "Failed to fetch receipt");
+        }
+
+        setData(result);
+      } catch (err) {
+        setError(err.message);
+        toast.error(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (paymentId) {
+      fetchReceipt();
+    } else {
+      setError("No payment ID provided");
+      setLoading(false);
+    }
+  }, [paymentId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("print") === "true" && !loading && !error) {
+      setTimeout(() => window.print(), 600);
+    }
+  }, [location.search, loading, error]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-[#11402D] border-t-[#9CF06B]" />
+          <p className="mt-4 text-gray-500">Loading receipt...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="mx-auto max-w-2xl rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
+        <AlertCircle className="mx-auto mb-4 h-16 w-16 text-red-500" />
+        <h3 className="text-xl font-bold text-red-700">Unable to Load</h3>
+        <p className="mt-2 text-red-600">{error || "Receipt not found"}</p>
+        <button
+          onClick={() => navigate("/dashboard/payments")}
+          className="mt-6 rounded-xl bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700"
+        >
+          Go Back
+        </button>
+      </div>
+    );
+  }
+
+  const { payment, receipt } = data;
+
+  const display = {
+    receiptNumber: receipt?.receipt_number || `REV-${paymentId}`,
+    invoiceNumber: receipt?.receipt_number || `REV-INV-${paymentId}`,
+    status: payment?.payment_status || payment?.status || "Pending",
+    escrowStatus: getEscrowLabel(payment?.escrow_status),
+    mpesaReceipt: payment?.mpesa_receipt || payment?.transaction_id || "N/A",
+    phone: payment?.phone_number || "N/A",
+    wasteValue: payment?.waste_amount || 0,
+    transportFee: payment?.transport_fee || 0,
+    platformFee: payment?.platform_fee || 0,
+    total: payment?.amount || payment?.total_amount || 0,
+    supplier: "ID " + (payment?.supplier_id || "N/A"),
+    producer: "ID " + (payment?.producer_id || "N/A"),
+    transporter: payment?.transporter_id ? "ID " + payment.transporter_id : "Not assigned",
+    created_at: payment?.created_at || receipt?.generated_at,
+    paid_at: payment?.paid_at,
   };
 
+  const title = isInvoice ? "INVOICE" : "CASH RECEIPT";
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#11402D]"
-      >
-        <ArrowLeft size={18} /> Back to Payments
-      </button>
+    <div className="max-w-3xl mx-auto px-4 py-6 print:px-0 print:py-0">
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white; }
+          .receipt-container { box-shadow: none !important; border: none !important; }
+          .print-break { page-break-before: avoid; }
+        }
+      `}</style>
 
-      <div className="rounded-3xl bg-[#11402D] p-8 text-white shadow-xl">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-green-200 text-sm font-bold uppercase tracking-widest">
-              Invoice Payment Details
-            </p>
-            <h1 className="mt-2 text-3xl font-black">{payment.invoiceNumber}</h1>
-            <p className="mt-2 text-green-100">
-              Receipt No: {payment.receiptNumber}
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-white/10 px-5 py-3 text-center">
-            <CheckCircle className="mx-auto mb-1 text-[#9CF06B]" />
-            <p className="font-black">{payment.status}</p>
-            <p className="text-xs text-green-100">Payment Successful</p>
-          </div>
-        </div>
+      {/* ─── Back & Download Buttons ─── */}
+      <div className="no-print flex items-center justify-between mb-6">
+        <button
+          onClick={() => navigate("/dashboard/payments")}
+          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium hover:bg-gray-50"
+        >
+          <ArrowLeft size={18} /> Back to Payments
+        </button>
+        <button
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-4 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C]"
+        >
+          <Download size={18} /> Download PDF
+        </button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <StatusCard
-          icon={CreditCard}
-          title="Payment Method"
-          value="M-Pesa"
-          desc={payment.mpesaReceipt}
-        />
-        <StatusCard
-          icon={ShieldCheck}
-          title="Escrow Status"
-          value={payment.escrowStatus}
-          desc="Protected until delivery confirmation"
-        />
-        <StatusCard
-          icon={Truck}
-          title="Delivery Status"
-          value="Delivered"
-          desc="Waste received by producer"
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-3xl bg-white p-6 shadow border border-gray-100">
-          <h2 className="mb-5 flex items-center gap-2 text-xl font-black">
-            <Receipt className="text-[#11402D]" /> Payment Breakdown
-          </h2>
-
-          <PaymentRow label="Waste Value" amount={payment.wasteValue} />
-          <PaymentRow label="Transport Fee" amount={payment.transportFee} />
-          <PaymentRow label="Platform Fee" amount={payment.platformFee} />
-
-          <div className="mt-4 border-t pt-4 flex justify-between text-xl font-black">
-            <span>Total Paid</span>
-            <span>KES {payment.total.toLocaleString()}</span>
-          </div>
-        </section>
-
-        <section className="rounded-3xl bg-white p-6 shadow border border-gray-100">
-          <h2 className="mb-5 flex items-center gap-2 text-xl font-black">
-            <Phone className="text-[#11402D]" /> M-Pesa Information
-          </h2>
-
-          <Info label="Phone Number" value={payment.phone} />
-          <Info label="M-Pesa Receipt" value={payment.mpesaReceipt} />
-          <Info label="Merchant Request ID" value="29115-39393" />
-          <Info label="Checkout Request ID" value="ws_CO_25062026_1017" />
-        </section>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <PartyCard icon={User} title="Supplier" name={payment.supplier} detail="Waste owner" />
-        <PartyCard icon={User} title="Producer" name={payment.producer} detail="Waste buyer" />
-        <PartyCard icon={Truck} title="Transporter" name={payment.transporter} detail="Delivery partner" />
-      </div>
-
-      <section className="rounded-3xl bg-white p-6 shadow border border-gray-100">
-        <h2 className="mb-5 flex items-center gap-2 text-xl font-black">
-          <MapPin className="text-[#11402D]" /> Waste & Route Information
-        </h2>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <Info label="Waste Type" value={payment.wasteType} />
-          <Info label="Quantity" value={payment.quantity} />
-          <Info label="Pickup Location" value={payment.pickup} />
-          <Info label="Destination" value={payment.destination} />
-        </div>
-      </section>
-
-      <section className="rounded-3xl bg-white p-6 shadow border border-gray-100">
-        <h2 className="mb-5 flex items-center gap-2 text-xl font-black">
-          <ShieldCheck className="text-[#11402D]" /> Escrow Timeline
-        </h2>
-
-        <div className="grid gap-3 md:grid-cols-3">
-          {[
-            "Producer Paid",
-            "Funds Held in Escrow",
-            "Transport Assigned",
-            "Waste Collected",
-            "Waste Delivered",
-            "Supplier & Transporter Paid",
-          ].map((item) => (
-            <div
-              key={item}
-              className="flex items-center gap-3 rounded-2xl bg-green-50 p-4 text-sm font-bold text-[#11402D]"
-            >
-              <CheckCircle size={18} />
-              {item}
+      {/* ─── RECEIPT ─── */}
+      <div className="receipt-container bg-white border border-gray-200 rounded-2xl shadow-sm print:rounded-none print:border-0 overflow-hidden">
+        <div className="p-6 sm:p-8 space-y-6 print:space-y-4">
+          {/* Header */}
+          <div className="text-center border-b border-gray-200 pb-4 print:border-gray-300">
+            <div className="flex items-center justify-center gap-2 text-2xl font-bold text-[#11402D]">
+              <Receipt className="h-6 w-6" />
+              <span>ReVive Energy</span>
             </div>
-          ))}
-        </div>
-      </section>
+            <p className="text-xs text-gray-500 mt-0.5">Waste-to-Energy Platform</p>
+            <p className="text-xs text-gray-400 mt-1">{"\u200B"}</p>
+          </div>
 
-      <section className="rounded-3xl bg-white p-6 shadow border border-gray-100">
-        <h2 className="mb-5 flex items-center gap-2 text-xl font-black">
-          <FileText className="text-[#11402D]" /> Official Receipt
-        </h2>
+          {/* Title & Meta */}
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+              <p className="text-sm text-gray-500">Receipt # {display.receiptNumber}</p>
+            </div>
+            <div className="text-right text-sm">
+              <p className="text-gray-500">Date: {formatDate(display.created_at)}</p>
+              <span className={`inline-block mt-1 rounded-full px-3 py-0.5 text-xs font-medium ${getStatusBadge(display.status)}`}>
+                {pretty(display.status)}
+              </span>
+            </div>
+          </div>
 
-        <div className="rounded-2xl border-2 border-dashed border-gray-200 p-6 text-center">
-          <p className="text-sm text-gray-500">Digital Receipt</p>
-          <h3 className="mt-2 text-2xl font-black">{payment.receiptNumber}</h3>
-          <p className="mt-2 text-gray-500">
-            This receipt confirms that payment was made and recorded by ReVive Energy.
-          </p>
+          {/* ─── Itemized Breakdown ─── */}
+          <div className="border-t border-gray-200 pt-4 print:border-gray-300">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-gray-600 font-semibold">
+                  <th className="py-1.5 text-left">Description</th>
+                  <th className="py-1.5 text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                <tr>
+                  <td className="py-2 text-gray-700">Waste Value</td>
+                  <td className="py-2 text-right font-mono font-medium">{formatCurrency(display.wasteValue)}</td>
+                </tr>
+                <tr>
+                  <td className="py-2 text-gray-700">Transport Fee</td>
+                  <td className="py-2 text-right font-mono font-medium">{formatCurrency(display.transportFee)}</td>
+                </tr>
+                <tr>
+                  <td className="py-2 text-gray-700">Platform Fee</td>
+                  <td className="py-2 text-right font-mono font-medium">{formatCurrency(display.platformFee)}</td>
+                </tr>
+                <tr className="border-t-2 border-gray-300 font-bold">
+                  <td className="py-2.5 text-gray-900">TOTAL</td>
+                  <td className="py-2.5 text-right text-[#11402D]">{formatCurrency(display.total)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#11402D] px-5 py-3 font-bold text-white">
+          {/* ─── Payment Details ─── */}
+          <div className="border-t border-gray-200 pt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm print:border-gray-300">
+            <div>
+              <p className="text-xs text-gray-400 uppercase font-semibold">Payment Method</p>
+              <p className="font-medium">M-Pesa</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase font-semibold">M-Pesa Receipt</p>
+              <p className="font-mono text-sm">{display.mpesaReceipt}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase font-semibold">Phone</p>
+              <p className="font-mono text-sm">{display.phone}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 uppercase font-semibold">Escrow</p>
+              <p className="text-sm">{display.escrowStatus}</p>
+            </div>
+          </div>
+
+          {/* ─── QR Code ─── */}
+          <div className="flex justify-center border-t border-gray-200 pt-4">
+            {receipt?.qr_code_path ? (
+              <img
+                src={receipt.qr_code_path}
+                alt="QR Code"
+                className="h-28 w-28 object-contain"
+              />
+            ) : (
+              <QRCodeSVG
+                value={display.receiptNumber || `REV-${paymentId}`}
+                size={112}
+                level="H"
+                includeMargin
+              />
+            )}
+          </div>
+
+          {/* ─── Footer ─── */}
+          <div className="text-center border-t border-gray-200 pt-4 text-xs text-gray-400 print:border-gray-300">
+            <p className="font-medium text-gray-600">Thank you!</p>
+            <p className="mt-0.5">This receipt is electronically generated.</p>
+            <p className="mt-0.5">© 2026 ReVive Energy</p>
+          </div>
+
+          {/* ─── Print Buttons ─── */}
+          <div className="no-print flex flex-col sm:flex-row gap-3 justify-center pt-4 border-t border-gray-200">
+            <button
+              onClick={() => window.print()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#11402D] px-6 py-2.5 font-bold text-white hover:bg-[#0E2A1C]"
+            >
               <Download size={18} /> Download Receipt
             </button>
             <button
               onClick={() => window.print()}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-5 py-3 font-bold text-gray-700"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 px-6 py-2.5 font-bold text-gray-700 hover:bg-gray-50"
             >
               <Printer size={18} /> Print Invoice
             </button>
           </div>
         </div>
-      </section>
-    </div>
-  );
-}
-
-function StatusCard({ icon: Icon, title, value, desc }) {
-  return (
-    <div className="rounded-3xl bg-white p-6 shadow border border-gray-100">
-      <Icon className="mb-4 text-[#11402D]" size={28} />
-      <p className="text-sm text-gray-500">{title}</p>
-      <h3 className="mt-1 text-lg font-black">{value}</h3>
-      <p className="mt-1 text-xs text-gray-400">{desc}</p>
-    </div>
-  );
-}
-
-function PaymentRow({ label, amount }) {
-  return (
-    <div className="mb-3 flex justify-between text-gray-700">
-      <span>{label}</span>
-      <span className="font-bold">KES {amount.toLocaleString()}</span>
-    </div>
-  );
-}
-
-function Info({ label, value }) {
-  return (
-    <div className="mb-3 rounded-2xl bg-gray-50 p-4">
-      <p className="text-xs font-bold uppercase text-gray-400">{label}</p>
-      <p className="mt-1 font-bold text-gray-800">{value}</p>
-    </div>
-  );
-}
-
-function PartyCard({ icon: Icon, title, name, detail }) {
-  return (
-    <div className="rounded-3xl bg-white p-6 shadow border border-gray-100">
-      <Icon className="mb-4 text-[#11402D]" size={28} />
-      <p className="text-sm text-gray-500">{title}</p>
-      <h3 className="mt-1 text-lg font-black">{name}</h3>
-      <p className="mt-1 text-xs text-gray-400">{detail}</p>
+      </div>
     </div>
   );
 }
