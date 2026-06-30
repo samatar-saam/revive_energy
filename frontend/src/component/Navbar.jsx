@@ -166,7 +166,7 @@ const ReViveNavbar = () => {
           <div className="flex h-16 lg:h-20 items-center justify-between gap-3">
             {/* Logo */}
             <Link to="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
-              <div className="flex h-11 w-11 sm:h-12 sm:w-12 lg:h-16 lg:w-16 shrink-0 items-center justify-center">
+              <div className="flex h-12 w-11 sm:h-12 sm:w-12 lg:h-16 lg:w-16 shrink-0 items-center justify-center">
                 <img
                   src={logo}
                   alt="ReVive Energy Logo"
