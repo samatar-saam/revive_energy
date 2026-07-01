@@ -31,7 +31,7 @@ import WasteSources from "./admin/pages/WasteSources";
 import WasteListings from "./admin/pages/WasteListings";
 import ProcessingPlants from "./admin/pages/ProcessingPlants";
 import Transporters from "./admin/pages/Transporters";
-import WasteCollections from "./admin/pages/WasteCollections";
+import Collections from "./admin/pages/Collections";
 import Users from "./admin/pages/Users";
 import Companies from "./admin/pages/Companies";
 import Payments from "./admin/pages/Payments";
@@ -164,7 +164,7 @@ function App() {
           <Route path="waste-listings" element={<WasteListings />} />
           <Route path="processing-plants" element={<ProcessingPlants />} />
           <Route path="transporters" element={<Transporters />} />
-          <Route path="collections" element={<WasteCollections />} />
+         <Route path="collections" element={<Collections />} />
           <Route path="users" element={<Users />} />
           <Route path="companies" element={<Companies />} />
           <Route path="payments" element={<Payments />} />

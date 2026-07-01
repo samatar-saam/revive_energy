@@ -409,13 +409,35 @@ def google_callback():
 
 
 def seed_admin():
-    admin = User.query.filter_by(email="admin@revive.energy").first()
+    """
+    Create the default admin user if it doesn't exist.
+    If the default phone is already taken, it will find the next available one.
+    """
+    admin_email = "samatar@gmail.com"
+    admin = User.query.filter_by(email=admin_email).first()
 
     if not admin:
+        # Try to use the default phone, but if it's taken, find an available one
+        base_phone = "+254700000000"
+        phone_to_use = base_phone
+        counter = 0
+        max_attempts = 100
+
+        # Find an unused phone number
+        while User.query.filter_by(phone=phone_to_use).first() and counter < max_attempts:
+            counter += 1
+            # Generate a new phone by incrementing the last digit(s)
+            # e.g., +254700000001, +254700000002, ...
+            phone_to_use = f"+25470000000{counter}"
+
+        if counter >= max_attempts:
+            print("❌ Could not find an available phone number for admin after 100 attempts.")
+            return
+
         admin = User(
             full_name="Admin",
-            email="samatar@revive.energy",
-            phone="+254700000000",
+            email=admin_email,
+            phone=phone_to_use,
             role="admin",
             business_name="ReVive Energy",
             business_type="Platform",
@@ -428,3 +450,6 @@ def seed_admin():
         admin.set_password("2839")
         db.session.add(admin)
         db.session.commit()
+        print(f"✅ Admin user created: {admin_email} with phone {phone_to_use}")
+    else:
+        print(f"ℹ️ Admin user already exists: {admin_email}")

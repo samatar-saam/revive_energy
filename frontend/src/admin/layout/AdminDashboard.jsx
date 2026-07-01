@@ -47,7 +47,10 @@ export default function AdminDashboard() {
   const [adminName, setAdminName] = useState("Admin");
 
   useEffect(() => {
+    // Get admin name from localStorage (fallback to user data)
     const adminData = localStorage.getItem("admin");
+    const userData = localStorage.getItem("user");
+
     if (adminData) {
       try {
         const admin = JSON.parse(adminData);
@@ -59,6 +62,13 @@ export default function AdminDashboard() {
         );
       } catch (error) {
         console.error("Error parsing admin data:", error);
+      }
+    } else if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        setAdminName(user.full_name || user.name || "Admin");
+      } catch (error) {
+        console.error("Error parsing user data:", error);
       }
     }
   }, []);
@@ -82,11 +92,23 @@ export default function AdminDashboard() {
     { name: "Settings", path: "/admin/settings", icon: Settings },
   ];
 
+  // ✅ FIXED: Clear ALL auth-related keys and navigate to admin login
   const handleLogout = () => {
+    // Remove all auth-related items
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     localStorage.removeItem("admin");
     localStorage.removeItem("isAdminAuthenticated");
     localStorage.removeItem("adminLoginTime");
-    navigate("/", { replace: true });
+    // Also remove any other potential keys
+    localStorage.removeItem("adminName");
+    localStorage.removeItem("userRole");
+    // If you use sessionStorage, clear those too
+    sessionStorage.removeItem("adminSession");
+    sessionStorage.removeItem("authToken");
+
+    // Redirect to admin login page (or home if you prefer)
+    navigate("/adminlogin", { replace: true });
   };
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-72";

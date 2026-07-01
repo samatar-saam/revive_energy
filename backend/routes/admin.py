@@ -3,7 +3,8 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash
 from sqlalchemy import or_, func
-from models import User, WasteListing, Payment
+from datetime import datetime                     # <-- ADDED
+from models import User, WasteListing, Payment, ProcessingPlant, Collection   # <-- ADDED Collection
 from database import db
 from utils.decorators import role_required
 
@@ -183,53 +184,7 @@ def delete_user(user_id):
         return jsonify({'message': str(e)}), 500
 
 
-# ─── OPTIONAL: Status & Verification PATCH endpoints ────────────
-# These are nice to have but not required by the frontend.
-# Uncomment if you need them.
-
-# @admin_bp.route('/users/<int:user_id>/status', methods=['PATCH'])
-# @jwt_required()
-# @role_required('admin')
-# def update_user_status(user_id):
-#     """Update only the account_status."""
-#     try:
-#         user = User.query.get(user_id)
-#         if not user:
-#             return jsonify({'message': 'User not found'}), 404
-#         data = request.get_json()
-#         if not data or 'account_status' not in data:
-#             return jsonify({'message': 'account_status is required'}), 400
-#         user.account_status = data['account_status']
-#         db.session.commit()
-#         return jsonify({'message': 'Status updated'}), 200
-#     except Exception as e:
-#         db.session.rollback()
-#         return jsonify({'message': str(e)}), 500
-
-# @admin_bp.route('/users/<int:user_id>/verification', methods=['PATCH'])
-# @jwt_required()
-# @role_required('admin')
-# def update_user_verification(user_id):
-#     """Update verification_status and optionally auto-set account_status."""
-#     try:
-#         user = User.query.get(user_id)
-#         if not user:
-#             return jsonify({'message': 'User not found'}), 404
-#         data = request.get_json()
-#         if not data or 'verification_status' not in data:
-#             return jsonify({'message': 'verification_status is required'}), 400
-#         user.verification_status = data['verification_status']
-#         if data['verification_status'] == 'approved':
-#             user.account_status = 'verified'
-#         db.session.commit()
-#         return jsonify({'message': 'Verification updated'}), 200
-#     except Exception as e:
-#         db.session.rollback()
-#         return jsonify({'message': str(e)}), 500
-
-
 # ─── WASTE SOURCES / LISTINGS CRUD ──────────────────────────────
-# (unchanged from your original, kept as is)
 
 @admin_bp.route('/waste-sources', methods=['GET'])
 @jwt_required()
@@ -425,7 +380,9 @@ def get_admin_stats():
 
     except Exception as e:
         return jsonify({'message': str(e)}), 500
-        # --- Processing Plants CRUD ---
+
+
+# ─── PROCESSING PLANTS CRUD ──────────────────────────────────────
 
 @admin_bp.route('/processing-plants', methods=['GET'])
 @jwt_required()
@@ -561,4 +518,174 @@ def delete_processing_plant(plant_id):
 
     except Exception as e:
         db.session.rollback()
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── COLLECTIONS CRUD ────────────────────────────────────────────
+
+@admin_bp.route('/collections', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_collections():
+    """List all collections with supplier details."""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        search = request.args.get('search')
+        status = request.args.get('status')
+
+        query = Collection.query
+
+        if search:
+            term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    Collection.waste_type.ilike(term),
+                    Collection.location.ilike(term),
+                    Collection.address.ilike(term),
+                )
+            )
+
+        if status:
+            query = query.filter(Collection.status == status)
+
+        query = query.order_by(Collection.created_at.desc())
+        collections, total = paginate_query(query, page, per_page)
+
+        # Build response with supplier names
+        result = []
+        for c in collections:
+            supplier = User.query.get(c.supplier_id)
+            result.append({
+                'id': c.id,
+                'waste_type': c.waste_type,
+                'quantity': c.quantity,
+                'unit': c.unit,
+                'location': c.location,
+                'address': c.address,
+                'pickup_datetime': c.pickup_datetime.isoformat() if c.pickup_datetime else None,
+                'status': c.status,
+                'supplier_id': c.supplier_id,
+                'supplier_name': supplier.full_name if supplier else 'Unknown',
+                'contact_name': c.contact_name,
+                'contact_phone': c.contact_phone,
+                'special_instructions': c.special_instructions,
+                'created_at': c.created_at.isoformat() if c.created_at else None,
+                'updated_at': c.updated_at.isoformat() if hasattr(c, 'updated_at') and c.updated_at else None,
+            })
+
+        return jsonify({
+            'data': result,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            }
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error in get_collections: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/collections', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def create_collection():
+    """Create a new collection."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+
+        required = ['waste_type', 'quantity', 'location', 'pickup_datetime', 'supplier_id']
+        for field in required:
+            if not data.get(field):
+                return jsonify({'message': f'{field} is required'}), 400
+
+        supplier = User.query.get(data['supplier_id'])
+        if not supplier:
+            return jsonify({'message': 'Supplier not found'}), 404
+
+        new_collection = Collection(
+            supplier_id=data['supplier_id'],
+            waste_type=data['waste_type'],
+            quantity=float(data['quantity']),
+            unit=data.get('unit', 'kg'),
+            location=data['location'],
+            address=data.get('address', ''),
+            pickup_datetime=datetime.fromisoformat(data['pickup_datetime']),
+            status=data.get('status', 'pending'),
+            contact_name=data.get('contact_name', ''),
+            contact_phone=data.get('contact_phone', ''),
+            special_instructions=data.get('special_instructions', ''),
+        )
+
+        db.session.add(new_collection)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Collection created successfully',
+            'id': new_collection.id
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error in create_collection: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/collections/<int:collection_id>', methods=['PUT'])
+@jwt_required()
+@role_required('admin')
+def update_collection(collection_id):
+    """Update an existing collection."""
+    try:
+        collection = Collection.query.get(collection_id)
+        if not collection:
+            return jsonify({'message': 'Collection not found'}), 404
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'message': 'No data provided'}), 400
+
+        allowed = ['waste_type', 'quantity', 'unit', 'location', 'address',
+                   'pickup_datetime', 'status', 'contact_name', 'contact_phone',
+                   'special_instructions']
+        for field in allowed:
+            if field in data:
+                if field == 'quantity':
+                    setattr(collection, field, float(data[field]))
+                elif field == 'pickup_datetime':
+                    setattr(collection, field, datetime.fromisoformat(data[field]))
+                else:
+                    setattr(collection, field, data[field])
+
+        db.session.commit()
+        return jsonify({'message': 'Collection updated successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error in update_collection: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/collections/<int:collection_id>', methods=['DELETE'])
+@jwt_required()
+@role_required('admin')
+def delete_collection(collection_id):
+    """Delete a collection."""
+    try:
+        collection = Collection.query.get(collection_id)
+        if not collection:
+            return jsonify({'message': 'Collection not found'}), 404
+
+        db.session.delete(collection)
+        db.session.commit()
+        return jsonify({'message': 'Collection deleted successfully'}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error in delete_collection: {e}")
         return jsonify({'message': str(e)}), 500

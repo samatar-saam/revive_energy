@@ -3,6 +3,7 @@
 from .user import User
 from .login_history import UserDevice
 from .business_verification import BusinessVerification
+from .processing_plant import ProcessingPlant   # <-- NEW IMPORT
 
 # Legacy models
 from .legacy import (
@@ -29,6 +30,7 @@ __all__ = [
     "User",
     "UserDevice",
     "BusinessVerification",
+    "ProcessingPlant",          # <-- ADDED
 
     # Legacy
     "Collection",
