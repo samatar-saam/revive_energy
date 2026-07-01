@@ -414,7 +414,7 @@ def seed_admin():
     if not admin:
         admin = User(
             full_name="Admin",
-            email="admin@revive.energy",
+            email="samatar@revive.energy",
             phone="+254700000000",
             role="admin",
             business_name="ReVive Energy",
@@ -425,6 +425,6 @@ def seed_admin():
             verification_status="verified",
         )
 
-        admin.set_password("Admin@123")
+        admin.set_password("2839")
         db.session.add(admin)
         db.session.commit()

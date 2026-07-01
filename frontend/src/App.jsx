@@ -25,6 +25,8 @@ import WelcomeSplash from "./component/WelcomeSplash";
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminDashboard from "./admin/layout/AdminDashboard";
 
+// ─── Admin Pages ──────────────────────────────────────────────
+import AdminDashboardOverview from "./admin/pages/AdminDashboardOverview"; // ✅ ADD THIS
 import WasteSources from "./admin/pages/WasteSources";
 import WasteListings from "./admin/pages/WasteListings";
 import ProcessingPlants from "./admin/pages/ProcessingPlants";
@@ -68,7 +70,7 @@ import Earnings from "./users/pages/transporter/Earnings";
 import Messages from "./users/pages/shared/Messages";
 import Notifications from "./users/pages/shared/Notifications";
 import ProfileSettings from "./users/pages/shared/ProfileSettings";
-import PaymentInvoices from "./users/pages/shared/PaymentInvoices";          // ✅ correct file name
+import PaymentInvoices from "./users/pages/shared/PaymentInvoices";
 import InvoicePaymentDetails from "./users/pages/shared/InvoicePaymentDetails";
 
 function DashboardIndex() {
@@ -155,8 +157,9 @@ function App() {
 
         <Route path="/adminlogin" element={<><Navbar /><AdminLogin /></>} />
 
+        {/* ─── Admin Routes ────────────────────────────────────── */}
         <Route path="/admin" element={<AdminDashboard />}>
-          <Route index element={<WasteSources />} />
+          <Route index element={<AdminDashboardOverview />} />  {/* ✅ NOW SHOWING OVERVIEW */}
           <Route path="waste-sources" element={<WasteSources />} />
           <Route path="waste-listings" element={<WasteListings />} />
           <Route path="processing-plants" element={<ProcessingPlants />} />

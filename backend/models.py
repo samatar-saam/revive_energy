@@ -252,6 +252,43 @@ class WasteListing(db.Model):
     transport_jobs = db.relationship('TransportJob', backref='listing', lazy=True)
 
 
+# ========== PROCESSING PLANT (NEW) ==========
+class ProcessingPlant(db.Model):
+    __tablename__ = 'processing_plants'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    location = db.Column(db.String(200), nullable=False)
+    capacity = db.Column(db.Float, nullable=False, default=0.0)
+    unit = db.Column(db.String(50), default='tonnes/day')
+    type = db.Column(db.String(100), nullable=False)
+    status = db.Column(db.String(50), default='active')
+    contact_person = db.Column(db.String(100))
+    contact_phone = db.Column(db.String(50))
+    contact_email = db.Column(db.String(100))
+    description = db.Column(db.Text)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'location': self.location,
+            'capacity': self.capacity,
+            'unit': self.unit,
+            'type': self.type,
+            'status': self.status,
+            'contact_person': self.contact_person,
+            'contact_phone': self.contact_phone,
+            'contact_email': self.contact_email,
+            'description': self.description,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 # ========== WASTE REQUEST ==========
 class WasteRequest(db.Model):
     __tablename__ = 'waste_requests'
@@ -531,3 +568,70 @@ class Message(db.Model):
             'is_read': self.is_read,
             'created_at': self.created_at.isoformat()
         }
+
+
+# ========== DISPUTE ==========
+class Dispute(db.Model):
+    __tablename__ = 'disputes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    raised_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=True)
+    request_id = db.Column(db.Integer, db.ForeignKey('waste_requests.id'), nullable=True)
+    transport_job_id = db.Column(db.Integer, db.ForeignKey('transport_jobs.id'), nullable=True)
+
+    title = db.Column(db.String(150), nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(30), default='open')
+    resolution = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ========== PRICING SETTINGS ==========
+class PricingSetting(db.Model):
+    __tablename__ = 'pricing_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    waste_type = db.Column(db.String(100), nullable=False, unique=True)
+
+    price_per_kg = db.Column(db.Float, default=0.0)
+    fixed_transport_fee = db.Column(db.Float, default=700.0)
+    fixed_platform_fee = db.Column(db.Float, default=500.0)
+
+    is_active = db.Column(db.Boolean, default=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ========== ADMIN SETTINGS ==========
+class AdminSetting(db.Model):
+    __tablename__ = 'admin_settings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), nullable=False, unique=True)
+    value = db.Column(db.Text, nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ========== AUDIT LOG ==========
+class AuditLog(db.Model):
+    __tablename__ = 'audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    action = db.Column(db.String(150), nullable=False)
+
+    table_name = db.Column(db.String(100), nullable=True)
+    record_id = db.Column(db.Integer, nullable=True)
+    details = db.Column(db.Text, nullable=True)
+    ip_address = db.Column(db.String(100), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)

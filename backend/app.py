@@ -38,8 +38,10 @@ from routes.notifications import notifications_bp
 from routes.payments import payments_bp
 from routes.invoices import invoices_bp
 from routes.messages import messages_bp
+from routes.admin import admin_bp          # ✅ Import admin blueprint
 
 from services.mpesa import MpesaService
+
 
 mpesa = MpesaService()
 
@@ -56,21 +58,19 @@ def create_app():
     mail = Mail(app)
     app.extensions["mail"] = mail
 
+    # ─── Register Blueprints ──────────────────────────────────────
     app.register_blueprint(auth_bp, url_prefix="/api")
     app.register_blueprint(dashboard_bp, url_prefix="/api")
     app.register_blueprint(supplier_bp, url_prefix="/api")
     app.register_blueprint(producer_bp, url_prefix="/api")
     app.register_blueprint(transporter_bp, url_prefix="/api")
     app.register_blueprint(notifications_bp, url_prefix="/api")
-
-    # ✅ IMPORTANT:
-    # routes/payments.py already has url_prefix="/api/payments"
-    # so do NOT add url_prefix="/api" here.
-    app.register_blueprint(payments_bp)
-
+    app.register_blueprint(payments_bp)               # already has /api/payments
     app.register_blueprint(invoices_bp, url_prefix="/api")
     app.register_blueprint(messages_bp, url_prefix="/api")
+    app.register_blueprint(admin_bp)                  # ✅ Register admin
 
+    # ─── Helper: generate QR code ────────────────────────────────
     def generate_qr_code(payment):
         receipt_data = {
             "receipt_number": payment.receipt_number,
@@ -108,6 +108,7 @@ def create_app():
             receipt.qr_code_path = f"/static/qrcodes/{filename}"
             db.session.commit()
 
+    # ─── Routes ──────────────────────────────────────────────────
     @app.route("/api/collections", methods=["GET"])
     @jwt_required()
     def get_collections():
@@ -423,17 +424,19 @@ def create_app():
     def test_route():
         return jsonify({"message": "App is running!"}), 200
 
+    # ─── Seed admin user ──────────────────────────────────────────
     with app.app_context():
         db.create_all()
 
+        # Create admin user if not exists
+        from routes.auth import seed_admin
+        seed_admin()
+
         print("✅ Database tables created")
-
         inspector = db.inspect(db.engine)
-
         print("📋 Existing tables:", inspector.get_table_names())
 
         print("\n📋 Registered Routes:")
-
         for rule in app.url_map.iter_rules():
             methods = ",".join(sorted(rule.methods))
             print(f"   {rule.rule:55} [{methods}]")
