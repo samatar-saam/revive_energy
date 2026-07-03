@@ -26,7 +26,7 @@ import AdminLogin from "./admin/pages/AdminLogin";
 import AdminDashboard from "./admin/layout/AdminDashboard";
 
 // ─── Admin Pages ──────────────────────────────────────────────
-import AdminDashboardOverview from "./admin/pages/AdminDashboardOverview"; // ✅ ADD THIS
+import AdminDashboardOverview from "./admin/pages/AdminDashboardOverview";
 import WasteSources from "./admin/pages/WasteSources";
 import WasteListings from "./admin/pages/WasteListings";
 import ProcessingPlants from "./admin/pages/ProcessingPlants";
@@ -39,7 +39,7 @@ import Analytics from "./admin/pages/Analytics";
 import AdminImpactReports from "./admin/pages/AdminImpactReports";
 import CarbonCredits from "./admin/pages/CarbonCredits";
 import Reviews from "./admin/pages/Reviews";
-import Support from "./admin/pages/Support";
+import Support from "./admin/pages/Support";                  // Admin support
 import AdminMessages from "./admin/pages/Messages";
 import Settings from "./admin/pages/Settings";
 
@@ -72,6 +72,7 @@ import Notifications from "./users/pages/shared/Notifications";
 import ProfileSettings from "./users/pages/shared/ProfileSettings";
 import PaymentInvoices from "./users/pages/shared/PaymentInvoices";
 import InvoicePaymentDetails from "./users/pages/shared/InvoicePaymentDetails";
+import UserSupport from "./users/pages/shared/Support";        // <-- ALIASED for user support
 
 function DashboardIndex() {
   const [role, setRole] = useState("supplier");
@@ -159,12 +160,12 @@ function App() {
 
         {/* ─── Admin Routes ────────────────────────────────────── */}
         <Route path="/admin" element={<AdminDashboard />}>
-          <Route index element={<AdminDashboardOverview />} />  {/* ✅ NOW SHOWING OVERVIEW */}
+          <Route index element={<AdminDashboardOverview />} />
           <Route path="waste-sources" element={<WasteSources />} />
           <Route path="waste-listings" element={<WasteListings />} />
           <Route path="processing-plants" element={<ProcessingPlants />} />
           <Route path="transporters" element={<Transporters />} />
-         <Route path="collections" element={<Collections />} />
+          <Route path="collections" element={<Collections />} />
           <Route path="users" element={<Users />} />
           <Route path="companies" element={<Companies />} />
           <Route path="payments" element={<Payments />} />
@@ -172,7 +173,7 @@ function App() {
           <Route path="impact-reports" element={<AdminImpactReports />} />
           <Route path="carbon-credits" element={<CarbonCredits />} />
           <Route path="reviews" element={<Reviews />} />
-          <Route path="support" element={<Support />} />
+          <Route path="support" element={<Support />} />                 {/* Admin support */}
           <Route path="messages" element={<AdminMessages />} />
           <Route path="settings" element={<Settings />} />
         </Route>
@@ -205,6 +206,7 @@ function App() {
           <Route path="messages" element={<Messages />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="profile" element={<ProfileSettings />} />
+          <Route path="support" element={<UserSupport />} />            {/* User support */}
         </Route>
       </Routes>
     </BrowserRouter>

@@ -18,6 +18,7 @@ from models import (
     Collection,
     Waste,
     SupportTicket,
+    TicketReply,          # <-- ADDED
     Payment,
     Receipt,
     WasteListing,
@@ -362,6 +363,7 @@ def create_app():
             "receipt": receipt.to_dict(),
         }), 200
 
+    # ─── UPDATED: GET /api/support – returns tickets with replies ──
     @app.route("/api/support", methods=["GET"])
     @jwt_required()
     def get_support():
@@ -372,11 +374,60 @@ def create_app():
                 user_id=user_id
             ).order_by(SupportTicket.created_at.desc()).all()
 
-            return jsonify([t.to_dict() for t in tickets]), 200
+            result = []
+            for ticket in tickets:
+                ticket_dict = ticket.to_dict()
+                # Fetch replies for this ticket
+                replies = TicketReply.query.filter_by(ticket_id=ticket.id).order_by(TicketReply.created_at.asc()).all()
+                ticket_dict['replies'] = [r.to_dict() for r in replies]
+                result.append(ticket_dict)
+
+            return jsonify(result), 200
 
         except Exception as e:
             print(f"Support error: {e}")
             return jsonify([]), 200
+
+    # ─── POST /api/support – submit a support ticket ─────────────
+    @app.route("/api/support", methods=["POST"])
+    @jwt_required()
+    def submit_support_ticket():
+        user_id = int(get_jwt_identity())
+        data = request.get_json() or {}
+
+        subject = data.get("subject", "").strip()
+        message = data.get("message", "").strip()
+        name = data.get("name", "").strip()
+        email = data.get("email", "").strip()
+
+        if not subject or not message:
+            return jsonify({"message": "Subject and message are required"}), 400
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"message": "User not found"}), 404
+
+        if not name:
+            name = user.full_name or "Unknown"
+        if not email:
+            email = user.email
+
+        ticket = SupportTicket(
+            user_id=user_id,
+            subject=subject,
+            message=message,
+            name=name,
+            email=email,
+            status="open"
+        )
+
+        db.session.add(ticket)
+        db.session.commit()
+
+        return jsonify({
+            "message": "Support ticket submitted successfully",
+            "id": ticket.id
+        }), 201
 
     @app.route("/api/user", methods=["GET"])
     @jwt_required()

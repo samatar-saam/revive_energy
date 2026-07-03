@@ -22,6 +22,7 @@ import {
   CheckCircle,
   MessageCircle,
   User,
+  LifeBuoy, // <-- ADDED
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -36,8 +37,8 @@ export default function UserDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [userName, setUserName] = useState("ReVive User");
-  const [userRole, setUserRole] = useState(null); // start as null
-  const [loading, setLoading] = useState(true); // add loading state
+  const [userRole, setUserRole] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -59,7 +60,6 @@ export default function UserDashboard() {
           "ReVive User"
       );
 
-      // ─── Normalize role ──────────────────────────────────────
       const rawRole = user.role || user.user_role || "supplier";
       const roleMap = {
         "waste-supplier": "supplier",
@@ -75,7 +75,7 @@ export default function UserDashboard() {
       console.error("Error parsing user data:", error);
       navigate("/login", { replace: true });
     } finally {
-      setLoading(false); // loading complete
+      setLoading(false);
     }
   }, [navigate]);
 
@@ -86,13 +86,14 @@ export default function UserDashboard() {
   };
 
   const getNavItems = () => {
-    // Common items (Settings removed)
+    // Common items – now includes Support
     const commonItems = [
       { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, end: true },
       { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
       { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
       { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
       { name: "Messages", path: "/dashboard/messages", icon: MessageCircle },
+      { name: "Support", path: "/dashboard/support", icon: LifeBuoy }, // <-- ADDED
       { name: "Profile", path: "/dashboard/profile", icon: User },
     ];
 
@@ -127,7 +128,7 @@ export default function UserDashboard() {
   const renderDashboardContent = () => {
     if (userRole === "producer") return <ProducerDashboardContent />;
     if (userRole === "transporter") return <TransportDashboardContent />;
-    return <SupplierDashboardContent />; // supplier or fallback
+    return <SupplierDashboardContent />;
   };
 
   const getPageTitle = () => {
@@ -149,6 +150,7 @@ export default function UserDashboard() {
     if (path.includes("/invoices")) return "Invoices";
     if (path.includes("/messages")) return "Messages";
     if (path.includes("/notifications")) return "Notifications";
+    if (path.includes("/support")) return "Support";
     if (path.includes("/profile")) return "Profile";
     return "User Dashboard";
   };
@@ -165,7 +167,6 @@ export default function UserDashboard() {
   const mainMargin = isCollapsed ? "lg:ml-20" : "lg:ml-72";
   const navItems = getNavItems();
 
-  // ─── Show loading spinner while determining role ────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -363,7 +364,6 @@ export default function UserDashboard() {
               <NavLink to="/dashboard/profile" className="transition hover:text-[#0E2A1C]">
                 Profile
               </NavLink>
-              {/* Settings link removed to avoid errors */}
               <span className="font-mono-cw text-[10px]">v2.0.0</span>
             </div>
           </div>

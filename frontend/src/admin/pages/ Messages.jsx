@@ -45,9 +45,12 @@ export default function AdminMessages() {
         return;
       }
 
+      console.log('🔵 Fetching conversations...');
       const res = await fetch(`${API_URL}/admin/messages/conversations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
+      console.log('🟢 Response status:', res.status);
 
       if (res.status === 401 || res.status === 403) {
         setError('Session expired. Please login again.');
@@ -56,10 +59,13 @@ export default function AdminMessages() {
       }
 
       if (!res.ok) {
+        const errText = await res.text();
+        console.error('🔴 API error response:', errText);
         throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       }
 
       const responseData = await res.json();
+      console.log('📦 API data:', responseData);
       const data = responseData.data || responseData;
       setConversations(data);
     } catch (err) {

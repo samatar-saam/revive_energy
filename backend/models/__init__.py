@@ -5,9 +5,9 @@ from .login_history import UserDevice
 from .business_verification import BusinessVerification
 from .processing_plant import ProcessingPlant
 from .carbon_credit import CarbonCredit
-from .review import Review   # <-- ADDED
+from .review import Review
 
-# Legacy models
+# Legacy models (does NOT include AdminSetting)
 from .legacy import (
     Collection,
     Waste,
@@ -20,6 +20,7 @@ from .legacy import (
     PhoneVerification,
     Conversation,
     Message,
+    # AdminSetting is NOT here
 )
 
 # New models
@@ -27,6 +28,10 @@ from .payment import Payment
 from .receipt import Receipt
 from .transport_job import TransportJob
 from .escrow_transaction import EscrowTransaction
+from .ticket_reply import TicketReply
+
+# AdminSetting is in its own file
+from .admin_settings import AdminSetting   # <-- IMPORT FROM HERE
 
 __all__ = [
     "User",
@@ -34,7 +39,8 @@ __all__ = [
     "BusinessVerification",
     "ProcessingPlant",
     "CarbonCredit",
-    "Review",               # <-- ADDED
+    "Review",
+    "AdminSetting",      # <-- ADDED
 
     # Legacy
     "Collection",
