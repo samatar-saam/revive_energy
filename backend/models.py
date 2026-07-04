@@ -635,8 +635,9 @@ class AuditLog(db.Model):
     ip_address = db.Column(db.String(100), nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    # models.py (add this class alongside others)
 
+
+# ========== CARBON CREDIT ==========
 class CarbonCredit(db.Model):
     __tablename__ = 'carbon_credits'
 
@@ -663,4 +664,170 @@ class CarbonCredit(db.Model):
             'expiry_date': self.expiry_date.isoformat() if self.expiry_date else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+# ========== WALLET ==========
+class Wallet(db.Model):
+    __tablename__ = 'wallets'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=False)
+    balance = db.Column(db.Float, default=0.0)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # relationships
+    user = db.relationship('User', backref='wallet')
+    transactions = db.relationship('WalletTransaction', backref='wallet', lazy=True, cascade='all, delete-orphan')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'balance': self.balance,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+# ========== WALLET TRANSACTION ==========
+class WalletTransaction(db.Model):
+    __tablename__ = 'wallet_transactions'
+    id = db.Column(db.Integer, primary_key=True)
+    wallet_id = db.Column(db.Integer, db.ForeignKey('wallets.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)  # positive for credit, negative for debit
+    type = db.Column(db.String(50))  # 'payment', 'withdrawal', 'refund', 'deposit', etc.
+    description = db.Column(db.String(255))
+    status = db.Column(db.String(20), default='completed')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'wallet_id': self.wallet_id,
+            'amount': self.amount,
+            'type': self.type,
+            'description': self.description,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ========== WITHDRAWAL REQUEST ==========
+class WithdrawalRequest(db.Model):
+    __tablename__ = 'withdrawal_requests'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    payment_method = db.Column(db.String(50))  # 'bank', 'mpesa', etc.
+    account_details = db.Column(db.Text)  # JSON or plain text
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, completed
+    admin_notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # relationship
+    user = db.relationship('User', backref='withdrawal_requests')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'amount': self.amount,
+            'payment_method': self.payment_method,
+            'account_details': self.account_details,
+            'status': self.status,
+            'admin_notes': self.admin_notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+        # ========== DISPUTE ==========
+class Dispute(db.Model):
+    __tablename__ = 'disputes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False)
+    producer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    transporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(30), default='open')  # open, under_investigation, awaiting_response, resolved, closed, refunded
+    escrow_status = db.Column(db.String(30), default='held')  # held, frozen, released, refunded
+    evidence = db.Column(db.Text)  # JSON array of file URLs or metadata
+    timeline = db.Column(db.Text)  # JSON array of { description, timestamp }
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # relationships
+    payment = db.relationship('Payment', backref='disputes')
+    producer = db.relationship('User', foreign_keys=[producer_id])
+    supplier = db.relationship('User', foreign_keys=[supplier_id])
+    transporter = db.relationship('User', foreign_keys=[transporter_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'payment_id': self.payment_id,
+            'producer_id': self.producer_id,
+            'producer_name': self.producer.full_name if self.producer else None,
+            'supplier_id': self.supplier_id,
+            'supplier_name': self.supplier.full_name if self.supplier else None,
+            'transporter_id': self.transporter_id,
+            'transporter_name': self.transporter.full_name if self.transporter else None,
+            'reason': self.reason,
+            'status': self.status,
+            'escrow_status': self.escrow_status,
+            'evidence': json.loads(self.evidence) if self.evidence else [],
+            'timeline': json.loads(self.timeline) if self.timeline else [],
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'amount': self.payment.amount if self.payment else 0,
+            'waste_type': self.payment.waste_type if self.payment else None,
+        }
+
+
+# ========== AUDIT LOG ==========
+class AuditLog(db.Model):
+    __tablename__ = 'audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    event = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    ip_address = db.Column(db.String(45))
+    device = db.Column(db.String(100))
+    browser = db.Column(db.String(100))
+    location = db.Column(db.String(100))
+    status = db.Column(db.String(20), default='info')  # info, success, warning, error
+    request_payload = db.Column(db.Text)
+    response_payload = db.Column(db.Text)
+    previous_values = db.Column(db.Text)
+    new_values = db.Column(db.Text)
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    admin = db.relationship('User', foreign_keys=[admin_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user_name': self.user.full_name if self.user else None,
+            'user_role': self.user.role if self.user else None,
+            'event': self.event,
+            'description': self.description,
+            'ip_address': self.ip_address,
+            'device': self.device,
+            'browser': self.browser,
+            'location': self.location,
+            'status': self.status,
+            'request_payload': json.loads(self.request_payload) if self.request_payload else None,
+            'response_payload': json.loads(self.response_payload) if self.response_payload else None,
+            'previous_values': json.loads(self.previous_values) if self.previous_values else None,
+            'new_values': json.loads(self.new_values) if self.new_values else None,
+            'admin_name': self.admin.full_name if self.admin else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
         }

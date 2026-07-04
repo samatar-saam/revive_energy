@@ -22,7 +22,8 @@ import {
   CheckCircle,
   MessageCircle,
   User,
-  LifeBuoy, // <-- ADDED
+  LifeBuoy,
+  Wallet,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -86,43 +87,54 @@ export default function UserDashboard() {
   };
 
   const getNavItems = () => {
-    // Common items – now includes Support
+    // ─── Common items for all roles ──────────────────────────
     const commonItems = [
       { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, end: true },
       { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
       { name: "Invoices", path: "/dashboard/invoices", icon: FileText },
       { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
       { name: "Messages", path: "/dashboard/messages", icon: MessageCircle },
-      { name: "Support", path: "/dashboard/support", icon: LifeBuoy }, // <-- ADDED
+      { name: "Support", path: "/dashboard/support", icon: LifeBuoy },
       { name: "Profile", path: "/dashboard/profile", icon: User },
     ];
 
+    // ─── Wallet & Withdrawals – only for supplier & transporter ──
+    const walletItems = [];
+    if (userRole !== "producer") {
+      walletItems.push(
+        { name: "Wallet", path: "/dashboard/wallet", icon: Wallet },
+        { name: "Withdrawals", path: "/dashboard/withdrawals", icon: DollarSign }
+      );
+    }
+
+    // ─── Role‑specific items ──────────────────────────────────
+    let roleItems = [];
     if (userRole === "producer") {
-      return [
-        ...commonItems,
+      roleItems = [
         { name: "Marketplace", path: "/dashboard/marketplace", icon: Store },
         { name: "My Requests", path: "/dashboard/my-requests", icon: ClipboardList },
         { name: "Incoming Deliveries", path: "/dashboard/incoming-deliveries", icon: Truck },
       ];
-    }
-    if (userRole === "transporter") {
-      return [
-        ...commonItems,
+    } else if (userRole === "transporter") {
+      roleItems = [
         { name: "Available Jobs", path: "/dashboard/jobs", icon: ClipboardList },
         { name: "Accepted Jobs", path: "/dashboard/accepted-jobs", icon: CheckCircle },
         { name: "Active Deliveries", path: "/dashboard/deliveries", icon: Truck },
         { name: "Route Tracking", path: "/dashboard/routes", icon: MapPin },
         { name: "Earnings", path: "/dashboard/earnings", icon: DollarSign },
       ];
+    } else {
+      // Supplier default
+      roleItems = [
+        { name: "Post Waste", path: "/dashboard/post-waste", icon: Trash2 },
+        { name: "My Listings", path: "/dashboard/listings", icon: Package },
+        { name: "Collection Requests", path: "/dashboard/requests", icon: ClipboardList },
+        { name: "Collection Tracking", path: "/dashboard/tracking", icon: Truck },
+      ];
     }
-    // Supplier default
-    return [
-      ...commonItems,
-      { name: "Post Waste", path: "/dashboard/post-waste", icon: Trash2 },
-      { name: "My Listings", path: "/dashboard/listings", icon: Package },
-      { name: "Collection Requests", path: "/dashboard/requests", icon: ClipboardList },
-      { name: "Collection Tracking", path: "/dashboard/tracking", icon: Truck },
-    ];
+
+    // Combine: common + wallet (if any) + role‑specific
+    return [...commonItems, ...walletItems, ...roleItems];
   };
 
   const renderDashboardContent = () => {
@@ -151,6 +163,8 @@ export default function UserDashboard() {
     if (path.includes("/messages")) return "Messages";
     if (path.includes("/notifications")) return "Notifications";
     if (path.includes("/support")) return "Support";
+    if (path.includes("/wallet")) return "Wallet";
+    if (path.includes("/withdrawals")) return "Withdrawals";
     if (path.includes("/profile")) return "Profile";
     return "User Dashboard";
   };
@@ -179,10 +193,7 @@ export default function UserDashboard() {
   }
 
   return (
-    <div
-      className="h-screen overflow-hidden bg-gray-50"
-      style={{ fontFamily: "'Inter', sans-serif" }}
-    >
+    <div className="h-screen overflow-hidden bg-gray-50" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         .font-display { font-family: 'Space Grotesk', sans-serif; }
@@ -195,17 +206,11 @@ export default function UserDashboard() {
       `}</style>
 
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      <aside
-        className={`fixed left-0 top-0 z-50 flex h-full flex-col bg-gradient-to-b from-[#0E2A1C] to-[#11402D] text-white transition-all duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        } ${sidebarWidth}`}
-      >
+      <aside className={`fixed left-0 top-0 z-50 flex h-full flex-col bg-gradient-to-b from-[#0E2A1C] to-[#11402D] text-white transition-all duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} ${sidebarWidth}`}>
+        {/* LOGO */}
         <div className="shrink-0 border-b border-white/10 px-5 py-4">
           <div className="flex items-center justify-between">
             {!isCollapsed ? (
@@ -241,6 +246,7 @@ export default function UserDashboard() {
           </div>
         </div>
 
+        {/* NAVIGATION */}
         <div className="flex-1 overflow-y-auto px-3 py-4">
           <nav className="space-y-1">
             {navItems.map((item) => {
@@ -268,6 +274,7 @@ export default function UserDashboard() {
           </nav>
         </div>
 
+        {/* BOTTOM */}
         <div className="shrink-0 border-t border-white/10 p-3">
           {!isCollapsed && (
             <div className="mb-3 rounded-xl bg-white/5 p-3">
@@ -290,7 +297,9 @@ export default function UserDashboard() {
         </div>
       </aside>
 
+      {/* MAIN CONTENT */}
       <div className={`flex h-full flex-col transition-all duration-300 ${mainMargin}`}>
+        {/* TOPBAR */}
         <header className="shrink-0 border-b border-gray-200 bg-white/95 backdrop-blur-xl">
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 lg:px-6">
             <div className="flex items-center gap-3">
@@ -350,10 +359,12 @@ export default function UserDashboard() {
           </div>
         </header>
 
+        {/* MAIN */}
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-6">
           {location.pathname === "/dashboard" ? renderDashboardContent() : <Outlet />}
         </main>
 
+        {/* FOOTER */}
         <footer className="shrink-0 border-t border-gray-200 bg-white px-4 py-2 lg:px-6">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
             <div className="flex items-center gap-1.5">

@@ -18,7 +18,7 @@ from models import (
     Collection,
     Waste,
     SupportTicket,
-    TicketReply,          # <-- ADDED
+    TicketReply,
     Payment,
     Receipt,
     WasteListing,
@@ -28,6 +28,9 @@ from models import (
     Notification,
     Conversation,
     Message,
+    Wallet,                 # <-- ADDED
+    WalletTransaction,      # <-- ADDED
+    WithdrawalRequest,      # <-- ADDED
 )
 
 from routes.auth import auth_bp
@@ -39,7 +42,8 @@ from routes.notifications import notifications_bp
 from routes.payments import payments_bp
 from routes.invoices import invoices_bp
 from routes.messages import messages_bp
-from routes.admin import admin_bp          # ✅ Import admin blueprint
+from routes.admin import admin_bp
+from routes.wallet import wallet_bp          # <-- ADDED
 
 from services.mpesa import MpesaService
 
@@ -69,7 +73,8 @@ def create_app():
     app.register_blueprint(payments_bp)               # already has /api/payments
     app.register_blueprint(invoices_bp, url_prefix="/api")
     app.register_blueprint(messages_bp, url_prefix="/api")
-    app.register_blueprint(admin_bp)                  # ✅ Register admin
+    app.register_blueprint(admin_bp)                  # admin blueprint
+    app.register_blueprint(wallet_bp)                 # <-- ADDED wallet blueprint
 
     # ─── Helper: generate QR code ────────────────────────────────
     def generate_qr_code(payment):
@@ -363,7 +368,6 @@ def create_app():
             "receipt": receipt.to_dict(),
         }), 200
 
-    # ─── UPDATED: GET /api/support – returns tickets with replies ──
     @app.route("/api/support", methods=["GET"])
     @jwt_required()
     def get_support():
@@ -377,7 +381,6 @@ def create_app():
             result = []
             for ticket in tickets:
                 ticket_dict = ticket.to_dict()
-                # Fetch replies for this ticket
                 replies = TicketReply.query.filter_by(ticket_id=ticket.id).order_by(TicketReply.created_at.asc()).all()
                 ticket_dict['replies'] = [r.to_dict() for r in replies]
                 result.append(ticket_dict)
@@ -388,7 +391,6 @@ def create_app():
             print(f"Support error: {e}")
             return jsonify([]), 200
 
-    # ─── POST /api/support – submit a support ticket ─────────────
     @app.route("/api/support", methods=["POST"])
     @jwt_required()
     def submit_support_ticket():
@@ -479,7 +481,6 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-        # Create admin user if not exists
         from routes.auth import seed_admin
         seed_admin()
 

@@ -36,6 +36,7 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Wallet,          // <-- ADDED
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -83,6 +84,13 @@ export default function AdminDashboard() {
     { name: "Users", path: "/admin/users", icon: Users },
     { name: "Companies", path: "/admin/companies", icon: Building2 },
     { name: "Payments", path: "/admin/payments", icon: CreditCard },
+    // ─── NEW ITEMS ────────────────────────────────────────────
+    { name: "Wallet", path: "/admin/wallet", icon: Wallet },
+    { name: "Withdrawals", path: "/admin/withdrawals", icon: DollarSign },
+    { name: "Disputes", path: "/admin/disputes", icon: AlertCircle },
+    { name: "Pricing", path: "/admin/pricing", icon: DollarSign },
+    { name: "Audit Logs", path: "/admin/audit-logs", icon: FileText },
+    // ─── CONTINUE ─────────────────────────────────────────────
     { name: "Analytics", path: "/admin/analytics", icon: BarChart3 },
     { name: "Impact Reports", path: "/admin/impact-reports", icon: Leaf },
     { name: "Carbon Credits", path: "/admin/carbon-credits", icon: Award },

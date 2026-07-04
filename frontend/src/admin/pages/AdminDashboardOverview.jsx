@@ -1,5 +1,5 @@
-// src/admin/pages/AdminDashboardOverview.jsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Package,
@@ -15,6 +15,12 @@ import {
   Bell,
   Mail,
   Download,
+  ArrowRight,
+  BarChart3,
+  FileText,
+  Settings,
+  Shield,
+  Zap,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -35,9 +41,10 @@ import { toast } from 'react-toastify';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-const COLORS = ['#16a34a', '#22c55e', '#34d399', '#60a5fa', '#fbbf24', '#f59e0b', '#ef4444'];
+const COLORS = ['#11402D', '#9CF06B', '#16A34A', '#60A5FA', '#F59E0B', '#8B5CF6'];
 
 export default function AdminDashboardOverview() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState({
@@ -71,10 +78,11 @@ export default function AdminDashboardOverview() {
     }
 
     try {
+      // ─── Fetch data ──────────────────────────────────────────
       const [usersRes, listingsRes, paymentsRes, jobsRes] = await Promise.all([
         fetch(`${API_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/admin/waste-sources`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/payments/my-payments`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_URL}/payments`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/transporter/jobs`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
@@ -87,7 +95,7 @@ export default function AdminDashboardOverview() {
       const payments = paymentsRes.ok ? await paymentsRes.json() : [];
       const jobs = jobsRes.ok ? await jobsRes.json() : [];
 
-      // ─── Compute stats ──────────────────────────────────
+      // ─── Stats ──────────────────────────────────────────────
       const totalUsers = users.length;
       const totalListings = listings.length;
       const totalPayments = payments.length;
@@ -95,7 +103,7 @@ export default function AdminDashboardOverview() {
       const totalWaste = listings.reduce((sum, l) => sum + (l.quantity || 0), 0);
       const activeJobs = jobs.filter(j => j.status !== 'completed' && j.status !== 'cancelled').length;
 
-      // ─── Waste by category ──────────────────────────────
+      // ─── Waste by category ──────────────────────────────────
       const categoryMap = {};
       listings.forEach(l => {
         const cat = l.type || 'other';
@@ -105,8 +113,11 @@ export default function AdminDashboardOverview() {
         name: name.charAt(0).toUpperCase() + name.slice(1),
         value,
       }));
+      if (wasteByCategory.length === 0) {
+        wasteByCategory.push({ name: 'No Data', value: 1 });
+      }
 
-      // ─── Revenue trend (last 7 days) ────────────────────
+      // ─── Revenue trend (last 7 days) ──────────────────────
       const now = new Date();
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(now);
@@ -120,7 +131,7 @@ export default function AdminDashboardOverview() {
         return { day: new Date(day).toLocaleDateString('en-US', { weekday: 'short' }), revenue: dailyTotal };
       });
 
-      // ─── Transport trend ──────────────────────────────────
+      // ─── Transport trend ────────────────────────────────────
       const transportTrend = days.map(day => {
         const dayJobs = jobs.filter(j => j.created_at && j.created_at.startsWith(day));
         return {
@@ -130,7 +141,7 @@ export default function AdminDashboardOverview() {
         };
       });
 
-      // ─── Recent payments ──────────────────────────────────
+      // ─── Recent payments ────────────────────────────────────
       const recentPayments = payments.slice(0, 5).map(p => ({
         id: p.id,
         receipt: p.mpesa_receipt || p.receipt_number || `#${p.id}`,
@@ -139,7 +150,7 @@ export default function AdminDashboardOverview() {
         date: p.created_at,
       }));
 
-      // ─── Recent listings ──────────────────────────────────
+      // ─── Recent listings ────────────────────────────────────
       const recentListings = listings.slice(0, 5).map(l => ({
         id: l.id,
         supplier: l.supplier_name || 'Unknown',
@@ -148,12 +159,12 @@ export default function AdminDashboardOverview() {
         date: l.created_at,
       }));
 
-      // ─── Notifications (mock – can be replaced with real endpoint) ──
+      // ─── Notifications (mock – replace with real endpoint) ──
       const notifications = [
-        { id: 1, title: 'Payment Received', message: 'KES 15,000 from Producer #12', time: '2 min ago' },
-        { id: 2, title: 'Transport Assigned', message: 'Job #45 assigned to Transporter #8', time: '15 min ago' },
-        { id: 3, title: 'New Supplier Registered', message: 'Green Waste Ltd joined the platform', time: '1h ago' },
-        { id: 4, title: 'Waste Request Approved', message: 'Request #120 approved by supplier', time: '3h ago' },
+        { id: 1, title: 'Payment Received', message: 'KES 15,000 from Producer #12', time: '2 min ago', type: 'success' },
+        { id: 2, title: 'Transport Assigned', message: 'Job #45 assigned to Transporter #8', time: '15 min ago', type: 'info' },
+        { id: 3, title: 'New Supplier Registered', message: 'Green Waste Ltd joined the platform', time: '1h ago', type: 'success' },
+        { id: 4, title: 'Waste Request Approved', message: 'Request #120 approved by supplier', time: '3h ago', type: 'info' },
       ];
 
       setData({
@@ -185,12 +196,21 @@ export default function AdminDashboardOverview() {
     fetchDashboardData();
   }, []);
 
+  // ─── Quick actions ─────────────────────────────────────────────
+  const quickActions = [
+    { label: 'View Users', icon: Users, path: '/admin/users', color: 'bg-blue-50 text-blue-600 hover:bg-blue-100' },
+    { label: 'Payments', icon: CreditCard, path: '/admin/payments', color: 'bg-green-50 text-green-600 hover:bg-green-100' },
+    { label: 'Reports', icon: BarChart3, path: '/admin/analytics', color: 'bg-purple-50 text-purple-600 hover:bg-purple-100' },
+    { label: 'Settings', icon: Settings, path: '/admin/settings', color: 'bg-gray-50 text-gray-600 hover:bg-gray-100' },
+  ];
+
+  // ─── Loading / Error states ────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#16a34a] border-t-[#14532d] rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-500">Loading dashboard...</p>
+          <div className="w-16 h-16 border-4 border-[#11402D] border-t-[#9CF06B] rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-gray-500 font-display">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -201,11 +221,11 @@ export default function AdminDashboardOverview() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900">Unable to load dashboard</h3>
+          <h3 className="text-xl font-bold text-gray-900 font-display">Unable to load dashboard</h3>
           <p className="text-gray-500 mt-2">{error}</p>
           <button
             onClick={fetchDashboardData}
-            className="mt-4 px-6 py-2 bg-[#16a34a] text-white rounded-xl hover:bg-[#14532d] transition"
+            className="mt-4 px-6 py-2 bg-[#11402D] text-white rounded-xl hover:bg-[#0E2A1C] transition"
           >
             Try Again
           </button>
@@ -217,240 +237,256 @@ export default function AdminDashboardOverview() {
   const { stats, revenueTrend, wasteByCategory, transportTrend, recentPayments, recentListings, notifications } = data;
 
   return (
-    <div className="space-y-6 p-4 lg:p-6 bg-gray-50 min-h-screen">
-      {/* ─── Hero Header ────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Good Morning Admin 👋</h1>
-          <p className="text-sm text-gray-500 mt-1">Monitor platform performance and key metrics.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={fetchDashboardData} className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition">
-            <RefreshCw className="w-4 h-4 text-gray-500" />
-          </button>
-          <button className="relative p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition">
-            <Bell className="w-4 h-4 text-gray-500" />
-            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500" />
-          </button>
-          <button className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition">
-            <Mail className="w-4 h-4 text-gray-500" />
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
+      {/* ─── Fonts ────────────────────────────────────────────────── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
+      `}</style>
 
-      {/* ─── 6 Key Stats ──────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard icon={Users} label="Total Users" value={stats.totalUsers} trend="+12%" color="emerald" />
-        <StatCard icon={Package} label="Listings" value={stats.totalListings} trend="+8%" color="blue" />
-        <StatCard icon={CreditCard} label="Payments" value={stats.totalPayments} trend="+15%" color="purple" />
-        <StatCard icon={DollarSign} label="Revenue" value={`KES ${(stats.totalRevenue / 1000).toFixed(0)}K`} trend="+22%" color="gold" />
-        <StatCard icon={Truck} label="Active Jobs" value={stats.activeJobs} trend="+5%" color="indigo" />
-        <StatCard icon={TrendingUp} label="Waste (tons)" value={stats.totalWaste.toFixed(1)} trend="+18%" color="green" />
-      </div>
+      <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+        {/* ─── Header ────────────────────────────────────────────── */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="font-display text-2xl lg:text-3xl font-bold text-[#0E2A1C]">
+              Good Morning, Admin 👋
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Here’s what’s happening on your platform today.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchDashboardData}
+              className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition"
+              title="Refresh"
+            >
+              <RefreshCw className="w-4 h-4 text-gray-500" />
+            </button>
+            <button className="relative p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition">
+              <Bell className="w-4 h-4 text-gray-500" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500" />
+            </button>
+            <button className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition">
+              <Mail className="w-4 h-4 text-gray-500" />
+            </button>
+            <button className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-4 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] transition">
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+          </div>
+        </div>
 
-      {/* ─── Charts Row ────────────────────────────────────────── */}
-      <div className="grid lg:grid-cols-2 gap-6">
+        {/* ─── Stats (5 cards) ───────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <StatCard icon={Users} label="Users" value={stats.totalUsers} color="blue" />
+          <StatCard icon={Package} label="Listings" value={stats.totalListings} color="green" />
+          <StatCard icon={CreditCard} label="Payments" value={stats.totalPayments} color="purple" />
+          <StatCard icon={DollarSign} label="Revenue" value={`KES ${(stats.totalRevenue / 1000).toFixed(0)}K`} color="gold" />
+          <StatCard icon={Truck} label="Active Jobs" value={stats.activeJobs} color="indigo" />
+        </div>
+
+        {/* ─── Charts Row ────────────────────────────────────────── */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#11402D]" /> Revenue Trend (7d)
+            </h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={revenueTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `KES ${v/1000}k`} />
+                <Tooltip formatter={(v) => `KES ${v.toLocaleString()}`} />
+                <Area type="monotone" dataKey="revenue" stroke="#11402D" fill="#11402D" fillOpacity={0.12} name="Revenue" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Package className="w-5 h-5 text-[#11402D]" /> Waste by Category
+            </h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={wasteByCategory} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={2} dataKey="value" label={({ name }) => name}>
+                  {wasteByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* ─── Transport Chart ───────────────────────────────────── */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-[#16a34a]" /> Revenue Trend
+          <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Truck className="w-5 h-5 text-[#11402D]" /> Transport Activity (7d)
           </h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={revenueTrend}>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={transportTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="day" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v) => `KES ${v.toLocaleString()}`} />
-              <Area type="monotone" dataKey="revenue" stroke="#16a34a" fill="#16a34a" fillOpacity={0.15} name="Revenue" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-[#16a34a]" /> Waste by Category
-          </h3>
-          <ResponsiveContainer width="100%" height={240}>
-            <PieChart>
-              <Pie data={wasteByCategory} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value" label={({ name }) => name}>
-                {wasteByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-              </Pie>
               <Tooltip />
               <Legend />
-            </PieChart>
+              <Line type="monotone" dataKey="created" stroke="#11402D" name="Created" strokeWidth={2} />
+              <Line type="monotone" dataKey="completed" stroke="#9CF06B" name="Completed" strokeWidth={2} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
-      {/* ─── Transport Chart ──────────────────────────────────── */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Truck className="w-5 h-5 text-[#16a34a]" /> Transport Activity
-        </h3>
-        <ResponsiveContainer width="100%" height={240}>
-          <LineChart data={transportTrend}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} />
-            <Tooltip />
-            <Legend />
-            <Line type="monotone" dataKey="created" stroke="#16a34a" name="Created" />
-            <Line type="monotone" dataKey="completed" stroke="#34d399" name="Completed" />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+        {/* ─── Recent Activity & Quick Actions ──────────────────── */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Recent Payments */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h4 className="font-display font-semibold text-gray-900">Recent Payments</h4>
+              <button
+                onClick={() => navigate('/admin/payments')}
+                className="text-xs text-[#11402D] hover:underline flex items-center gap-1"
+              >
+                View All <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {recentPayments.map(p => (
+                <div key={p.id} className="px-5 py-3 hover:bg-gray-50 transition flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{p.receipt}</p>
+                    <p className="text-xs text-gray-400">{p.date ? new Date(p.date).toLocaleDateString() : 'N/A'}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-900">KES {p.amount.toLocaleString()}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {p.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {recentPayments.length === 0 && (
+                <div className="px-5 py-6 text-center text-sm text-gray-400">No recent payments</div>
+              )}
+            </div>
+          </div>
 
-      {/* ─── Tables Row ────────────────────────────────────────── */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Recent Payments */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Recent Payments</h3>
-            <button className="text-sm text-[#16a34a] hover:underline">View All</button>
+          {/* Recent Listings */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h4 className="font-display font-semibold text-gray-900">Recent Listings</h4>
+              <button
+                onClick={() => navigate('/admin/waste-listings')}
+                className="text-xs text-[#11402D] hover:underline flex items-center gap-1"
+              >
+                View All <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {recentListings.map(l => (
+                <div key={l.id} className="px-5 py-3 hover:bg-gray-50 transition flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{l.waste}</p>
+                    <p className="text-xs text-gray-400">by {l.supplier}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${l.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {l.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {recentListings.length === 0 && (
+                <div className="px-5 py-6 text-center text-sm text-gray-400">No recent listings</div>
+              )}
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-4 py-2 text-left">Receipt</th>
-                  <th className="px-4 py-2 text-left">Amount</th>
-                  <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recentPayments.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 font-mono text-xs">{p.receipt}</td>
-                    <td className="px-4 py-2 font-semibold">KES {p.amount.toLocaleString()}</td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${p.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                        {p.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500 text-xs">
-                      {p.date ? new Date(p.date).toLocaleDateString() : 'N/A'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
 
-        {/* Recent Listings */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">Recent Listings</h3>
-            <button className="text-sm text-[#16a34a] hover:underline">View All</button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-4 py-2 text-left">Supplier</th>
-                  <th className="px-4 py-2 text-left">Waste</th>
-                  <th className="px-4 py-2 text-left">Status</th>
-                  <th className="px-4 py-2 text-left">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {recentListings.map(l => (
-                  <tr key={l.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{l.supplier}</td>
-                    <td className="px-4 py-2">{l.waste}</td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${l.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                        {l.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-gray-500 text-xs">
-                      {l.date ? new Date(l.date).toLocaleDateString() : 'N/A'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+          {/* Quick Actions */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+            <h4 className="font-display font-semibold text-gray-900 mb-3">⚡ Quick Actions</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {quickActions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.label}
+                    onClick={() => navigate(action.path)}
+                    className={`flex items-center gap-2 p-3 rounded-xl ${action.color} transition text-sm font-medium`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {action.label}
+                  </button>
+                );
+              })}
+            </div>
 
-      {/* ─── Notifications & Quick Actions ──────────────────── */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Bell className="w-5 h-5 text-[#16a34a]" /> Notifications
-          </h3>
-          <div className="space-y-2">
-            {notifications.map(n => (
-              <div key={n.id} className="flex items-start gap-3 p-2 rounded-xl hover:bg-gray-50">
-                <div className="w-2 h-2 rounded-full bg-[#16a34a] mt-2" />
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="bg-[#11402D]/5 rounded-xl p-3 flex items-center gap-3">
+                <Shield className="w-5 h-5 text-[#11402D]" />
                 <div>
-                  <p className="font-medium text-gray-900 text-sm">{n.title}</p>
-                  <p className="text-xs text-gray-500">{n.message}</p>
-                  <p className="text-[10px] text-gray-400 mt-1">{n.time}</p>
+                  <p className="text-sm font-semibold text-[#0E2A1C]">All systems operational</p>
+                  <p className="text-xs text-gray-500">100% uptime over last 24h</p>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-900 mb-4">⚡ Quick Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: 'Approve Companies', icon: CheckCircle, color: 'emerald' },
-              { label: 'Verify Users', icon: Users, color: 'blue' },
-              { label: 'View Reports', icon: Eye, color: 'purple' },
-              { label: 'Export Data', icon: Download, color: 'gray' },
-            ].map((action) => {
-              const Icon = action.icon;
-              const colorMap = {
-                emerald: 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100',
-                blue: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
-                purple: 'bg-purple-50 text-purple-600 hover:bg-purple-100',
-                gray: 'bg-gray-50 text-gray-600 hover:bg-gray-100',
-              };
-              return (
-                <button key={action.label} className={`flex items-center gap-2 p-3 rounded-xl ${colorMap[action.color]} transition`}>
-                  <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{action.label}</span>
-                </button>
-              );
-            })}
+        {/* ─── Notifications Bar ─────────────────────────────────── */}
+        {notifications.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-[#11402D]" /> Notifications
+              </h4>
+              <button className="text-xs text-[#11402D] hover:underline">Mark all read</button>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {notifications.map(n => (
+                <div key={n.id} className="flex items-start gap-2 p-2 rounded-xl hover:bg-gray-50 transition">
+                  <div className={`w-2 h-2 rounded-full mt-1.5 ${n.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`} />
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{n.title}</p>
+                    <p className="text-xs text-gray-500">{n.message}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{n.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* ─── Footer ──────────────────────────────────────────── */}
-      <div className="text-center text-xs text-gray-400 border-t border-gray-200 pt-4 mt-4">
-        ReVive Energy Admin · v1.0 · <span className="inline-block w-2 h-2 rounded-full bg-green-500 ml-1" /> All systems operational
+        {/* ─── Footer ────────────────────────────────────────────── */}
+        <div className="text-center text-xs text-gray-400 border-t border-gray-200 pt-4 mt-4 font-mono-cw">
+          ReVive Energy Admin · v1.0 · <span className="inline-block w-2 h-2 rounded-full bg-green-500 ml-1" /> All systems operational
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Stat Card ──────────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, trend, color }) {
+// ─── Stat Card Component ──────────────────────────────────────────
+function StatCard({ icon: Icon, label, value, color }) {
   const colorMap = {
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
+    green: 'bg-green-50 text-green-600 border-green-100',
     purple: 'bg-purple-50 text-purple-600 border-purple-100',
     gold: 'bg-yellow-50 text-yellow-600 border-yellow-100',
     indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-    green: 'bg-green-50 text-green-600 border-green-100',
   };
-  const style = colorMap[color] || colorMap.emerald;
+  const style = colorMap[color] || colorMap.blue;
 
   return (
-    <div className={`bg-white rounded-2xl p-5 shadow-sm border ${style}`}>
+    <div className={`bg-white rounded-2xl p-4 shadow-sm border ${style}`}>
       <div className="flex items-center justify-between">
-        <div className={`w-10 h-10 rounded-xl bg-white flex items-center justify-center`}>
-          <Icon className={`w-5 h-5 ${style.split(' ')[1]}`} />
+        <div className={`w-9 h-9 rounded-xl bg-white flex items-center justify-center`}>
+          <Icon className={`w-4 h-4 ${style.split(' ')[1]}`} />
         </div>
-        {trend && <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{trend}</span>}
       </div>
-      <p className="mt-2 font-display text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-sm text-gray-500">{label}</p>
+      <p className="mt-2 font-display text-xl font-bold text-gray-900">{value}</p>
+      <p className="text-xs text-gray-500">{label}</p>
     </div>
   );
 }

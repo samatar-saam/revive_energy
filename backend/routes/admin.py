@@ -2,8 +2,9 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash
-from sqlalchemy import or_, func
+from sqlalchemy import or_, func, cast, String
 from datetime import datetime, timedelta
+import json
 from models import (
     User,
     WasteListing,
@@ -19,6 +20,11 @@ from models import (
     TicketReply,
     WasteRequest,
     TransportJob,
+    Wallet,
+    WalletTransaction,
+    WithdrawalRequest,
+    Dispute,          # <-- ADDED
+    AuditLog,         # <-- ADDED
 )
 from database import db
 from utils.decorators import role_required
@@ -31,6 +37,39 @@ def paginate_query(query, page, per_page):
     total = query.count()
     items = query.offset((page - 1) * per_page).limit(per_page).all()
     return items, total
+
+
+# ─── HELPER: log audit ──────────────────────────────────────────
+def log_audit(user_id=None, event=None, description=None, status='info',
+              ip_address=None, device=None, browser=None, location=None,
+              request_payload=None, response_payload=None,
+              previous_values=None, new_values=None, admin_id=None):
+    try:
+        # If no IP, get from request context if available
+        if ip_address is None:
+            try:
+                ip_address = request.remote_addr
+            except RuntimeError:
+                ip_address = None
+        log = AuditLog(
+            user_id=user_id,
+            event=event,
+            description=description,
+            status=status,
+            ip_address=ip_address,
+            device=device,
+            browser=browser,
+            location=location,
+            request_payload=json.dumps(request_payload) if request_payload else None,
+            response_payload=json.dumps(response_payload) if response_payload else None,
+            previous_values=json.dumps(previous_values) if previous_values else None,
+            new_values=json.dumps(new_values) if new_values else None,
+            admin_id=admin_id,
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception as e:
+        print(f"Audit log error: {e}")
 
 
 # ─── USER MANAGEMENT ─────────────────────────────────────────────
@@ -575,8 +614,8 @@ def delete_collection(collection_id):
 def get_all_payments():
     try:
         page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 50, type=int)
-        search = request.args.get('search')
+        per_page = request.args.get('per_page', 10, type=int)
+        search = request.args.get('search', '')
         status = request.args.get('status')
         escrow_status = request.args.get('escrow_status')
         date_from = request.args.get('date_from')
@@ -588,37 +627,41 @@ def get_all_payments():
 
         if search:
             term = f"%{search}%"
-            # Search by related fields – use subqueries for names
-            producer_sub = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
-            supplier_sub = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
-            transporter_sub = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
+            user_ids = db.session.query(User.id).filter(
+                or_(
+                    User.full_name.ilike(term),
+                    User.email.ilike(term),
+                    User.business_name.ilike(term),
+                    User.phone.ilike(term),
+                )
+            )
             query = query.filter(
                 or_(
-                    Payment.id.ilike(term),
+                    cast(Payment.id, String).ilike(term),
                     Payment.transaction_id.ilike(term),
                     Payment.receipt_number.ilike(term),
                     Payment.mpesa_receipt.ilike(term),
-                    Payment.payer_id.in_(producer_sub),
-                    Payment.supplier_id.in_(supplier_sub),
-                    Payment.transporter_id.in_(transporter_sub),
+                    Payment.producer_id.in_(user_ids),
+                    Payment.supplier_id.in_(user_ids),
+                    Payment.transporter_id.in_(user_ids),
                 )
             )
 
-        if status:
+        if status and status != 'all':
             query = query.filter(Payment.status == status)
-        if escrow_status:
-            query = query.filter(Payment.escrow_status == escrow_status)
-        if date_from:
-            query = query.filter(Payment.created_at >= date_from)
-        if date_to:
-            query = query.filter(Payment.created_at <= date_to)
 
-        # Sorting
-        if sort_field in ['id', 'amount', 'created_at', 'status']:
+        if escrow_status and escrow_status != 'all':
+            query = query.filter(Payment.escrow_status == escrow_status)
+
+        if date_from:
+            query = query.filter(Payment.created_at >= datetime.fromisoformat(date_from))
+
+        if date_to:
+            query = query.filter(Payment.created_at <= datetime.fromisoformat(date_to))
+
+        if hasattr(Payment, sort_field):
             column = getattr(Payment, sort_field)
-            if sort_order == 'desc':
-                column = column.desc()
-            query = query.order_by(column)
+            query = query.order_by(column.desc() if sort_order == 'desc' else column.asc())
         else:
             query = query.order_by(Payment.created_at.desc())
 
@@ -626,78 +669,79 @@ def get_all_payments():
 
         result = []
         for p in payments:
-            payer = User.query.get(p.payer_id)
-            supplier = User.query.get(p.supplier_id)
-            producer = User.query.get(p.producer_id)
-            transporter = User.query.get(p.transporter_id)
-            # If waste_type, quantity, unit are not on Payment, fetch from related entities
-            # For now we assume they are on Payment (or we can join)
-            # We'll add dummy fields if missing – adapt to your schema
+            producer = db.session.get(User, p.producer_id)
+            supplier = db.session.get(User, p.supplier_id)
+            transporter = db.session.get(User, p.transporter_id) if p.transporter_id else None
+            listing = db.session.get(WasteListing, p.listing_id) if p.listing_id else None
+
             result.append({
                 'id': p.id,
-                'amount': p.amount,
-                'status': p.status,
-                'payment_status': p.payment_status,
-                'payer_id': p.payer_id,
-                'payer_name': payer.full_name if payer else None,
-                'payer_email': payer.email if payer else None,
-                'supplier_id': p.supplier_id,
-                'supplier_name': supplier.full_name if supplier else None,
                 'producer_id': p.producer_id,
-                'producer_name': producer.full_name if producer else None,
+                'producer_name': producer.business_name or producer.full_name if producer else "N/A",
+                'supplier_id': p.supplier_id,
+                'supplier_name': supplier.business_name or supplier.full_name if supplier else "N/A",
                 'transporter_id': p.transporter_id,
-                'transporter_name': transporter.full_name if transporter else None,
+                'transporter_name': transporter.business_name or transporter.full_name if transporter else "Not assigned",
+                'listing_id': p.listing_id,
+                'request_id': p.request_id,
+                'transport_job_id': p.transport_job_id,
+                'waste_type': listing.waste_type if listing else "N/A",
+                'quantity': listing.quantity if listing else 0,
+                'unit': listing.unit if listing else "kg",
+                'waste_amount': p.waste_amount or 0,
+                'transport_fee': p.transport_fee or 0,
+                'platform_fee': p.platform_fee or 0,
+                'supplier_amount': p.supplier_amount or 0,
+                'transporter_amount': p.transporter_amount or 0,
+                'amount': p.amount or 0,
+                'payment_method': p.payment_method or "mpesa",
+                'mpesa_receipt': p.mpesa_receipt,
                 'transaction_id': p.transaction_id,
                 'receipt_number': p.receipt_number,
-                'mpesa_receipt': p.mpesa_receipt,
-                'payment_method': p.payment_method,
+                'status': p.status,
+                'payment_status': p.payment_status,
+                'escrow_status': p.escrow_status or "waiting",
                 'created_at': p.created_at.isoformat() if p.created_at else None,
+                'updated_at': p.updated_at.isoformat() if p.updated_at else None,
                 'completed_at': p.completed_at.isoformat() if p.completed_at else None,
-                # Extended fields (if not on Payment, you can compute them)
-                'waste_type': getattr(p, 'waste_type', None) or 'N/A',
-                'quantity': getattr(p, 'quantity', 0),
-                'unit': getattr(p, 'unit', 'kg'),
-                'waste_amount': getattr(p, 'waste_amount', 0.0),
-                'transport_fee': getattr(p, 'transport_fee', 0.0),
-                'platform_fee': getattr(p, 'platform_fee', 0.0),
-                'escrow_status': getattr(p, 'escrow_status', 'waiting'),
             })
 
         return jsonify({
-            'data': result,
-            'pagination': {
-                'page': page,
-                'per_page': per_page,
-                'total': total,
-                'pages': (total + per_page - 1) // per_page
+            "data": result,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "pages": (total + per_page - 1) // per_page,
             }
         }), 200
 
     except Exception as e:
-        print(f"❌ Error in get_all_payments: {e}")
-        return jsonify({'message': str(e)}), 500
+        print("Admin payments error:", e)
+        return jsonify({"message": str(e)}), 500
 
-
-# ─── PAYMENTS MANAGEMENT (EXTENDED) ──────────────────────────────
 
 @admin_bp.route('/payments/escrow-stats', methods=['GET'])
 @jwt_required()
 @role_required('admin')
 def get_escrow_stats():
     try:
-        held = db.session.query(func.sum(Payment.amount)).filter(Payment.escrow_status == 'held').scalar() or 0
-        released = db.session.query(func.sum(Payment.amount)).filter(Payment.escrow_status == 'released').scalar() or 0
-        refunded = db.session.query(func.sum(Payment.amount)).filter(Payment.escrow_status == 'refunded').scalar() or 0
-        platform_fees = db.session.query(func.sum(Payment.platform_fee)).filter(Payment.status.in_(['completed', 'paid'])).scalar() or 0
+        held = db.session.query(func.sum(Payment.amount)).filter(Payment.escrow_status == "held").scalar() or 0
+        released = db.session.query(func.sum(Payment.amount)).filter(Payment.escrow_status == "released").scalar() or 0
+        refunded = db.session.query(func.sum(Payment.amount)).filter(Payment.escrow_status == "refunded").scalar() or 0
+        platform_fees = db.session.query(func.sum(Payment.platform_fee)).filter(
+            Payment.status.in_(["paid", "completed", "released"])
+        ).scalar() or 0
+
         return jsonify({
-            'held': float(held),
-            'released': float(released),
-            'refunded': float(refunded),
-            'platform_fees': float(platform_fees),
+            "held": float(held),
+            "released": float(released),
+            "refunded": float(refunded),
+            "platform_fees": float(platform_fees),
         }), 200
+
     except Exception as e:
-        print(f"❌ Error in get_escrow_stats: {e}")
-        return jsonify({'message': str(e)}), 500
+        return jsonify({"message": str(e)}), 500
 
 
 @admin_bp.route('/payments/activity', methods=['GET'])
@@ -705,19 +749,18 @@ def get_escrow_stats():
 @role_required('admin')
 def get_payment_activity():
     try:
-        recent = Payment.query.order_by(Payment.created_at.desc()).limit(10).all()
-        activities = []
-        for p in recent:
-            status_label = 'Payment' if p.status in ['completed', 'paid'] else 'Payment Pending'
-            activities.append({
-                'event': status_label,
-                'description': f"{p.amount} KES - {p.payment_method or 'mpesa'}",
-                'timestamp': p.created_at.isoformat() if p.created_at else None,
+        payments = Payment.query.order_by(Payment.created_at.desc()).limit(10).all()
+        activity = []
+        for p in payments:
+            producer = db.session.get(User, p.producer_id)
+            activity.append({
+                "event": "Payment received" if p.status in ["paid", "completed"] else "Payment pending",
+                "description": f"{producer.business_name or producer.full_name if producer else 'Producer'} paid KES {p.amount}",
+                "timestamp": p.created_at.isoformat() if p.created_at else None,
             })
-        return jsonify(activities), 200
-    except Exception as e:
-        print(f"❌ Error in get_payment_activity: {e}")
-        return jsonify([]), 500
+        return jsonify(activity), 200
+    except Exception:
+        return jsonify([]), 200
 
 
 @admin_bp.route('/payments/<int:payment_id>/release', methods=['POST'])
@@ -725,20 +768,83 @@ def get_payment_activity():
 @role_required('admin')
 def release_payment(payment_id):
     try:
-        payment = Payment.query.get(payment_id)
+        payment = db.session.get(Payment, payment_id)
         if not payment:
-            return jsonify({'message': 'Payment not found'}), 404
-        if payment.escrow_status != 'held':
-            return jsonify({'message': 'Payment is not held in escrow'}), 400
-        if payment.status not in ['completed', 'paid']:
-            return jsonify({'message': 'Payment must be completed before release'}), 400
-        payment.escrow_status = 'released'
+            return jsonify({"message": "Payment not found"}), 404
+
+        if payment.escrow_status != "held":
+            return jsonify({"message": "Payment is not held in escrow"}), 400
+
+        if payment.status not in ["paid", "completed"]:
+            return jsonify({"message": "Only paid payments can be released"}), 400
+
+        # ─── Credit supplier wallet ──────────────────────────────
+        supplier = User.query.get(payment.supplier_id)
+        if supplier:
+            supplier_wallet = Wallet.query.filter_by(user_id=supplier.id).first()
+            if not supplier_wallet:
+                supplier_wallet = Wallet(user_id=supplier.id, balance=0.0)
+                db.session.add(supplier_wallet)
+
+            amount_to_supplier = payment.supplier_amount or payment.waste_amount or 0
+            if amount_to_supplier > 0:
+                supplier_wallet.balance += amount_to_supplier
+                tx_supplier = WalletTransaction(
+                    wallet_id=supplier_wallet.id,
+                    amount=amount_to_supplier,
+                    type='payment_release',
+                    description=f'Payment #{payment.id} released – waste payment',
+                    status='completed'
+                )
+                db.session.add(tx_supplier)
+
+        # ─── Credit transporter wallet ────────────────────────────
+        if payment.transporter_id and payment.transporter_amount and payment.transporter_amount > 0:
+            transporter = User.query.get(payment.transporter_id)
+            if transporter:
+                transporter_wallet = Wallet.query.filter_by(user_id=transporter.id).first()
+                if not transporter_wallet:
+                    transporter_wallet = Wallet(user_id=transporter.id, balance=0.0)
+                    db.session.add(transporter_wallet)
+
+                transporter_wallet.balance += payment.transporter_amount
+                tx_transporter = WalletTransaction(
+                    wallet_id=transporter_wallet.id,
+                    amount=payment.transporter_amount,
+                    type='payment_release',
+                    description=f'Payment #{payment.id} released – transport fee',
+                    status='completed'
+                )
+                db.session.add(tx_transporter)
+
+        # ─── Update payment status ────────────────────────────────
+        payment.escrow_status = "released"
+        payment.status = "released"
+        payment.payment_status = "released"
+        payment.updated_at = datetime.utcnow()
+        payment.completed_at = datetime.utcnow()
+
         db.session.commit()
-        return jsonify({'message': 'Payment released successfully'}), 200
+
+        # ─── Log the action ────────────────────────────────────────
+        admin_id = int(get_jwt_identity())
+        admin_user = db.session.get(User, admin_id)
+        log_audit(
+            user_id=admin_id,
+            event='payment_released',
+            description=f'Admin {admin_user.full_name} released payment #{payment.id}',
+            status='success',
+            admin_id=admin_id
+        )
+
+        return jsonify({
+            "message": "Payment released successfully – wallets credited.",
+            "payment": payment.to_dict(),
+        }), 200
+
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error in release_payment: {e}")
-        return jsonify({'message': str(e)}), 500
+        return jsonify({"message": str(e)}), 500
 
 
 @admin_bp.route('/payments/<int:payment_id>/refund', methods=['POST'])
@@ -746,65 +852,79 @@ def release_payment(payment_id):
 @role_required('admin')
 def refund_payment(payment_id):
     try:
-        payment = Payment.query.get(payment_id)
+        payment = db.session.get(Payment, payment_id)
         if not payment:
-            return jsonify({'message': 'Payment not found'}), 404
-        if payment.escrow_status != 'held':
-            return jsonify({'message': 'Payment is not held in escrow'}), 400
-        if payment.status not in ['pending', 'failed']:
-            return jsonify({'message': 'Only pending or failed payments can be refunded'}), 400
-        payment.escrow_status = 'refunded'
-        payment.status = 'refunded'
+            return jsonify({"message": "Payment not found"}), 404
+
+        if payment.escrow_status != "held":
+            return jsonify({"message": "Only held escrow payments can be refunded"}), 400
+
+        payment.escrow_status = "refunded"
+        payment.status = "refunded"
+        payment.payment_status = "refunded"
+        payment.updated_at = datetime.utcnow()
         db.session.commit()
-        return jsonify({'message': 'Payment refunded successfully'}), 200
+
+        # ─── Log the action ────────────────────────────────────────
+        admin_id = int(get_jwt_identity())
+        admin_user = db.session.get(User, admin_id)
+        log_audit(
+            user_id=admin_id,
+            event='payment_refunded',
+            description=f'Admin {admin_user.full_name} refunded payment #{payment.id}',
+            status='success',
+            admin_id=admin_id
+        )
+
+        return jsonify({
+            "message": "Payment refunded successfully",
+            "payment": payment.to_dict(),
+        }), 200
+
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error in refund_payment: {e}")
-        return jsonify({'message': str(e)}), 500
+        return jsonify({"message": str(e)}), 500
 
 
 @admin_bp.route('/payments/<int:payment_id>/receipt', methods=['GET'])
 @jwt_required()
 @role_required('admin')
 def download_receipt(payment_id):
-    try:
-        payment = Payment.query.get(payment_id)
-        if not payment:
-            return jsonify({'message': 'Payment not found'}), 404
-        # In production, generate a PDF and return as file.
-        # For now, return JSON with receipt details.
-        return jsonify({
-            'id': payment.id,
-            'amount': payment.amount,
-            'status': payment.status,
-            'date': payment.created_at.isoformat() if payment.created_at else None,
-            'receipt_number': payment.receipt_number,
-            'mpesa_receipt': payment.mpesa_receipt,
-        }), 200
-    except Exception as e:
-        return jsonify({'message': str(e)}), 500
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        return jsonify({"message": "Payment not found"}), 404
+
+    return jsonify({
+        "receipt_number": payment.receipt_number,
+        "mpesa_receipt": payment.mpesa_receipt,
+        "amount": payment.amount,
+        "status": payment.status,
+        "escrow_status": payment.escrow_status,
+        "created_at": payment.created_at.isoformat() if payment.created_at else None,
+    }), 200
 
 
 @admin_bp.route('/payments/<int:payment_id>/invoice', methods=['GET'])
 @jwt_required()
 @role_required('admin')
 def download_invoice(payment_id):
-    try:
-        payment = Payment.query.get(payment_id)
-        if not payment:
-            return jsonify({'message': 'Payment not found'}), 404
-        payer = User.query.get(payment.payer_id)
-        supplier = User.query.get(payment.supplier_id)
-        return jsonify({
-            'id': payment.id,
-            'invoice_number': payment.receipt_number or f'INV-{payment.id}',
-            'amount': payment.amount,
-            'date': payment.created_at.isoformat() if payment.created_at else None,
-            'payer': payer.full_name if payer else 'N/A',
-            'supplier': supplier.full_name if supplier else 'N/A',
-        }), 200
-    except Exception as e:
-        return jsonify({'message': str(e)}), 500
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        return jsonify({"message": "Payment not found"}), 404
+
+    producer = db.session.get(User, payment.producer_id)
+    supplier = db.session.get(User, payment.supplier_id)
+
+    return jsonify({
+        "invoice_number": payment.receipt_number or f"INV-{payment.id}",
+        "producer": producer.business_name or producer.full_name if producer else "N/A",
+        "supplier": supplier.business_name or supplier.full_name if supplier else "N/A",
+        "amount": payment.amount,
+        "platform_fee": payment.platform_fee,
+        "transport_fee": payment.transport_fee,
+        "status": payment.status,
+        "created_at": payment.created_at.isoformat() if payment.created_at else None,
+    }), 200
 
 
 # ─── ANALYTICS ───────────────────────────────────────────────────
@@ -1382,6 +1502,17 @@ def get_settings():
 def update_settings():
     try:
         data = request.get_json() or {}
+        admin_id = int(get_jwt_identity())
+        admin_user = db.session.get(User, admin_id)
+
+        # Get old values for audit log
+        old_settings = {}
+        for key in data.keys():
+            setting = AdminSetting.query.filter_by(key=key).first()
+            if setting:
+                old_settings[key] = setting.value
+
+        # Update or create settings
         for key, value in data.items():
             setting = AdminSetting.query.filter_by(key=key).first()
             if setting:
@@ -1389,7 +1520,20 @@ def update_settings():
             else:
                 setting = AdminSetting(key=key, value=str(value) if value is not None else '')
                 db.session.add(setting)
+
         db.session.commit()
+
+        # ─── Log changes ──────────────────────────────────────────
+        log_audit(
+            user_id=admin_id,
+            event='settings_updated',
+            description=f'Admin {admin_user.full_name} updated platform settings',
+            status='success',
+            admin_id=admin_id,
+            previous_values=old_settings,
+            new_values=data
+        )
+
         return jsonify({'message': 'Settings updated successfully'}), 200
     except Exception as e:
         db.session.rollback()
@@ -1514,4 +1658,468 @@ def admin_delete_ticket(ticket_id):
     except Exception as e:
         db.session.rollback()
         print(f"❌ Error in admin_delete_ticket: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── WALLET MANAGEMENT ──────────────────────────────────────────
+
+@admin_bp.route('/wallets', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_all_wallets():
+    """Get all user wallets (suppliers & transporters)."""
+    try:
+        users = User.query.filter(User.role.in_(['supplier', 'transporter'])).all()
+        result = []
+        for u in users:
+            wallet = Wallet.query.filter_by(user_id=u.id).first()
+            if not wallet:
+                wallet = Wallet(user_id=u.id, balance=0.0)
+                db.session.add(wallet)
+                db.session.commit()
+            result.append({
+                'user_id': u.id,
+                'user_name': u.full_name,
+                'business_name': u.business_name,
+                'email': u.email,
+                'role': u.role,
+                'balance': wallet.balance,
+            })
+        return jsonify({'data': result}), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/wallets/<int:user_id>/transactions', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_wallet_transactions(user_id):
+    try:
+        wallet = Wallet.query.filter_by(user_id=user_id).first()
+        if not wallet:
+            return jsonify([]), 200
+        transactions = WalletTransaction.query.filter_by(wallet_id=wallet.id).order_by(
+            WalletTransaction.created_at.desc()
+        ).all()
+        return jsonify([t.to_dict() for t in transactions]), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── WITHDRAWAL REQUESTS ─────────────────────────────────────────
+
+@admin_bp.route('/withdrawals', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_withdrawal_requests():
+    try:
+        requests = WithdrawalRequest.query.order_by(WithdrawalRequest.created_at.desc()).all()
+        result = []
+        for r in requests:
+            user = User.query.get(r.user_id)
+            result.append({
+                'id': r.id,
+                'user_id': r.user_id,
+                'user_name': user.full_name if user else 'Unknown',
+                'business_name': user.business_name if user else '',
+                'email': user.email if user else '',
+                'amount': r.amount,
+                'payment_method': r.payment_method,
+                'account_details': r.account_details,
+                'status': r.status,
+                'created_at': r.created_at.isoformat() if r.created_at else None,
+                'updated_at': r.updated_at.isoformat() if r.updated_at else None,
+                'admin_notes': r.admin_notes,
+            })
+        return jsonify({'data': result}), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/withdrawals/<int:withdrawal_id>/approve', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def approve_withdrawal(withdrawal_id):
+    """Approve a withdrawal request: deduct from wallet, mark as approved."""
+    try:
+        req = WithdrawalRequest.query.get(withdrawal_id)
+        if not req:
+            return jsonify({'message': 'Withdrawal request not found'}), 404
+        if req.status != 'pending':
+            return jsonify({'message': 'Withdrawal is not pending'}), 400
+
+        wallet = Wallet.query.filter_by(user_id=req.user_id).first()
+        if not wallet:
+            return jsonify({'message': 'User wallet not found'}), 404
+        if wallet.balance < req.amount:
+            return jsonify({'message': 'Insufficient balance'}), 400
+
+        # Deduct from wallet
+        wallet.balance -= req.amount
+        wallet.updated_at = datetime.utcnow()
+
+        # Create transaction
+        tx = WalletTransaction(
+            wallet_id=wallet.id,
+            amount=-req.amount,
+            type='withdrawal',
+            description=f'Withdrawal request #{req.id} approved',
+            status='completed'
+        )
+        db.session.add(tx)
+
+        req.status = 'approved'
+        req.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        # ─── Log the action ────────────────────────────────────────
+        admin_id = int(get_jwt_identity())
+        admin_user = db.session.get(User, admin_id)
+        log_audit(
+            user_id=req.user_id,
+            event='withdrawal_approved',
+            description=f'Admin {admin_user.full_name} approved withdrawal #{req.id}',
+            status='success',
+            admin_id=admin_id
+        )
+
+        return jsonify({'message': 'Withdrawal approved successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/withdrawals/<int:withdrawal_id>/reject', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def reject_withdrawal(withdrawal_id):
+    """Reject a withdrawal request: mark as rejected."""
+    try:
+        req = WithdrawalRequest.query.get(withdrawal_id)
+        if not req:
+            return jsonify({'message': 'Withdrawal request not found'}), 404
+        if req.status != 'pending':
+            return jsonify({'message': 'Withdrawal is not pending'}), 400
+
+        req.status = 'rejected'
+        req.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        # ─── Log the action ────────────────────────────────────────
+        admin_id = int(get_jwt_identity())
+        admin_user = db.session.get(User, admin_id)
+        log_audit(
+            user_id=req.user_id,
+            event='withdrawal_rejected',
+            description=f'Admin {admin_user.full_name} rejected withdrawal #{req.id}',
+            status='success',
+            admin_id=admin_id
+        )
+
+        return jsonify({'message': 'Withdrawal rejected'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/withdrawals/<int:withdrawal_id>/complete', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def complete_withdrawal(withdrawal_id):
+    """Mark a withdrawal as completed (money sent)."""
+    try:
+        req = WithdrawalRequest.query.get(withdrawal_id)
+        if not req:
+            return jsonify({'message': 'Withdrawal request not found'}), 404
+        if req.status != 'approved':
+            return jsonify({'message': 'Withdrawal must be approved first'}), 400
+
+        req.status = 'completed'
+        req.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        # ─── Log the action ────────────────────────────────────────
+        admin_id = int(get_jwt_identity())
+        admin_user = db.session.get(User, admin_id)
+        log_audit(
+            user_id=req.user_id,
+            event='withdrawal_completed',
+            description=f'Admin {admin_user.full_name} completed withdrawal #{req.id}',
+            status='success',
+            admin_id=admin_id
+        )
+
+        return jsonify({'message': 'Withdrawal marked as completed'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── DISPUTES ─────────────────────────────────────────────────────
+
+@admin_bp.route('/disputes/stats', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_dispute_stats():
+    try:
+        total = Dispute.query.count()
+        open_ = Dispute.query.filter_by(status='open').count()
+        under_investigation = Dispute.query.filter_by(status='under_investigation').count()
+        awaiting_response = Dispute.query.filter_by(status='awaiting_response').count()
+        resolved = Dispute.query.filter_by(status='resolved').count()
+        closed = Dispute.query.filter_by(status='closed').count()
+        refunded = Dispute.query.filter_by(status='refunded').count()
+        frozen_escrow = Dispute.query.filter_by(escrow_status='frozen').count()
+
+        return jsonify({
+            'total': total,
+            'open': open_,
+            'under_investigation': under_investigation,
+            'awaiting_response': awaiting_response,
+            'resolved': resolved,
+            'closed': closed,
+            'refunded': refunded,
+            'frozen_escrow': frozen_escrow,
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/disputes', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_disputes():
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        search = request.args.get('search', '')
+        status = request.args.get('status')
+
+        query = Dispute.query
+        if search:
+            term = f"%{search}%"
+            producer_ids = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
+            supplier_ids = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
+            transporter_ids = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
+            query = query.filter(
+                or_(
+                    cast(Dispute.id, String).ilike(term),
+                    cast(Dispute.payment_id, String).ilike(term),
+                    Dispute.producer_id.in_(producer_ids),
+                    Dispute.supplier_id.in_(supplier_ids),
+                    Dispute.transporter_id.in_(transporter_ids),
+                )
+            )
+        if status and status != 'all':
+            query = query.filter(Dispute.status == status)
+
+        query = query.order_by(Dispute.created_at.desc())
+        disputes, total = paginate_query(query, page, per_page)
+
+        result = []
+        for d in disputes:
+            payment = db.session.get(Payment, d.payment_id)
+            producer = db.session.get(User, d.producer_id)
+            supplier = db.session.get(User, d.supplier_id)
+            transporter = db.session.get(User, d.transporter_id) if d.transporter_id else None
+            result.append({
+                'id': d.id,
+                'payment_id': d.payment_id,
+                'producer_name': producer.full_name if producer else None,
+                'supplier_name': supplier.full_name if supplier else None,
+                'transporter_name': transporter.full_name if transporter else None,
+                'waste_type': payment.waste_type if payment else None,
+                'reason': d.reason,
+                'status': d.status,
+                'escrow_status': d.escrow_status,
+                'created_at': d.created_at.isoformat() if d.created_at else None,
+            })
+
+        return jsonify({
+            'data': result,
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/disputes/<int:dispute_id>/action', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def dispute_action(dispute_id):
+    try:
+        dispute = db.session.get(Dispute, dispute_id)
+        if not dispute:
+            return jsonify({'message': 'Dispute not found'}), 404
+
+        data = request.get_json() or {}
+        action = data.get('action')
+        if not action:
+            return jsonify({'message': 'Action is required'}), 400
+
+        admin_id = int(get_jwt_identity())
+        admin_user = db.session.get(User, admin_id)
+        if not admin_user or admin_user.role != 'admin':
+            return jsonify({'message': 'Admin only'}), 403
+
+        # Map actions to status changes
+        status_map = {
+            'request_more_info': 'awaiting_response',
+            'freeze_escrow': 'under_investigation',
+            'release_escrow': 'open',
+            'refund_producer': 'refunded',
+            'reject': 'closed',
+            'resolve': 'resolved',
+            'close': 'closed',
+        }
+
+        escrow_map = {
+            'freeze_escrow': 'frozen',
+            'release_escrow': 'released',
+            'refund_producer': 'refunded',
+            'resolve': 'released',
+        }
+
+        if action in status_map:
+            dispute.status = status_map[action]
+
+        if action in escrow_map:
+            dispute.escrow_status = escrow_map[action]
+            if action == 'refund_producer':
+                payment = db.session.get(Payment, dispute.payment_id)
+                if payment:
+                    payment.status = 'refunded'
+                    payment.escrow_status = 'refunded'
+
+        # Add to timeline
+        timeline = json.loads(dispute.timeline) if dispute.timeline else []
+        timeline.append({
+            'description': f'Admin {admin_user.full_name} performed "{action}" on dispute #{dispute.id}',
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        dispute.timeline = json.dumps(timeline)
+        dispute.updated_at = datetime.utcnow()
+
+        db.session.commit()
+
+        # ─── Log the action ────────────────────────────────────────
+        log_audit(
+            user_id=admin_id,
+            event='dispute_action',
+            description=f'Admin {admin_user.full_name} performed {action} on dispute #{dispute.id}',
+            status='success',
+            admin_id=admin_id
+        )
+
+        return jsonify({'message': f'Action "{action}" completed successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── SETTINGS HISTORY ────────────────────────────────────────────
+
+@admin_bp.route('/settings/history', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_settings_history():
+    try:
+        logs = AuditLog.query.filter(
+            AuditLog.event == 'settings_updated'
+        ).order_by(AuditLog.created_at.desc()).limit(50).all()
+
+        result = []
+        for log in logs:
+            prev = json.loads(log.previous_values) if log.previous_values else {}
+            new = json.loads(log.new_values) if log.new_values else {}
+            result.append({
+                'user_name': log.user.full_name if log.user else 'System',
+                'field': 'Multiple' if len(prev) > 1 else list(prev.keys())[0] if prev else 'N/A',
+                'old_value': ', '.join([f'{k}: {v}' for k, v in prev.items()]),
+                'new_value': ', '.join([f'{k}: {v}' for k, v in new.items()]),
+                'created_at': log.created_at.isoformat() if log.created_at else None,
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── AUDIT LOGS ───────────────────────────────────────────────────
+
+@admin_bp.route('/audit-logs/stats', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_audit_stats():
+    try:
+        total = AuditLog.query.count()
+        login_events = AuditLog.query.filter(AuditLog.event.like('%login%')).count()
+        payment_actions = AuditLog.query.filter(AuditLog.event.like('payment%')).count()
+        user_actions = AuditLog.query.filter(AuditLog.event.like('user%')).count()
+        admin_actions = AuditLog.query.filter(AuditLog.event.like('admin%')).count()
+        security_events = AuditLog.query.filter(
+            AuditLog.event.in_(['failed_login', 'unauthorized_access', 'suspicious_activity'])
+        ).count()
+
+        return jsonify({
+            'total': total,
+            'login_events': login_events,
+            'payment_actions': payment_actions,
+            'user_actions': user_actions,
+            'admin_actions': admin_actions,
+            'security_events': security_events,
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/audit-logs', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_audit_logs():
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '')
+        event_type = request.args.get('event_type')
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+
+        query = AuditLog.query
+
+        if search:
+            term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    AuditLog.description.ilike(term),
+                    AuditLog.ip_address.ilike(term),
+                    AuditLog.user_id.in_(db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))),
+                )
+            )
+
+        if event_type and event_type != 'all':
+            query = query.filter(AuditLog.event == event_type)
+
+        if date_from:
+            query = query.filter(AuditLog.created_at >= datetime.fromisoformat(date_from))
+        if date_to:
+            query = query.filter(AuditLog.created_at <= datetime.fromisoformat(date_to))
+
+        query = query.order_by(AuditLog.created_at.desc())
+        logs, total = paginate_query(query, page, per_page)
+
+        return jsonify({
+            'data': [log.to_dict() for log in logs],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            }
+        }), 200
+    except Exception as e:
         return jsonify({'message': str(e)}), 500

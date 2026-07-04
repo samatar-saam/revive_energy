@@ -6,6 +6,7 @@ from .business_verification import BusinessVerification
 from .processing_plant import ProcessingPlant
 from .carbon_credit import CarbonCredit
 from .review import Review
+from .admin_settings import AdminSetting          # <-- moved up
 
 # Legacy models (does NOT include AdminSetting)
 from .legacy import (
@@ -20,7 +21,6 @@ from .legacy import (
     PhoneVerification,
     Conversation,
     Message,
-    # AdminSetting is NOT here
 )
 
 # New models
@@ -29,9 +29,10 @@ from .receipt import Receipt
 from .transport_job import TransportJob
 from .escrow_transaction import EscrowTransaction
 from .ticket_reply import TicketReply
-
-# AdminSetting is in its own file
-from .admin_settings import AdminSetting   # <-- IMPORT FROM HERE
+from .wallet import Wallet, WalletTransaction
+from .withdrawal import WithdrawalRequest
+from .dispute import Dispute               # <-- ADDED
+from .audit_log import AuditLog             # <-- ADDED
 
 __all__ = [
     "User",
@@ -40,7 +41,7 @@ __all__ = [
     "ProcessingPlant",
     "CarbonCredit",
     "Review",
-    "AdminSetting",      # <-- ADDED
+    "AdminSetting",
 
     # Legacy
     "Collection",
@@ -60,4 +61,10 @@ __all__ = [
     "Receipt",
     "TransportJob",
     "EscrowTransaction",
+    "TicketReply",
+    "Wallet",
+    "WalletTransaction",
+    "WithdrawalRequest",
+    "Dispute",           # <-- ADDED
+    "AuditLog",          # <-- ADDED
 ]

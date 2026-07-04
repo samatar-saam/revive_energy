@@ -42,8 +42,12 @@ import Reviews from "./admin/pages/Reviews";
 import Support from "./admin/pages/Support";                  // Admin support
 import AdminMessages from "./admin/pages/Messages";
 import Settings from "./admin/pages/Settings";
-
+import AdminWithdrawals from "./admin/pages/Withdrawals";
+import AdminWallet from "./admin/pages/Wallet";
 import UserDashboard from "./users/layout/UserDashboard";
+import Disputes from "./admin/pages/Disputes";
+import PricingSettings from "./admin/pages/PricingSettings";
+import AuditLogs from "./admin/pages/AuditLogs";
 
 // Supplier pages
 import SupplierDashboardContent from "./users/pages/supplier/SupplierDashboardContent";
@@ -72,7 +76,9 @@ import Notifications from "./users/pages/shared/Notifications";
 import ProfileSettings from "./users/pages/shared/ProfileSettings";
 import PaymentInvoices from "./users/pages/shared/PaymentInvoices";
 import InvoicePaymentDetails from "./users/pages/shared/InvoicePaymentDetails";
-import UserSupport from "./users/pages/shared/Support";        // <-- ALIASED for user support
+import UserSupport from "./users/pages/shared/Support"; 
+import Wallet from "./users/pages/shared/Wallet";
+import Withdrawals from "./users/pages/shared/Withdrawals";       // <-- ALIASED for user support
 
 function DashboardIndex() {
   const [role, setRole] = useState("supplier");
@@ -176,6 +182,11 @@ function App() {
           <Route path="support" element={<Support />} />                 {/* Admin support */}
           <Route path="messages" element={<AdminMessages />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="withdrawals" element={<AdminWithdrawals />} />
+          <Route path="wallet" element={<AdminWallet />} />
+          <Route path="disputes" element={<Disputes />} />
+<Route path="pricing" element={<PricingSettings />} />
+<Route path="audit-logs" element={<AuditLogs />} />
         </Route>
 
         <Route path="/dashboard" element={<UserDashboard />}>
@@ -207,6 +218,8 @@ function App() {
           <Route path="notifications" element={<Notifications />} />
           <Route path="profile" element={<ProfileSettings />} />
           <Route path="support" element={<UserSupport />} />            {/* User support */}
+          <Route path="wallet" element={<Wallet />} />
+          <Route path="withdrawals" element={<Withdrawals />} />
         </Route>
       </Routes>
     </BrowserRouter>

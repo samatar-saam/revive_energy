@@ -251,11 +251,13 @@ export default function Payments() {
     });
   };
 
+  // ✅ UPDATED: added 'released' to status badge map
   const getStatusBadge = (status) => {
     const map = {
       pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
       completed: 'bg-green-50 text-green-700 border-green-200',
       paid: 'bg-green-50 text-green-700 border-green-200',
+      released: 'bg-green-50 text-green-700 border-green-200', // <-- added
       failed: 'bg-red-50 text-red-700 border-red-200',
       refunded: 'bg-gray-50 text-gray-700 border-gray-200',
     };
@@ -514,7 +516,8 @@ export default function Payments() {
                   <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(p.waste_amount)}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(p.transport_fee)}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(p.platform_fee)}</td>
-                  <td className="px-4 py-3 font-medium text-gray-900">{formatCurrency(p.amount)}</td>
+                  {/* ✅ UPDATED: use total_amount fallback */}
+                  <td className="px-4 py-3 font-medium text-gray-900">{formatCurrency(p.total_amount || p.amount)}</td>
                   <td className="px-4 py-3 text-sm text-gray-600 font-mono text-xs">{p.mpesa_receipt || '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium border ${getEscrowBadge(p.escrow_status)}`}>
@@ -550,7 +553,8 @@ export default function Payments() {
                       >
                         <FileText className="h-4 w-4" />
                       </button>
-                      {p.escrow_status === 'held' && p.status === 'completed' && (
+                      {/* ✅ UPDATED release condition */}
+                      {p.escrow_status === 'held' && ['completed', 'paid'].includes(p.status) && (
                         <button
                           onClick={() => { setSelectedPayment(p); setShowReleaseConfirm(true); }}
                           className="rounded-lg p-1.5 text-green-400 transition hover:bg-gray-100 hover:text-green-600"
@@ -559,7 +563,8 @@ export default function Payments() {
                           <Check className="h-4 w-4" />
                         </button>
                       )}
-                      {p.escrow_status === 'held' && p.status === 'pending' && (
+                      {/* ✅ UPDATED refund condition */}
+                      {p.escrow_status === 'held' && ['pending', 'failed', 'paid'].includes(p.status) && (
                         <button
                           onClick={() => { setSelectedPayment(p); setShowRefundConfirm(true); }}
                           className="rounded-lg p-1.5 text-red-400 transition hover:bg-gray-100 hover:text-red-600"
@@ -633,7 +638,8 @@ export default function Payments() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase text-gray-400">Total Amount</p>
-                  <p className="mt-1 text-lg font-bold text-gray-900">{formatCurrency(selectedPayment.amount)}</p>
+                  {/* ✅ UPDATED: use total_amount fallback */}
+                  <p className="mt-1 text-lg font-bold text-gray-900">{formatCurrency(selectedPayment.total_amount || selectedPayment.amount)}</p>
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase text-gray-400">Status</p>
@@ -707,7 +713,8 @@ export default function Payments() {
                   </div>
                   <div className="flex justify-between text-sm border-t border-gray-200 pt-2 font-bold">
                     <span>Total</span>
-                    <span>{formatCurrency(selectedPayment.amount)}</span>
+                    {/* ✅ UPDATED: use total_amount fallback */}
+                    <span>{formatCurrency(selectedPayment.total_amount || selectedPayment.amount)}</span>
                   </div>
                 </div>
               </div>
@@ -722,7 +729,7 @@ export default function Payments() {
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
             <h3 className="text-lg font-bold text-gray-900">Release Payment</h3>
             <p className="text-sm text-gray-600 mt-2">
-              Are you sure you want to release <strong>{formatCurrency(selectedPayment.amount)}</strong> from escrow to the supplier?
+              Are you sure you want to release <strong>{formatCurrency(selectedPayment.total_amount || selectedPayment.amount)}</strong> from escrow to the supplier?
               This action cannot be undone.
             </p>
             <div className="flex gap-3 mt-6">
@@ -743,7 +750,7 @@ export default function Payments() {
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
             <h3 className="text-lg font-bold text-gray-900">Refund Payment</h3>
             <p className="text-sm text-gray-600 mt-2">
-              Are you sure you want to refund <strong>{formatCurrency(selectedPayment.amount)}</strong> to the producer?
+              Are you sure you want to refund <strong>{formatCurrency(selectedPayment.total_amount || selectedPayment.amount)}</strong> to the producer?
               This action cannot be undone.
             </p>
             <div className="flex gap-3 mt-6">
