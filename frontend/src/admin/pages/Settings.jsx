@@ -480,7 +480,7 @@ export default function Settings() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#11402D] border-t-[#9CF06B] rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-500">Loading settings...</p>
+          <p className="mt-4 text-gray-500 font-display">Loading settings...</p>
         </div>
       </div>
     );
@@ -491,7 +491,7 @@ export default function Settings() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900">Unable to load settings</h3>
+          <h3 className="text-xl font-bold text-gray-900 font-display">Unable to load settings</h3>
           <p className="text-gray-500 mt-2">{error}</p>
           <button
             onClick={fetchSettings}
@@ -505,62 +505,71 @@ export default function Settings() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* ─── Header ────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-          <p className="text-sm text-gray-500">Manage platform configuration and preferences</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleReset}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Reset
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#0E2A1C] transition disabled:opacity-70"
-          >
-            <Save className="h-4 w-4" />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
+      {/* ─── Fonts ────────────────────────────────────────────────── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
+      `}</style>
 
-      {/* ─── Tabs ───────────────────────────────────────────────── */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-1 overflow-x-auto">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-xl transition ${
-                  activeTab === tab.id
-                    ? 'bg-white text-[#11402D] border-b-2 border-[#11402D]'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="h-4 w-4" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+      <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+        {/* ─── Header ────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display text-2xl lg:text-3xl font-bold text-gray-900">Settings</h2>
+            <p className="text-sm text-gray-500 mt-1">Manage platform configuration and preferences</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reset
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#0E2A1C] transition disabled:opacity-70"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
 
-      {/* ─── Content ───────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        {activeTab === 'general' && renderGeneral()}
-        {activeTab === 'users' && renderUserManagement()}
-        {activeTab === 'payment' && renderPayment()}
-        {activeTab === 'email' && renderEmail()}
-        {activeTab === 'security' && renderSecurity()}
+        {/* ─── Tabs ───────────────────────────────────────────────── */}
+        <div className="border-b border-gray-200">
+          <nav className="flex gap-1 overflow-x-auto">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-xl transition ${
+                    activeTab === tab.id
+                      ? 'bg-white text-[#11402D] border-b-2 border-[#11402D]'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="font-display">{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* ─── Content ───────────────────────────────────────────── */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          {activeTab === 'general' && renderGeneral()}
+          {activeTab === 'users' && renderUserManagement()}
+          {activeTab === 'payment' && renderPayment()}
+          {activeTab === 'email' && renderEmail()}
+          {activeTab === 'security' && renderSecurity()}
+        </div>
       </div>
     </div>
   );

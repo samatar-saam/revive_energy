@@ -31,12 +31,13 @@ def iso(dt):
 def calculate_amounts(listing):
     """
     Return fixed pricing amounts regardless of the listing.
+    Updated to test values: 10, 10, 10, 30.
     """
-    # ─── FIXED VALUES ──────────────────────────────────────────
-    waste_value = 1000.00
-    transport_fee = 500.00
-    platform_fee = 500.00
-    total_amount = waste_value + transport_fee + platform_fee  # 2000.00
+    # ─── FIXED VALUES (TEST AMOUNTS) ──────────────────────────
+    waste_value = 10.00
+    transport_fee = 10.00
+    platform_fee = 10.00
+    total_amount = waste_value + transport_fee + platform_fee  # 30.00
 
     return {
         "waste_value": waste_value,

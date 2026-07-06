@@ -158,14 +158,13 @@ export default function MyRequests() {
     return cleaned;
   };
 
-  // ─── FIXED AMOUNTS (use backend values) ─────────────────────
+  // ─── UPDATED: TEST AMOUNTS (10, 10, 10, 30) ────────────────
   const getAmounts = (req) => {
-    // Use the fixed values from the backend (they are already calculated)
-    // Fallback to the fixed KES values if missing
-    const wasteAmount = req.waste_value || 1000;
-    const transportFee = req.transport_fee || 500;
-    const platformFee = req.platform_fee || 500;
-    const totalAmount = req.total_amount || 2000;
+    // Use values from backend if available, otherwise fallback to test amounts
+    const wasteAmount = req.waste_value || 10;
+    const transportFee = req.transport_fee || 10;
+    const platformFee = req.platform_fee || 10;
+    const totalAmount = req.total_amount || 30;
 
     return {
       wasteAmount,

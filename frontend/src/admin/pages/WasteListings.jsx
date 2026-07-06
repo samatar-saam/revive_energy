@@ -70,7 +70,6 @@ export default function WasteListings() {
         return;
       }
 
-      console.log('📤 Fetching waste listings...');
       const res = await fetch(`${API_URL}/admin/waste-sources`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -86,7 +85,6 @@ export default function WasteListings() {
       }
 
       const data = await res.json();
-      console.log('📥 Received listings:', data.length);
       setListings(data);
     } catch (err) {
       console.error('❌ Fetch error:', err);
@@ -314,7 +312,7 @@ export default function WasteListings() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#11402D] border-t-[#9CF06B] rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-500">Loading waste listings...</p>
+          <p className="mt-4 text-gray-500 font-display">Loading waste listings...</p>
         </div>
       </div>
     );
@@ -326,7 +324,7 @@ export default function WasteListings() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900">Unable to load listings</h3>
+          <h3 className="text-xl font-bold text-gray-900 font-display">Unable to load listings</h3>
           <p className="text-gray-500 mt-2">{error}</p>
           <button
             onClick={fetchListings}
@@ -340,437 +338,446 @@ export default function WasteListings() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* ─── Stats Cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard label="Total" value={stats.total} icon={Package} color="blue" />
-        <StatCard label="Available" value={stats.available} icon={CheckCircle} color="green" />
-        <StatCard label="Requested" value={stats.requested} icon={Clock} color="yellow" />
-        <StatCard label="Assigned" value={stats.assigned} icon={Truck} color="purple" />
-        <StatCard label="Delivered" value={stats.delivered} icon={CheckCircle} color="indigo" />
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
+      {/* ─── Fonts ────────────────────────────────────────────────── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
+      `}</style>
 
-      {/* ─── Toolbar ────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by name, location, supplier..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="all">All Status</option>
-              <option value="available">Available</option>
-              <option value="requested">Requested</option>
-              <option value="assigned">Assigned</option>
-              <option value="collected">Collected</option>
-              <option value="delivered">Delivered</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
-
-          <div className="relative">
-            <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="all">All Categories</option>
-              <option value="organic">Organic</option>
-              <option value="plastic">Plastic</option>
-              <option value="agricultural">Agricultural</option>
-              <option value="industrial">Industrial</option>
-              <option value="glass">Glass</option>
-              <option value="metal">Metal</option>
-              <option value="paper">Paper</option>
-              <option value="e_waste">E-Waste</option>
-              <option value="mixed">Mixed</option>
-              <option value="other">Other</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
+      <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+        {/* ─── Stats Cards ────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <StatCard label="Total" value={stats.total} icon={Package} color="blue" />
+          <StatCard label="Available" value={stats.available} icon={CheckCircle} color="green" />
+          <StatCard label="Requested" value={stats.requested} icon={Clock} color="yellow" />
+          <StatCard label="Assigned" value={stats.assigned} icon={Truck} color="purple" />
+          <StatCard label="Delivered" value={stats.delivered} icon={CheckCircle} color="indigo" />
         </div>
 
-        <button
-          onClick={handleAddNew}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-4 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] transition"
-        >
-          <Plus className="h-4 w-4" />
-          Add New
-        </button>
-      </div>
+        {/* ─── Toolbar ────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by name, location, supplier..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-64 rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
 
-      {/* ─── Table ───────────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        {paginatedListings.length === 0 ? (
-          <div className="p-12 text-center">
-            <Package className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-            <h3 className="text-lg font-semibold text-gray-700">No waste listings found</h3>
-            <p className="text-sm text-gray-500">Try adjusting your filters or add a new listing.</p>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="all">All Status</option>
+                <option value="available">Available</option>
+                <option value="requested">Requested</option>
+                <option value="assigned">Assigned</option>
+                <option value="collected">Collected</option>
+                <option value="delivered">Delivered</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+
+            <div className="relative">
+              <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="all">All Categories</option>
+                <option value="organic">Organic</option>
+                <option value="plastic">Plastic</option>
+                <option value="agricultural">Agricultural</option>
+                <option value="industrial">Industrial</option>
+                <option value="glass">Glass</option>
+                <option value="metal">Metal</option>
+                <option value="paper">Paper</option>
+                <option value="e_waste">E-Waste</option>
+                <option value="mixed">Mixed</option>
+                <option value="other">Other</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Waste Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Category</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Qty</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Location</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Supplier</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Created</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedListings.map((listing) => (
-                  <tr key={listing.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-4 py-3 font-mono text-sm text-gray-500">#{listing.id}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{listing.name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{getCategoryLabel(listing.type)}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
-                      {listing.quantity || '—'} {listing.unit || 'kg'}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{listing.location}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{listing.supplier_name || 'Unknown'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(listing.status)}`}>
-                        {listing.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{formatDate(listing.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleView(listing)}
-                          className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-[#11402D]"
-                          title="View"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(listing)}
-                          className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-blue-600"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(listing.id)}
-                          className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-red-600"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+
+          <button
+            onClick={handleAddNew}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-4 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] transition"
+          >
+            <Plus className="h-4 w-4" />
+            Add New
+          </button>
+        </div>
+
+        {/* ─── Table ───────────────────────────────────────────────── */}
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          {paginatedListings.length === 0 ? (
+            <div className="p-12 text-center">
+              <Package className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+              <h3 className="text-lg font-semibold text-gray-700 font-display">No waste listings found</h3>
+              <p className="text-sm text-gray-500">Try adjusting your filters or add a new listing.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1000px]">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Waste Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Category</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Qty</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Location</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Supplier</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Created</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedListings.map((listing) => (
+                    <tr key={listing.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-4 py-3 font-mono-cw text-sm text-gray-500">#{listing.id}</td>
+                      <td className="px-4 py-3 font-medium text-gray-900">{listing.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{getCategoryLabel(listing.type)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {listing.quantity || '—'} {listing.unit || 'kg'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{listing.location}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{listing.supplier_name || 'Unknown'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(listing.status)}`}>
+                          {listing.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-mono-cw text-gray-500">{formatDate(listing.created_at)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleView(listing)}
+                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-[#11402D]"
+                            title="View"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(listing)}
+                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-blue-600"
+                            title="Edit"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(listing.id)}
+                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-red-600"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ─── Pagination ──────────────────────────────────────────── */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              Showing {Math.min(filteredListings.length, (currentPage - 1) * pageSize + 1)} to{' '}
+              {Math.min(filteredListings.length, currentPage * pageSize)} of {filteredListings.length} entries
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`rounded-xl px-3 py-1 text-sm font-medium ${
+                    page === currentPage
+                      ? 'bg-[#11402D] text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Add/Edit Modal ─────────────────────────────────────── */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-gray-900">
+                    {editingListing ? 'Edit Waste Listing' : 'Add Waste Listing'}
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    {editingListing ? 'Update the waste listing details.' : 'Fill in the details to add a new waste listing.'}
+                  </p>
+                </div>
+                <button onClick={() => setShowModal(false)} className="rounded-xl p-2 hover:bg-gray-100">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Waste Type *</label>
+                    <input
+                      type="text"
+                      name="waste_type"
+                      value={formData.waste_type}
+                      onChange={handleFormChange}
+                      className={`mt-1 w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 ${
+                        formErrors.waste_type ? 'border-red-500' : 'border-gray-200'
+                      }`}
+                      placeholder="e.g. Organic Waste"
+                    />
+                    {formErrors.waste_type && <p className="mt-1 text-xs text-red-500">{formErrors.waste_type}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Category</label>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleFormChange}
+                      className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="">Select category</option>
+                      <option value="organic">Organic</option>
+                      <option value="plastic">Plastic</option>
+                      <option value="agricultural">Agricultural</option>
+                      <option value="industrial">Industrial</option>
+                      <option value="glass">Glass</option>
+                      <option value="metal">Metal</option>
+                      <option value="paper">Paper</option>
+                      <option value="e_waste">E-Waste</option>
+                      <option value="mixed">Mixed</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Quantity *</label>
+                    <input
+                      type="number"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={handleFormChange}
+                      step="0.01"
+                      min="0"
+                      className={`mt-1 w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 ${
+                        formErrors.quantity ? 'border-red-500' : 'border-gray-200'
+                      }`}
+                      placeholder="500"
+                    />
+                    {formErrors.quantity && <p className="mt-1 text-xs text-red-500">{formErrors.quantity}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Unit</label>
+                    <select
+                      name="unit"
+                      value={formData.unit}
+                      onChange={handleFormChange}
+                      className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="kg">Kilograms</option>
+                      <option value="tons">Tons</option>
+                      <option value="cubic_metres">Cubic Metres</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleFormChange}
+                      className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      <option value="available">Available</option>
+                      <option value="requested">Requested</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="collected">Collected</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Location *</label>
+                    <div className="relative mt-1">
+                      <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        name="location"
+                        value={formData.location}
+                        onChange={handleFormChange}
+                        className={`w-full rounded-xl border pl-9 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 ${
+                          formErrors.location ? 'border-red-500' : 'border-gray-200'
+                        }`}
+                        placeholder="e.g. Nairobi, Kenya"
+                      />
+                    </div>
+                    {formErrors.location && <p className="mt-1 text-xs text-red-500">{formErrors.location}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Pickup Address</label>
+                    <input
+                      type="text"
+                      name="pickup_address"
+                      value={formData.pickup_address}
+                      onChange={handleFormChange}
+                      className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="Street, building, gate"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Description</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleFormChange}
+                    rows="3"
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                    placeholder="Describe the waste"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="flex-1 rounded-xl border border-gray-200 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 rounded-xl bg-[#11402D] py-2.5 font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-70"
+                  >
+                    {submitting ? 'Saving...' : editingListing ? 'Update' : 'Create'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ─── View Modal ──────────────────────────────────────────── */}
+        {showViewModal && viewingListing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-gray-900">Waste Listing Details</h2>
+                  <p className="text-sm text-gray-500 font-mono-cw">ID #{viewingListing.id}</p>
+                </div>
+                <button onClick={() => setShowViewModal(false)} className="rounded-xl p-2 hover:bg-gray-100">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Waste Type</p>
+                    <p className="mt-1 text-sm font-medium text-gray-900">{viewingListing.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Category</p>
+                    <p className="mt-1 text-sm text-gray-700">{getCategoryLabel(viewingListing.type)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Quantity</p>
+                    <p className="mt-1 text-sm text-gray-700">
+                      {viewingListing.quantity || '—'} {viewingListing.unit || 'kg'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Status</p>
+                    <span className={`mt-1 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(viewingListing.status)}`}>
+                      {viewingListing.status}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Location</p>
+                    <p className="mt-1 text-sm text-gray-700">{viewingListing.location}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Pickup Address</p>
+                    <p className="mt-1 text-sm text-gray-700">{viewingListing.pickup_address || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Supplier</p>
+                    <p className="mt-1 text-sm text-gray-700">{viewingListing.supplier_name || 'Unknown'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Created</p>
+                    <p className="mt-1 text-sm font-mono-cw text-gray-700">{formatDate(viewingListing.created_at)}</p>
+                  </div>
+                </div>
+
+                {viewingListing.description && (
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Description</p>
+                    <p className="mt-1 text-sm text-gray-700">{viewingListing.description}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="rounded-xl bg-[#11402D] px-6 py-2.5 font-bold text-white hover:bg-[#0E2A1C]"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {/* ─── Pagination ──────────────────────────────────────────── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            Showing {Math.min(filteredListings.length, (currentPage - 1) * pageSize + 1)} to{' '}
-            {Math.min(filteredListings.length, currentPage * pageSize)} of {filteredListings.length} entries
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`rounded-xl px-3 py-1 text-sm font-medium ${
-                  page === currentPage
-                    ? 'bg-[#11402D] text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Add/Edit Modal ─────────────────────────────────────── */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="mb-5 flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">
-                  {editingListing ? 'Edit Waste Listing' : 'Add Waste Listing'}
-                </h2>
-                <p className="text-sm text-gray-500">
-                  {editingListing ? 'Update the waste listing details.' : 'Fill in the details to add a new waste listing.'}
-                </p>
-              </div>
-              <button onClick={() => setShowModal(false)} className="rounded-xl p-2 hover:bg-gray-100">
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Waste Type *</label>
-                  <input
-                    type="text"
-                    name="waste_type"
-                    value={formData.waste_type}
-                    onChange={handleFormChange}
-                    className={`mt-1 w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 ${
-                      formErrors.waste_type ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                    placeholder="e.g. Organic Waste"
-                  />
-                  {formErrors.waste_type && <p className="mt-1 text-xs text-red-500">{formErrors.waste_type}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Category</label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleFormChange}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="">Select category</option>
-                    <option value="organic">Organic</option>
-                    <option value="plastic">Plastic</option>
-                    <option value="agricultural">Agricultural</option>
-                    <option value="industrial">Industrial</option>
-                    <option value="glass">Glass</option>
-                    <option value="metal">Metal</option>
-                    <option value="paper">Paper</option>
-                    <option value="e_waste">E-Waste</option>
-                    <option value="mixed">Mixed</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Quantity *</label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleFormChange}
-                    step="0.01"
-                    min="0"
-                    className={`mt-1 w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 ${
-                      formErrors.quantity ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                    placeholder="500"
-                  />
-                  {formErrors.quantity && <p className="mt-1 text-xs text-red-500">{formErrors.quantity}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Unit</label>
-                  <select
-                    name="unit"
-                    value={formData.unit}
-                    onChange={handleFormChange}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="kg">Kilograms</option>
-                    <option value="tons">Tons</option>
-                    <option value="cubic_metres">Cubic Metres</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleFormChange}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                  >
-                    <option value="available">Available</option>
-                    <option value="requested">Requested</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="collected">Collected</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Location *</label>
-                  <div className="relative mt-1">
-                    <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleFormChange}
-                      className={`w-full rounded-xl border pl-9 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 ${
-                        formErrors.location ? 'border-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="e.g. Nairobi, Kenya"
-                    />
-                  </div>
-                  {formErrors.location && <p className="mt-1 text-xs text-red-500">{formErrors.location}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Pickup Address</label>
-                  <input
-                    type="text"
-                    name="pickup_address"
-                    value={formData.pickup_address}
-                    onChange={handleFormChange}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Street, building, gate"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleFormChange}
-                  rows="3"
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                  placeholder="Describe the waste"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 rounded-xl border border-gray-200 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 rounded-xl bg-[#11402D] py-2.5 font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-70"
-                >
-                  {submitting ? 'Saving...' : editingListing ? 'Update' : 'Create'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── View Modal ──────────────────────────────────────────── */}
-      {showViewModal && viewingListing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="mb-5 flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Waste Listing Details</h2>
-                <p className="text-sm text-gray-500">ID #{viewingListing.id}</p>
-              </div>
-              <button onClick={() => setShowViewModal(false)} className="rounded-xl p-2 hover:bg-gray-100">
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Waste Type</p>
-                  <p className="mt-1 text-sm font-medium text-gray-900">{viewingListing.name}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Category</p>
-                  <p className="mt-1 text-sm text-gray-700">{getCategoryLabel(viewingListing.type)}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Quantity</p>
-                  <p className="mt-1 text-sm text-gray-700">
-                    {viewingListing.quantity || '—'} {viewingListing.unit || 'kg'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Status</p>
-                  <span className={`mt-1 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(viewingListing.status)}`}>
-                    {viewingListing.status}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Location</p>
-                  <p className="mt-1 text-sm text-gray-700">{viewingListing.location}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Pickup Address</p>
-                  <p className="mt-1 text-sm text-gray-700">{viewingListing.pickup_address || 'Not specified'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Supplier</p>
-                  <p className="mt-1 text-sm text-gray-700">{viewingListing.supplier_name || 'Unknown'}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Created</p>
-                  <p className="mt-1 text-sm text-gray-700">{formatDate(viewingListing.created_at)}</p>
-                </div>
-              </div>
-
-              {viewingListing.description && (
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Description</p>
-                  <p className="mt-1 text-sm text-gray-700">{viewingListing.description}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="rounded-xl bg-[#11402D] px-6 py-2.5 font-bold text-white hover:bg-[#0E2A1C]"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -794,7 +801,7 @@ function StatCard({ label, value, icon: Icon, color }) {
           <Icon className="w-5 h-5" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="font-display text-2xl font-bold text-gray-900">{value}</p>
           <p className="text-sm text-gray-500">{label}</p>
         </div>
       </div>

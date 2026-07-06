@@ -29,8 +29,8 @@ import {
   AlertTriangle,
   Info,
   Check,
-   DollarSign,
-    Users,
+  DollarSign,
+  Users,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -165,172 +165,181 @@ export default function AuditLogs() {
   if (error) return <ErrorState message={error} onRetry={() => { fetchLogs(); fetchStats(); }} />;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Audit Logs</h2>
-          <p className="text-sm text-gray-500">Track every action performed on the platform</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => { fetchLogs(); fetchStats(); }} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm">
-            <RefreshCw className="h-4 w-4" /> Refresh
-          </button>
-          <div className="flex gap-1">
-            <button onClick={() => exportData('csv')} className="rounded-xl border border-gray-200 bg-white p-2 hover:bg-gray-50" title="Export CSV">
-              <FileSpreadsheet className="h-4 w-4 text-gray-500" />
+    <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
+      {/* ─── Fonts ────────────────────────────────────────────────── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
+      `}</style>
+
+      <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="font-display text-2xl lg:text-3xl font-bold text-gray-900">Audit Logs</h2>
+            <p className="text-sm text-gray-500 mt-1">Track every action performed on the platform</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => { fetchLogs(); fetchStats(); }} className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm">
+              <RefreshCw className="h-4 w-4" /> Refresh
             </button>
-            <button onClick={() => exportData('excel')} className="rounded-xl border border-gray-200 bg-white p-2 hover:bg-gray-50" title="Export Excel">
-              <File className="h-4 w-4 text-gray-500" />
-            </button>
-            <button onClick={() => exportData('pdf')} className="rounded-xl border border-gray-200 bg-white p-2 hover:bg-gray-50" title="Export PDF">
-              <FileText className="h-4 w-4 text-gray-500" />
-            </button>
+            <div className="flex gap-1">
+              <button onClick={() => exportData('csv')} className="rounded-xl border border-gray-200 bg-white p-2 hover:bg-gray-50" title="Export CSV">
+                <FileSpreadsheet className="h-4 w-4 text-gray-500" />
+              </button>
+              <button onClick={() => exportData('excel')} className="rounded-xl border border-gray-200 bg-white p-2 hover:bg-gray-50" title="Export Excel">
+                <File className="h-4 w-4 text-gray-500" />
+              </button>
+              <button onClick={() => exportData('pdf')} className="rounded-xl border border-gray-200 bg-white p-2 hover:bg-gray-50" title="Export PDF">
+                <FileText className="h-4 w-4 text-gray-500" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard label="Total Logs" value={stats.total || 0} icon={FileText} color="blue" />
-        <StatCard label="Login Events" value={stats.login_events || 0} icon={User} color="blue" />
-        <StatCard label="Payment Actions" value={stats.payment_actions || 0} icon={DollarSign} color="green" />
-        <StatCard label="User Actions" value={stats.user_actions || 0} icon={Users} color="purple" />
-        <StatCard label="Admin Actions" value={stats.admin_actions || 0} icon={Shield} color="orange" />
-        <StatCard label="Security Events" value={stats.security_events || 0} icon={AlertCircle} color="red" />
-      </div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <StatCard label="Total Logs" value={stats.total || 0} icon={FileText} color="blue" />
+          <StatCard label="Login Events" value={stats.login_events || 0} icon={User} color="blue" />
+          <StatCard label="Payment Actions" value={stats.payment_actions || 0} icon={DollarSign} color="green" />
+          <StatCard label="User Actions" value={stats.user_actions || 0} icon={Users} color="purple" />
+          <StatCard label="Admin Actions" value={stats.admin_actions || 0} icon={Shield} color="orange" />
+          <StatCard label="Security Events" value={stats.security_events || 0} icon={AlertCircle} color="red" />
+        </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        {/* Filters */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by user, email, IP, event ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <select
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value)}
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="all">All Events</option>
+              {EVENT_TYPES.map((e) => (
+                <option key={e} value={e}>{e.replace(/_/g, ' ').toUpperCase()}</option>
+              ))}
+            </select>
             <input
-              type="text"
-              placeholder="Search by user, email, IP, event ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
             />
-          </div>
-          <select
-            value={eventType}
-            onChange={(e) => setEventType(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="all">All Events</option>
-            {EVENT_TYPES.map((e) => (
-              <option key={e} value={e}>{e.replace(/_/g, ' ').toUpperCase()}</option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-          />
-          <button
-            onClick={() => { setCurrentPage(1); fetchLogs(); }}
-            className="rounded-xl bg-[#11402D] px-5 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] transition shadow-sm"
-          >
-            Apply Filters
-          </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <table className="w-full min-w-[1200px]">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Log ID</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">User</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Event</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Description</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">IP</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Device</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Location</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
-              <th className="px-4 py-3 text-center text-xs font-semibold uppercase text-gray-500">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {logs.length === 0 ? (
-              <tr><td colSpan="10" className="px-4 py-12 text-center text-gray-500">No logs found</td></tr>
-            ) : (
-              logs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50/50 transition">
-                  <td className="px-4 py-3 font-mono text-sm text-gray-500">#{log.id}</td>
-                  <td className="px-4 py-3 text-sm text-gray-700">{log.user_name || 'System'}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium border ${getEventBadge(log.event)}`}>
-                      {log.event.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">{log.description}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{log.ip_address || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{log.device || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{log.location || '—'}</td>
-                  <td className="px-4 py-3 text-sm text-gray-500">{formatDate(log.created_at)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1 text-sm font-medium ${getStatusColor(log.status)}`}>
-                      {log.status === 'success' && <CheckCircle className="h-4 w-4" />}
-                      {log.status === 'warning' && <AlertTriangle className="h-4 w-4" />}
-                      {log.status === 'error' && <AlertCircle className="h-4 w-4" />}
-                      {log.status === 'info' && <Info className="h-4 w-4" />}
-                      {log.status || 'info'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => { setSelectedLog(log); setShowDetailModal(true); }}
-                      className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-[#11402D]"
-                      title="View Details"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-500">Page {currentPage} of {totalPages}</span>
-          <div className="flex gap-1">
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
+            />
             <button
-              onClick={() => setCurrentPage(p => Math.max(p-1, 1))}
-              disabled={currentPage === 1}
-              className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              onClick={() => { setCurrentPage(1); fetchLogs(); }}
+              className="rounded-xl bg-[#11402D] px-5 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] transition shadow-sm"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(p => Math.min(p+1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <ChevronRight className="h-4 w-4" />
+              Apply Filters
             </button>
           </div>
         </div>
-      )}
 
-      {/* Detail Modal */}
-      {showDetailModal && selectedLog && (
-        <DetailModal log={selectedLog} onClose={() => setShowDetailModal(false)} />
-      )}
+        {/* Table */}
+        <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <table className="w-full min-w-[1200px]">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Log ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">User</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Event</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">IP</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Device</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Location</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase text-gray-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {logs.length === 0 ? (
+                <tr><td colSpan="10" className="px-4 py-12 text-center text-gray-500">No logs found</td></tr>
+              ) : (
+                logs.map((log) => (
+                  <tr key={log.id} className="hover:bg-gray-50/50 transition">
+                    <td className="px-4 py-3 font-mono-cw text-sm text-gray-500">#{log.id}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{log.user_name || 'System'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium border ${getEventBadge(log.event)}`}>
+                        {log.event.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">{log.description}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{log.ip_address || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{log.device || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{log.location || '—'}</td>
+                    <td className="px-4 py-3 text-sm font-mono-cw text-gray-500">{formatDate(log.created_at)}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 text-sm font-medium ${getStatusColor(log.status)}`}>
+                        {log.status === 'success' && <CheckCircle className="h-4 w-4" />}
+                        {log.status === 'warning' && <AlertTriangle className="h-4 w-4" />}
+                        {log.status === 'error' && <AlertCircle className="h-4 w-4" />}
+                        {log.status === 'info' && <Info className="h-4 w-4" />}
+                        {log.status || 'info'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => { setSelectedLog(log); setShowDetailModal(true); }}
+                        className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-[#11402D]"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Page {currentPage} of {totalPages}</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(p-1, 1))}
+                disabled={currentPage === 1}
+                className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(p+1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Detail Modal */}
+        {showDetailModal && selectedLog && (
+          <DetailModal log={selectedLog} onClose={() => setShowDetailModal(false)} />
+        )}
+      </div>
     </div>
   );
 }
@@ -353,7 +362,7 @@ function StatCard({ label, value, icon: Icon, color }) {
           <Icon className="w-5 h-5" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="font-display text-2xl font-bold text-gray-900">{value}</p>
           <p className="text-sm text-gray-500">{label}</p>
         </div>
       </div>
@@ -366,7 +375,7 @@ function LoadingSpinner() {
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center">
         <div className="w-16 h-16 border-4 border-[#11402D] border-t-[#9CF06B] rounded-full animate-spin mx-auto" />
-        <p className="mt-4 text-gray-500">Loading...</p>
+        <p className="mt-4 text-gray-500 font-display">Loading...</p>
       </div>
     </div>
   );
@@ -377,7 +386,7 @@ function ErrorState({ message, onRetry }) {
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="text-center max-w-md">
         <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <h3 className="text-xl font-bold text-gray-900">Unable to load</h3>
+        <h3 className="text-xl font-bold text-gray-900 font-display">Unable to load</h3>
         <p className="text-gray-500 mt-2">{message}</p>
         <button onClick={onRetry} className="mt-4 px-6 py-2 bg-[#11402D] text-white rounded-xl hover:bg-[#0E2A1C] transition">Try Again</button>
       </div>
@@ -387,12 +396,18 @@ function ErrorState({ message, onRetry }) {
 
 function DetailModal({ log, onClose }) {
   const formatDate = (d) => d ? new Date(d).toLocaleString() : 'N/A';
+  const getStatusColor = (status) => {
+    if (status === 'success') return 'text-green-600';
+    if (status === 'warning') return 'text-yellow-600';
+    if (status === 'error') return 'text-red-600';
+    return 'text-blue-600';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl mx-4">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-900">Log Details #{log.id}</h3>
+          <h3 className="font-display text-xl font-bold text-gray-900">Log Details #{log.id}</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl"><X className="h-5 w-5 text-gray-500" /></button>
         </div>
         <div className="space-y-4">

@@ -9,11 +9,11 @@ import uuid
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/api/payments")
 
-# ─── FIXED AMOUNTS ──────────────────────────────────────────────
-FIXED_WASTE_AMOUNT = 1000.0
-FIXED_TRANSPORT_FEE = 500.0
-FIXED_PLATFORM_FEE = 500.0
-FIXED_TOTAL_AMOUNT = FIXED_WASTE_AMOUNT + FIXED_TRANSPORT_FEE + FIXED_PLATFORM_FEE  # 2000.0
+# ─── FIXED AMOUNTS (TEST VALUES) ──────────────────────────────
+FIXED_WASTE_AMOUNT = 10.0          # was 1000.0
+FIXED_TRANSPORT_FEE = 10.0         # was 500.0
+FIXED_PLATFORM_FEE = 10.0          # was 500.0
+FIXED_TOTAL_AMOUNT = FIXED_WASTE_AMOUNT + FIXED_TRANSPORT_FEE + FIXED_PLATFORM_FEE  # 30.0
 
 
 def current_user_id():

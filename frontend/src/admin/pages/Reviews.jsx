@@ -215,7 +215,7 @@ export default function Reviews() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-[#11402D] border-t-[#9CF06B] rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-500">Loading reviews...</p>
+          <p className="mt-4 text-gray-500 font-display">Loading reviews...</p>
         </div>
       </div>
     );
@@ -226,7 +226,7 @@ export default function Reviews() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center max-w-md">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-gray-900">Unable to load reviews</h3>
+          <h3 className="text-xl font-bold text-gray-900 font-display">Unable to load reviews</h3>
           <p className="text-gray-500 mt-2">{error}</p>
           <button
             onClick={fetchReviews}
@@ -240,273 +240,282 @@ export default function Reviews() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* ─── Stats Cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Reviews" value={stats.total} icon={MessageSquare} color="blue" />
-        <StatCard label="Avg Rating" value={stats.avgRating.toFixed(1)} icon={Star} color="yellow" />
-        <StatCard label="Pending" value={stats.pending} icon={Clock} color="yellow" />
-        <StatCard label="Approved" value={stats.approved} icon={CheckCircle} color="green" />
-      </div>
+    <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
+      {/* ─── Fonts ────────────────────────────────────────────────── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
+      `}</style>
 
-      {/* ─── Toolbar ────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by comment or user..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
-
-          <div className="relative">
-            <Star className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <select
-              value={filterRating}
-              onChange={(e) => setFilterRating(e.target.value)}
-              className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="all">All Ratings</option>
-              <option value="1">1 Star</option>
-              <option value="2">2 Stars</option>
-              <option value="3">3 Stars</option>
-              <option value="4">4 Stars</option>
-              <option value="5">5 Stars</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          </div>
+      <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+        {/* ─── Stats Cards ────────────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Total Reviews" value={stats.total} icon={MessageSquare} color="blue" />
+          <StatCard label="Avg Rating" value={stats.avgRating.toFixed(1)} icon={Star} color="yellow" />
+          <StatCard label="Pending" value={stats.pending} icon={Clock} color="yellow" />
+          <StatCard label="Approved" value={stats.approved} icon={CheckCircle} color="green" />
         </div>
 
-        <button
-          onClick={fetchReviews}
-          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </button>
-      </div>
+        {/* ─── Toolbar ────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search by comment or user..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-64 rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
 
-      {/* ─── Table ───────────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        {paginatedReviews.length === 0 ? (
-          <div className="p-12 text-center">
-            <MessageSquare className="mx-auto mb-4 h-16 w-16 text-gray-300" />
-            <h3 className="text-lg font-semibold text-gray-700">No reviews found</h3>
-            <p className="text-sm text-gray-500">Try adjusting your filters.</p>
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+
+            <div className="relative">
+              <Star className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={filterRating}
+                onChange={(e) => setFilterRating(e.target.value)}
+                className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="all">All Ratings</option>
+                <option value="1">1 Star</option>
+                <option value="2">2 Stars</option>
+                <option value="3">3 Stars</option>
+                <option value="4">4 Stars</option>
+                <option value="5">5 Stars</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px]">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">ID</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Reviewer</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Reviewed</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Rating</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Comment</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {paginatedReviews.map((review) => (
-                  <tr key={review.id} className="hover:bg-gray-50/50 transition">
-                    <td className="px-4 py-3 font-mono text-sm text-gray-500">#{review.id}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{review.reviewer_name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{review.reviewee_name}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-0.5">
-                        {renderStars(review.rating)}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">
-                      {review.comment}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(review.status)}`}>
-                        {review.status || 'pending'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{formatDate(review.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => openView(review)}
-                          className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-[#11402D]"
-                          title="View"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        {review.status === 'pending' && (
-                          <>
-                            <button
-                              onClick={() => handleUpdateStatus(review, 'approved')}
-                              className="rounded-lg p-1.5 text-green-400 transition hover:bg-gray-100 hover:text-green-600"
-                              title="Approve"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleUpdateStatus(review, 'rejected')}
-                              className="rounded-lg p-1.5 text-red-400 transition hover:bg-gray-100 hover:text-red-600"
-                              title="Reject"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => handleDelete(review)}
-                          className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-red-600"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+
+          <button
+            onClick={fetchReviews}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
+
+        {/* ─── Table ───────────────────────────────────────────────── */}
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          {paginatedReviews.length === 0 ? (
+            <div className="p-12 text-center">
+              <MessageSquare className="mx-auto mb-4 h-16 w-16 text-gray-300" />
+              <h3 className="text-lg font-semibold text-gray-700 font-display">No reviews found</h3>
+              <p className="text-sm text-gray-500">Try adjusting your filters.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1000px]">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Reviewer</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Reviewed</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Rating</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Comment</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedReviews.map((review) => (
+                    <tr key={review.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-4 py-3 font-mono-cw text-sm text-gray-500">#{review.id}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{review.reviewer_name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{review.reviewee_name}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-0.5">
+                          {renderStars(review.rating)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 truncate max-w-[150px]">
+                        {review.comment}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(review.status)}`}>
+                          {review.status || 'pending'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-mono-cw text-gray-500">{formatDate(review.created_at)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => openView(review)}
+                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-[#11402D]"
+                            title="View"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          {review.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateStatus(review, 'approved')}
+                                className="rounded-lg p-1.5 text-green-400 transition hover:bg-gray-100 hover:text-green-600"
+                                title="Approve"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStatus(review, 'rejected')}
+                                className="rounded-lg p-1.5 text-red-400 transition hover:bg-gray-100 hover:text-red-600"
+                                title="Reject"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleDelete(review)}
+                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-red-600"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ─── Pagination ──────────────────────────────────────────── */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-500">
+              Showing {Math.min(filteredReviews.length, (currentPage - 1) * pageSize + 1)} to{' '}
+              {Math.min(filteredReviews.length, currentPage * pageSize)} of {filteredReviews.length} entries
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+                className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`rounded-xl px-3 py-1 text-sm font-medium ${
+                    page === currentPage
+                      ? 'bg-[#11402D] text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ─── View Modal ──────────────────────────────────────────── */}
+        {showViewModal && selectedReview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+            <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="mb-5 flex items-start justify-between">
+                <div>
+                  <h2 className="font-display text-xl font-bold text-gray-900">Review Details</h2>
+                  <p className="text-sm text-gray-500 font-mono-cw">ID #{selectedReview.id}</p>
+                </div>
+                <button onClick={closeModals} className="rounded-xl p-2 hover:bg-gray-100">
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Reviewer</p>
+                    <p className="mt-1 text-sm font-medium text-gray-900">{selectedReview.reviewer_name}</p>
+                    <p className="text-xs text-gray-500">{selectedReview.reviewer_email}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Reviewed User</p>
+                    <p className="mt-1 text-sm font-medium text-gray-900">{selectedReview.reviewee_name}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs font-semibold uppercase text-gray-400">Rating</p>
+                    <div className="flex items-center gap-0.5 mt-1">
+                      {renderStars(selectedReview.rating)}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-xs font-semibold uppercase text-gray-400">Comment</p>
+                    <p className="mt-1 text-sm text-gray-700">{selectedReview.comment}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Status</p>
+                    <span className={`mt-1 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(selectedReview.status)}`}>
+                      {selectedReview.status || 'pending'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Date</p>
+                    <p className="mt-1 text-sm font-mono-cw text-gray-700">{formatDate(selectedReview.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                {selectedReview.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => {
+                        handleUpdateStatus(selectedReview, 'approved');
+                        closeModals();
+                      }}
+                      className="rounded-xl bg-green-600 px-6 py-2.5 font-bold text-white hover:bg-green-700"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleUpdateStatus(selectedReview, 'rejected');
+                        closeModals();
+                      }}
+                      className="rounded-xl bg-red-600 px-6 py-2.5 font-bold text-white hover:bg-red-700"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+                <button onClick={closeModals} className="rounded-xl bg-[#11402D] px-6 py-2.5 font-bold text-white hover:bg-[#0E2A1C]">
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
-
-      {/* ─── Pagination ──────────────────────────────────────────── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-500">
-            Showing {Math.min(filteredReviews.length, (currentPage - 1) * pageSize + 1)} to{' '}
-            {Math.min(filteredReviews.length, currentPage * pageSize)} of {filteredReviews.length} entries
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`rounded-xl px-3 py-1 text-sm font-medium ${
-                  page === currentPage
-                    ? 'bg-[#11402D] text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="rounded-xl border border-gray-200 p-2 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── View Modal ──────────────────────────────────────────── */}
-      {showViewModal && selectedReview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="mb-5 flex items-start justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Review Details</h2>
-                <p className="text-sm text-gray-500">ID #{selectedReview.id}</p>
-              </div>
-              <button onClick={closeModals} className="rounded-xl p-2 hover:bg-gray-100">
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Reviewer</p>
-                  <p className="mt-1 text-sm font-medium text-gray-900">{selectedReview.reviewer_name}</p>
-                  <p className="text-xs text-gray-500">{selectedReview.reviewer_email}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Reviewed User</p>
-                  <p className="mt-1 text-sm font-medium text-gray-900">{selectedReview.reviewee_name}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-xs font-semibold uppercase text-gray-400">Rating</p>
-                  <div className="flex items-center gap-0.5 mt-1">
-                    {renderStars(selectedReview.rating)}
-                  </div>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-xs font-semibold uppercase text-gray-400">Comment</p>
-                  <p className="mt-1 text-sm text-gray-700">{selectedReview.comment}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Status</p>
-                  <span className={`mt-1 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(selectedReview.status)}`}>
-                    {selectedReview.status || 'pending'}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase text-gray-400">Date</p>
-                  <p className="mt-1 text-sm text-gray-700">{formatDate(selectedReview.created_at)}</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              {selectedReview.status === 'pending' && (
-                <>
-                  <button
-                    onClick={() => {
-                      handleUpdateStatus(selectedReview, 'approved');
-                      closeModals();
-                    }}
-                    className="rounded-xl bg-green-600 px-6 py-2.5 font-bold text-white hover:bg-green-700"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleUpdateStatus(selectedReview, 'rejected');
-                      closeModals();
-                    }}
-                    className="rounded-xl bg-red-600 px-6 py-2.5 font-bold text-white hover:bg-red-700"
-                  >
-                    Reject
-                  </button>
-                </>
-              )}
-              <button onClick={closeModals} className="rounded-xl bg-[#11402D] px-6 py-2.5 font-bold text-white hover:bg-[#0E2A1C]">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -527,7 +536,7 @@ function StatCard({ label, value, icon: Icon, color }) {
           <Icon className="w-5 h-5" />
         </div>
         <div>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="font-display text-2xl font-bold text-gray-900">{value}</p>
           <p className="text-sm text-gray-500">{label}</p>
         </div>
       </div>

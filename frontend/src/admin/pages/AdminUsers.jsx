@@ -12,8 +12,6 @@ import {
   Eye,
   X,
   AlertCircle,
-  CheckCircle,
-  Clock,
   Users as UsersIcon,
   RefreshCw,
   User,
@@ -22,6 +20,7 @@ import {
   Building2,
   Shield,
   UserCog,
+  Truck, // ✅ added – was missing
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -97,7 +96,15 @@ export default function Users() {
       }
 
       const data = await res.json();
-      setUsers(data);
+
+      // ✅ Safeguard: ensure data is an array
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        console.error('❌ Expected array from /admin/users, got:', data);
+        setUsers([]);
+        setError('Invalid data format from server');
+      }
     } catch (err) {
       console.error('❌ Fetch error:', err);
       setError(err.message);
@@ -113,7 +120,8 @@ export default function Users() {
 
   // ─── Filtering & pagination ──────────────────────────────────
   const filteredUsers = useMemo(() => {
-    let filtered = [...users];
+    // ✅ Ensure users is an array
+    let filtered = Array.isArray(users) ? [...users] : [];
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(
@@ -141,15 +149,16 @@ export default function Users() {
 
   // ─── Stats ────────────────────────────────────────────────────
   const stats = useMemo(() => {
+    const safeUsers = Array.isArray(users) ? users : [];
     return {
-      total: users.length,
-      suppliers: users.filter((u) => u.role === 'supplier' || u.role === 'waste-supplier').length,
-      producers: users.filter((u) => u.role === 'producer' || u.role === 'energy-producer').length,
-      transporters: users.filter((u) => u.role === 'transporter' || u.role === 'transport-partner').length,
-      admins: users.filter((u) => u.role === 'admin').length,
-      verified: users.filter((u) => u.account_status === 'verified').length,
-      pending: users.filter((u) => u.account_status === 'pending').length,
-      suspended: users.filter((u) => u.account_status === 'suspended').length,
+      total: safeUsers.length,
+      suppliers: safeUsers.filter((u) => u.role === 'supplier' || u.role === 'waste-supplier').length,
+      producers: safeUsers.filter((u) => u.role === 'producer' || u.role === 'energy-producer').length,
+      transporters: safeUsers.filter((u) => u.role === 'transporter' || u.role === 'transport-partner').length,
+      admins: safeUsers.filter((u) => u.role === 'admin').length,
+      verified: safeUsers.filter((u) => u.account_status === 'verified').length,
+      pending: safeUsers.filter((u) => u.account_status === 'pending').length,
+      suspended: safeUsers.filter((u) => u.account_status === 'suspended').length,
     };
   }, [users]);
 
