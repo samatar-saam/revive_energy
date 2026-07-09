@@ -1,5 +1,5 @@
 // src/users/pages/producer/MyRequests.jsx
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Package,
   Search,
@@ -14,6 +14,8 @@ import {
   CreditCard,
   X,
   Smartphone,
+  BadgeCheck,
+  Truck,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -158,22 +160,48 @@ export default function MyRequests() {
     return cleaned;
   };
 
-  // ─── UPDATED: TEST AMOUNTS (10, 10, 10, 30) ────────────────
+  // ─── Helpers for payment status ──────────────────────────────
+  const isPaid = (req) => req.payment_status === "paid";
+  const canPay = (req) => req.status === "approved" && req.payment_status !== "paid";
+
+  // ─── Amounts (fixed) ──────────────────────────────────────────
   const getAmounts = (req) => {
-    // Use values from backend if available, otherwise fallback to test amounts
     const wasteAmount = req.waste_value || 10;
     const transportFee = req.transport_fee || 10;
     const platformFee = req.platform_fee || 10;
     const totalAmount = req.total_amount || 30;
-
-    return {
-      wasteAmount,
-      transportFee,
-      platformFee,
-      totalAmount,
-    };
+    return { wasteAmount, transportFee, platformFee, totalAmount };
   };
 
+  // ─── POLLING HELPER ──────────────────────────────────────────
+  const pollPaymentStatus = async (paymentId, maxAttempts = 30, interval = 2000) => {
+    const token = getToken();
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const res = await fetch(`${API_URL}/payments/status/${paymentId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error("Status check failed");
+        const data = await res.json();
+        console.log(`🔄 Polling attempt ${i + 1}:`, data);
+        
+        if (data.payment_status === "paid") {
+          return true; // success
+        }
+        if (data.payment_status === "failed") {
+          throw new Error("Payment failed"); // stop polling, throw error
+        }
+        // still pending, wait and retry
+        await new Promise(resolve => setTimeout(resolve, interval));
+      } catch (err) {
+        console.warn("Polling error, retrying...", err);
+        await new Promise(resolve => setTimeout(resolve, interval));
+      }
+    }
+    return false; // timeout
+  };
+
+  // ─── HANDLE PAYMENT ──────────────────────────────────────────
   const handlePayment = async () => {
     if (!selectedRequest) return;
 
@@ -229,9 +257,30 @@ export default function MyRequests() {
         throw new Error(data.message || data.error || "Payment failed");
       }
 
-      toast.success(data.message || "Payment request sent. Check your phone.");
-      setShowPayModal(false);
+      toast.success(data.message || "Payment initiated");
+
+      // ─── POLL FOR PAYMENT CONFIRMATION ─────────────────────
+      if (data.payment_id) {
+        try {
+          const paid = await pollPaymentStatus(data.payment_id);
+          if (paid) {
+            toast.success("✅ Payment confirmed! Request is now paid.");
+          } else {
+            toast.warning("Payment is taking longer than expected. Please check your request status later.");
+          }
+        } catch (err) {
+          toast.error(err.message || "Payment failed. Please try again.");
+        }
+      }
+
+      // ─── REFRESH REQUESTS ──────────────────────────────────
       await fetchRequests();
+
+      // ─── CLOSE MODAL AND RESET ──────────────────────────
+      setShowPayModal(false);
+      setSelectedRequest(null);
+      setPhoneNumber("");
+
     } catch (err) {
       console.error("❌ Payment error:", err);
       toast.error(err.message);
@@ -252,14 +301,17 @@ export default function MyRequests() {
       delivered: "bg-indigo-100 text-indigo-700",
       completed: "bg-gray-100 text-gray-700",
     };
-
     return map[status] || "bg-gray-100 text-gray-700";
   };
 
   const getStatusIcon = (status) => {
     if (status === "pending") return <Clock className="h-4 w-4" />;
     if (status === "approved") return <CheckCircle className="h-4 w-4" />;
-    if (status === "rejected" || status === "cancelled") return <XCircle className="h-4 w-4" />;
+    if (status === "paid") return <BadgeCheck className="h-4 w-4" />;
+    if (["assigned", "in_transit", "delivered"].includes(status))
+      return <Truck className="h-4 w-4" />;
+    if (["rejected", "cancelled"].includes(status))
+      return <XCircle className="h-4 w-4" />;
     return <AlertCircle className="h-4 w-4" />;
   };
 
@@ -271,6 +323,14 @@ export default function MyRequests() {
       year: "numeric",
     });
   };
+
+  const stats = useMemo(() => {
+    const total = requests.length;
+    const pending = requests.filter((r) => r.status === "pending").length;
+    const approved = requests.filter((r) => r.status === "approved" && r.payment_status !== "paid").length;
+    const paid = requests.filter((r) => r.payment_status === "paid").length;
+    return { total, pending, approved, paid };
+  }, [requests]);
 
   const statusOptions = [
     "all",
@@ -318,7 +378,7 @@ export default function MyRequests() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Requests</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Track your waste requests and pay once approved
+            Track your waste requests and pay once approved.
           </p>
         </div>
 
@@ -332,10 +392,22 @@ export default function MyRequests() {
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label="Total" value={requests.length} />
-        <Stat label="Pending" value={requests.filter((r) => r.status === "pending").length} color="text-yellow-600" />
-        <Stat label="Approved" value={requests.filter((r) => r.status === "approved").length} color="text-green-600" />
-        <Stat label="Completed" value={requests.filter((r) => ["delivered", "completed"].includes(r.status)).length} color="text-indigo-600" />
+        <Stat label="Total" value={stats.total} />
+        <Stat
+          label="Pending"
+          value={stats.pending}
+          color="text-yellow-600"
+        />
+        <Stat
+          label="Approved"
+          value={stats.approved}
+          color="text-green-600"
+        />
+        <Stat
+          label="Paid"
+          value={stats.paid}
+          color="text-blue-600"
+        />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -397,22 +469,40 @@ export default function MyRequests() {
               <tbody className="divide-y divide-gray-100">
                 {filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-mono text-sm text-gray-500">#{req.id}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{req.waste_type}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-gray-500">
+                      #{req.id}
+                    </td>
+
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {req.waste_type}
+                    </td>
+
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {req.quantity} {req.unit || "kg"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{req.supplier_name || "Unknown"}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{formatDate(req.created_at)}</td>
+
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {req.supplier_name || "Unknown"}
+                    </td>
+
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {formatDate(req.created_at)}
+                    </td>
+
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(req.status)}`}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(
+                          req.status
+                        )}`}
+                      >
                         {getStatusIcon(req.status)}
-                        {req.status}
+                        {req.status?.replace("_", " ") || "unknown"}
                       </span>
                     </td>
+
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {req.status === "approved" && (
+                        {canPay(req) && (
                           <button
                             onClick={() => openPayModal(req)}
                             className="inline-flex items-center gap-1 rounded-lg bg-[#11402D] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0E2A1C]"
@@ -420,6 +510,22 @@ export default function MyRequests() {
                             <CreditCard className="h-3.5 w-3.5" />
                             Pay Now
                           </button>
+                        )}
+
+                        {isPaid(req) && (
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">
+                            <BadgeCheck className="h-3.5 w-3.5" />
+                            Paid
+                          </span>
+                        )}
+
+                        {["assigned", "in_transit", "delivered", "completed"].includes(
+                          req.status
+                        ) && !isPaid(req) && (
+                          <span className="inline-flex items-center gap-1 rounded-lg bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-700">
+                            <Truck className="h-3.5 w-3.5" />
+                            In Progress
+                          </span>
                         )}
 
                         {req.status === "pending" && (
@@ -471,6 +577,8 @@ export default function MyRequests() {
             setShowDetailsModal(false);
             openPayModal(selectedRequest);
           }}
+          canPay={canPay(selectedRequest)}
+          isPaid={isPaid(selectedRequest)}
         />
       )}
     </div>
@@ -486,14 +594,26 @@ function Stat({ label, value, color = "text-gray-900" }) {
   );
 }
 
-function PaymentModal({ request, amounts, phoneNumber, setPhoneNumber, paying, onClose, onPay }) {
+function PaymentModal({
+  request,
+  amounts,
+  phoneNumber,
+  setPhoneNumber,
+  paying,
+  onClose,
+  onPay,
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Pay for Waste Request</h2>
-            <p className="text-sm text-gray-500">Payment will be held in escrow</p>
+            <h2 className="text-xl font-bold text-gray-900">
+              Pay for Waste Request
+            </h2>
+            <p className="text-sm text-gray-500">
+              Payment will be held safely in escrow.
+            </p>
           </div>
 
           <button onClick={onClose} className="rounded-xl p-2 hover:bg-gray-100">
@@ -504,19 +624,40 @@ function PaymentModal({ request, amounts, phoneNumber, setPhoneNumber, paying, o
         <div className="space-y-3 rounded-2xl bg-gray-50 p-4 text-sm">
           <Row label="Waste Type" value={request.waste_type} />
           <Row label="Supplier" value={request.supplier_name || "Unknown"} />
-          <Row label="Quantity" value={`${request.quantity} ${request.unit || "kg"}`} />
-          <Row label="Waste Amount" value={`KES ${amounts.wasteAmount.toLocaleString()}`} />
-          <Row label="Transport Fee" value={`KES ${amounts.transportFee.toLocaleString()}`} />
-          <Row label="Platform Fee" value={`KES ${amounts.platformFee.toLocaleString()}`} />
+          <Row
+            label="Quantity"
+            value={`${request.quantity} ${request.unit || "kg"}`}
+          />
+          <Row
+            label="Waste Amount"
+            value={`KES ${amounts.wasteAmount.toLocaleString()}`}
+          />
+          <Row
+            label="Transport Fee"
+            value={`KES ${amounts.transportFee.toLocaleString()}`}
+          />
+          <Row
+            label="Platform Fee"
+            value={`KES ${amounts.platformFee.toLocaleString()}`}
+          />
+
           <div className="border-t border-gray-200 pt-3">
-            <Row label="Total Amount" value={`KES ${amounts.totalAmount.toLocaleString()}`} strong />
+            <Row
+              label="Total Amount"
+              value={`KES ${amounts.totalAmount.toLocaleString()}`}
+              strong
+            />
           </div>
         </div>
 
         <div className="mt-5">
-          <label className="mb-1 block text-sm font-bold text-gray-700">M-Pesa Phone Number</label>
+          <label className="mb-1 block text-sm font-bold text-gray-700">
+            M-Pesa Phone Number
+          </label>
+
           <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
             <Smartphone className="h-4 w-4 text-gray-400" />
+
             <input
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
@@ -531,20 +672,22 @@ function PaymentModal({ request, amounts, phoneNumber, setPhoneNumber, paying, o
           disabled={paying}
           className="mt-5 w-full rounded-xl bg-[#11402D] py-3 font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-60"
         >
-          {paying ? "Sending M-Pesa Prompt..." : "Confirm Payment"}
+          {paying ? "Processing Payment..." : "Confirm Payment"}
         </button>
       </div>
     </div>
   );
 }
 
-function DetailsModal({ request, amounts, onClose, onPay }) {
+function DetailsModal({ request, amounts, onClose, onPay, canPay, isPaid }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
       <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Request Details</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              Request Details
+            </h2>
             <p className="text-sm text-gray-500">Waste request information</p>
           </div>
 
@@ -557,25 +700,57 @@ function DetailsModal({ request, amounts, onClose, onPay }) {
           <Row label="Request ID" value={`#${request.id}`} />
           <Row label="Waste Type" value={request.waste_type} />
           <Row label="Supplier" value={request.supplier_name || "Unknown"} />
-          <Row label="Supplier Location" value={request.supplier_location || "N/A"} />
-          <Row label="Quantity" value={`${request.quantity} ${request.unit || "kg"}`} />
-          <Row label="Status" value={request.status} />
+          <Row
+            label="Supplier Location"
+            value={request.supplier_location || "N/A"}
+          />
+          <Row
+            label="Quantity"
+            value={`${request.quantity} ${request.unit || "kg"}`}
+          />
+          <Row label="Status" value={request.status?.replace("_", " ")} />
+          {request.payment_status && (
+            <Row label="Payment Status" value={request.payment_status} />
+          )}
+          {request.escrow_status && (
+            <Row label="Escrow Status" value={request.escrow_status} />
+          )}
           <Row label="Message" value={request.message || "No message"} />
-          <Row label="Waste Amount" value={`KES ${amounts.wasteAmount.toLocaleString()}`} />
-          <Row label="Transport Fee" value={`KES ${amounts.transportFee.toLocaleString()}`} />
-          <Row label="Platform Fee" value={`KES ${amounts.platformFee.toLocaleString()}`} />
+          <Row
+            label="Waste Amount"
+            value={`KES ${amounts.wasteAmount.toLocaleString()}`}
+          />
+          <Row
+            label="Transport Fee"
+            value={`KES ${amounts.transportFee.toLocaleString()}`}
+          />
+          <Row
+            label="Platform Fee"
+            value={`KES ${amounts.platformFee.toLocaleString()}`}
+          />
+
           <div className="border-t border-gray-200 pt-3">
-            <Row label="Total Amount" value={`KES ${amounts.totalAmount.toLocaleString()}`} strong />
+            <Row
+              label="Total Amount"
+              value={`KES ${amounts.totalAmount.toLocaleString()}`}
+              strong
+            />
           </div>
         </div>
 
-        {request.status === "approved" && (
+        {canPay && (
           <button
             onClick={onPay}
             className="mt-5 w-full rounded-xl bg-[#11402D] py-3 font-bold text-white hover:bg-[#0E2A1C]"
           >
             Pay This Request
           </button>
+        )}
+
+        {isPaid && (
+          <div className="mt-5 w-full rounded-xl bg-blue-50 py-3 text-center font-bold text-blue-700">
+            ✓ Payment Completed
+          </div>
         )}
       </div>
     </div>
@@ -586,8 +761,10 @@ function Row({ label, value, strong }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-gray-500">{label}</span>
-      <span className={strong ? "font-bold text-gray-900" : "font-medium text-gray-800"}>
-        {value}
+      <span
+        className={strong ? "font-bold text-gray-900" : "font-medium text-gray-800"}
+      >
+        {value || "N/A"}
       </span>
     </div>
   );

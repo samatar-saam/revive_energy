@@ -1,23 +1,21 @@
-import { useState, useRef, useEffect } from "react";
+// src/pages/MarketplacePage.jsx
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, Search, SlidersHorizontal, Recycle, Leaf, Zap, 
-  Truck, Factory, Package, Wheat, Users, Globe, BarChart3, 
-  CheckCircle2, Bookmark, Share2, Building2, Wind, Droplets, 
-  Award, Gauge, ChevronDown, Filter, Grid3x3, List, 
-  Star, MapPin, Clock, Shield, TrendingUp, Sparkles,
-  Flame, Sun, Compass, Target, Phone, Mail, MessageCircle,
-  Heart, ShoppingBag, Store, Tag, DollarSign, Calendar,
-  Check, AlertCircle, Info, HelpCircle, ChevronLeft, ChevronRight,
-  Plus, Minus, Eye, ThumbsUp, ThumbsDown, Share, Copy, Link,
-  Navigation, CircleDot, Activity, Layers, Box, Warehouse,
-  Landmark, TreePine, Flower2, Hotel, Utensils, Wheat as WheatIcon,
-  Droplet,
-  Building, Briefcase, Clipboard, Route, TrendingDown,
-  Award as AwardIcon, Zap as ZapIcon, Leaf as LeafIcon,
-  Menu, Home, User, LogOut, Shield as ShieldIcon,
-  Coffee, Apple, ShoppingBag as ShoppingBagIcon
+  ArrowRight, Search, Recycle, Leaf, Zap, Truck, Factory, Package,
+  Building2, MapPin, AlertCircle, RefreshCw, Eye, Bookmark, Star,
+  ChevronDown, Clock, Shield, Phone, Mail, X, Plus, Minus,
+  Flame, Droplets, TreePine, Wheat as WheatIcon, Utensils, Coffee,
+  ShoppingBag as ShoppingBagIcon, Home, Store, Hotel, Apple,
+  Box, Warehouse, Landmark, Flower2, Building, Briefcase,
+  Route, TrendingDown, Award as AwardIcon, Zap as ZapIcon, Leaf as LeafIcon,
+  User, LogOut, Shield as ShieldIcon, Menu,
+  CreditCard, ShieldCheck, ChevronLeft, ChevronRight, Grid3x3, List,
 } from "lucide-react";
+import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 /* ─── ANIMATED COUNTER ─── */
 function Counter({ to, suffix = "", prefix = "" }) {
@@ -47,259 +45,13 @@ function Counter({ to, suffix = "", prefix = "" }) {
 }
 
 /* ─── DATA ─── */
-const CATEGORIES = [
-  {
-    id: "organic",
-    name: "Organic Waste",
-    icon: Leaf,
-    color: "#34D399",
-    bgColor: "#ECFDF5",
-    description: "Food, hotel, restaurant & market waste",
-    count: "340+",
-    subcategories: [
-      { id: "food-waste", name: "Food Waste", icon: Utensils, image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&q=80" },
-      { id: "hotel-waste", name: "Hotel Waste", icon: Hotel, image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=400&q=80" },
-      { id: "restaurant-waste", name: "Restaurant Waste", icon: Store, image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=400&q=80" },
-      { id: "market-waste", name: "Market Waste", icon: ShoppingBagIcon, image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&q=80" },
-      { id: "fruit-waste", name: "Fruit Waste", icon: Apple, image: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=400&q=80" },
-    ]
-  },
-  {
-    id: "agricultural",
-    name: "Agricultural Waste",
-    icon: WheatIcon,
-    color: "#F59E0B",
-    bgColor: "#FFFBEB",
-    description: "Crop residue, husks, manure & farm waste",
-    count: "280+",
-    subcategories: [
-      { id: "rice-husks", name: "Rice Husks", icon: WheatIcon, image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=400&q=80" },
-      { id: "maize-stalks", name: "Maize Stalks", icon: TreePine, image: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=400&q=80" },
-      { id: "sugarcane-bagasse", name: "Sugarcane Bagasse", icon: Package, image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?auto=format&fit=crop&w=400&q=80" },
-      { id: "coffee-husks", name: "Coffee Husks", icon: Coffee, image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=400&q=80" },
-    ]
-  },
-  {
-    id: "plastic",
-    name: "Plastic Waste",
-    icon: Recycle,
-    color: "#818CF8",
-    bgColor: "#EEF2FF",
-    description: "PET, HDPE, LDPE & mixed plastics",
-    count: "210+",
-    subcategories: [
-      { id: "pet-bottles", name: "PET Bottles", icon: Recycle, image: "https://images.unsplash.com/photo-1604187351574-c75ca79f5807?auto=format&fit=crop&w=400&q=80" },
-      { id: "plastic-containers", name: "Plastic Containers", icon: Box, image: "https://images.unsplash.com/photo-1611273426858-450d8e3c9fce?auto=format&fit=crop&w=400&q=80" },
-      { id: "plastic-bags", name: "Plastic Bags", icon: ShoppingBagIcon, image: "https://images.unsplash.com/photo-1604187351574-c75ca79f5807?auto=format&fit=crop&w=400&q=80" },
-    ]
-  },
-  {
-    id: "industrial",
-    name: "Industrial Waste",
-    icon: Factory,
-    color: "#F97316",
-    bgColor: "#FFF7ED",
-    description: "Manufacturing byproducts & scrap",
-    count: "150+",
-    subcategories: [
-      { id: "scrap-metal", name: "Scrap Metal", icon: Factory, image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?auto=format&fit=crop&w=400&q=80" },
-      { id: "wood-chips", name: "Wood Chips", icon: TreePine, image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=400&q=80" },
-      { id: "sawdust", name: "Sawdust", icon: Package, image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?auto=format&fit=crop&w=400&q=80" },
-    ]
-  },
-  {
-    id: "biomass",
-    name: "Biomass & Wood",
-    icon: TreePine,
-    color: "#34D399",
-    bgColor: "#ECFDF5",
-    description: "Wood, forestry & biomass resources",
-    count: "180+",
-    subcategories: [
-      { id: "wood-chips", name: "Wood Chips", icon: TreePine, image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=400&q=80" },
-      { id: "sawdust", name: "Sawdust", icon: Package, image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?auto=format&fit=crop&w=400&q=80" },
-      { id: "biomass-pellets", name: "Biomass Pellets", icon: Flame, image: "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=400&q=80" },
-    ]
-  },
-  {
-    id: "municipal",
-    name: "Municipal Waste",
-    icon: Building2,
-    color: "#60A5FA",
-    bgColor: "#EFF6FF",
-    description: "Household & commercial waste",
-    count: "90+",
-    subcategories: [
-      { id: "household-waste", name: "Household Waste", icon: Home, image: "https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=400&q=80" },
-      { id: "commercial-waste", name: "Commercial Waste", icon: Building2, image: "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=400&q=80" },
-    ]
-  },
-  {
-    id: "energy",
-    name: "Energy Producers",
-    icon: Zap,
-    color: "#FB923C",
-    bgColor: "#FFF7ED",
-    description: "Biogas plants, WtE facilities & more",
-    count: "90+",
-    subcategories: [
-      { id: "biogas-plants", name: "Biogas Plants", icon: Zap, image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?auto=format&fit=crop&w=400&q=80" },
-      { id: "wte-facilities", name: "WtE Facilities", icon: Factory, image: "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=400&q=80" },
-    ]
-  },
-  {
-    id: "transport",
-    name: "Transport Jobs",
-    icon: Truck,
-    color: "#38BDF8",
-    bgColor: "#F0F9FF",
-    description: "Collection & logistics opportunities",
-    count: "150+",
-    subcategories: [
-      { id: "collection-jobs", name: "Collection Jobs", icon: Truck, image: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=400&q=80" },
-      { id: "logistics-routes", name: "Logistics Routes", icon: MapPin, image: "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?auto=format&fit=crop&w=400&q=80" },
-    ]
-  }
-];
-
-const LISTINGS = [
-  {
-    id: 1,
-    type: "Organic Waste",
-    title: "Premium Restaurant Food Waste",
-    volume: "500 kg",
-    location: "Nairobi, Kenya",
-    supplier: "Hotel Paradise",
-    supplierType: "Hotel",
-    status: "Available",
-    verified: true,
-    rating: 4.9,
-    reviews: 38,
-    price: "KES 2,500/t",
-    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&w=600&q=85",
-    category: "organic",
-    co2Saved: "2.4 tCO₂e",
-    distance: "15 KM",
-    description: "Premium quality food waste from top restaurants. Pre-sorted and ready for processing."
-  },
-  {
-    id: 2,
-    type: "Agricultural Waste",
-    title: "Premium Rice Husks",
-    volume: "2 Tons",
-    location: "Nakuru, Kenya",
-    supplier: "Green Farms Ltd.",
-    supplierType: "Farm",
-    status: "Available",
-    verified: true,
-    rating: 4.7,
-    reviews: 22,
-    price: "KES 1,800/t",
-    image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=600&q=85",
-    category: "agricultural",
-    co2Saved: "3.8 tCO₂e",
-    distance: "20 KM",
-    description: "High-quality rice husks from Nakuru farms. Dry, high calorific value."
-  },
-  {
-    id: 3,
-    type: "Plastic Waste",
-    title: "Mixed PET & HDPE Bottles",
-    volume: "1.2 Tons",
-    location: "Mombasa, Kenya",
-    supplier: "Coastal Bottlers",
-    supplierType: "Recycling",
-    status: "Available",
-    verified: true,
-    rating: 4.8,
-    reviews: 51,
-    price: "KES 3,200/t",
-    image: "https://images.unsplash.com/photo-1604187351574-c75ca79f5807?auto=format&fit=crop&w=600&q=85",
-    category: "plastic",
-    co2Saved: "5.6 tCO₂e",
-    distance: "8 KM",
-    description: "Sorted PET and HDPE bottles. Ready for recycling."
-  },
-  {
-    id: 4,
-    type: "Biomass Waste",
-    title: "Wood Chips & Sawdust",
-    volume: "3 Tons",
-    location: "Kisumu, Kenya",
-    supplier: "Timber Works Ltd.",
-    supplierType: "Industrial",
-    status: "Available",
-    verified: true,
-    rating: 4.6,
-    reviews: 14,
-    price: "KES 4,100/t",
-    image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=600&q=85",
-    category: "biomass",
-    co2Saved: "7.2 tCO₂e",
-    distance: "25 KM",
-    description: "Clean wood chips and sawdust from timber operations. Low ash content."
-  },
-  {
-    id: 5,
-    type: "Organic Waste",
-    title: "Hotel Food Waste Collection",
-    volume: "800 kg",
-    location: "Mombasa, Kenya",
-    supplier: "Coastal Resorts Ltd.",
-    supplierType: "Hotel",
-    status: "Available",
-    verified: true,
-    rating: 4.9,
-    reviews: 66,
-    price: "KES 2,100/t",
-    image: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&w=600&q=85",
-    category: "organic",
-    co2Saved: "1.8 tCO₂e",
-    distance: "10 KM",
-    description: "Premium food waste from beach resorts. Pre-crushed and ready for digestion."
-  },
-  {
-    id: 6,
-    type: "Industrial Waste",
-    title: "Factory Scrap Metal",
-    volume: "3 Tons",
-    location: "Nakuru, Kenya",
-    supplier: "Nakuru Industries",
-    supplierType: "Factory",
-    status: "Available",
-    verified: true,
-    rating: 4.5,
-    reviews: 29,
-    price: "KES 5,500/t",
-    image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?auto=format&fit=crop&w=600&q=85",
-    category: "industrial",
-    co2Saved: "4.2 tCO₂e",
-    distance: "12 KM",
-    description: "Mixed scrap metal from manufacturing operations. Ready for recycling."
-  }
-];
-
 const ENERGY_PRODUCTS = [
   { title: "Biogas", icon: Flame, color: "#F59E0B", description: "Renewable energy from organic waste", benefits: "Reduces methane emissions, Replaces fossil fuels" },
   { title: "Electricity", icon: Zap, color: "#60A5FA", description: "Clean power from waste conversion", benefits: "Grid support, Energy independence" },
   { title: "Organic Fertilizer", icon: Leaf, color: "#34D399", description: "Nutrient-rich soil amendment", benefits: "Improves soil fertility, Reduces chemicals" },
-  { title: "Biochar", icon: Droplet, color: "#8B5CF6", description: "Carbon-rich material for soil", benefits: "Captures carbon, Improves yields" },
+  { title: "Biochar", icon: Droplets, color: "#8B5CF6", description: "Carbon-rich material for soil", benefits: "Captures carbon, Improves yields" },
   { title: "Biomass Fuel", icon: Flame, color: "#F97316", description: "Renewable fuel from biomass", benefits: "Waste reduction, Carbon neutral" },
   { title: "Recycled Products", icon: Recycle, color: "#818CF8", description: "Products from recycled materials", benefits: "Reduces pollution, Conserves resources" },
-];
-
-const IMPACT_STATS = [
-  { value: 125000, suffix: "+", label: "Tons Recovered", icon: Recycle, detail: "From landfills" },
-  { value: 850, suffix: " GWh", label: "Energy Generated", icon: Zap, detail: "Clean power" },
-  { value: 45000, suffix: "+", label: "Tons CO₂ Reduced", icon: Leaf, detail: "Annual reduction" },
-  { value: 2500, suffix: "+", label: "Partners Connected", icon: Users, detail: "Across Africa" },
-];
-
-const STATS = [
-  { value: 1250, label: "Active Listings", icon: Package },
-  { value: 480, label: "Waste Suppliers", icon: Building2 },
-  { value: 320, label: "Energy Producers", icon: Zap },
-  { value: 150, label: "Transport Partners", icon: Truck },
 ];
 
 const HOW_IT_WORKS = [
@@ -310,9 +62,65 @@ const HOW_IT_WORKS = [
   { step: 5, title: "Energy Products Produced", desc: "Clean energy, fuel, and recycled products created", icon: Zap },
 ];
 
+const CATEGORIES = [
+  { id: "organic", name: "Organic Waste", icon: Leaf, color: "#34D399", bgColor: "#ECFDF5" },
+  { id: "agricultural", name: "Agricultural Waste", icon: WheatIcon, color: "#F59E0B", bgColor: "#FFFBEB" },
+  { id: "plastic", name: "Plastic Waste", icon: Recycle, color: "#818CF8", bgColor: "#EEF2FF" },
+  { id: "industrial", name: "Industrial Waste", icon: Factory, color: "#F97316", bgColor: "#FFF7ED" },
+  { id: "biomass", name: "Biomass & Wood", icon: TreePine, color: "#34D399", bgColor: "#ECFDF5" },
+  { id: "municipal", name: "Municipal Waste", icon: Building2, color: "#60A5FA", bgColor: "#EFF6FF" },
+];
+
 /* ─── COMPONENTS ─── */
-function ListingCard({ item, i }) {
+function CategoryCard({ category, onClick, isActive }) {
+  const Icon = category.icon;
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 relative rounded-xl ${
+        isActive
+          ? "bg-[#11402D] text-white shadow-lg"
+          : "hover:bg-[#F6F8F4] text-[#0E2A1C]/70"
+      }`}
+    >
+      <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-[#9CF06B] rounded-r-full transition-all duration-200 ${
+        isActive ? "opacity-100" : "opacity-0"
+      }`} />
+      <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-[#9CF06B]" : "text-[#142019]/40"}`} />
+      <span className="font-display text-sm flex-1 text-left">{category.name}</span>
+    </button>
+  );
+}
+
+function ListingCard({ item, i, onRequest, requesting, selected, onSelect, myRequests }) {
   const [saved, setSaved] = useState(false);
+  const navigate = useNavigate();
+
+  const userRequest = myRequests?.find(r => r.listing_id === item.id);
+  const requestStatus = userRequest?.status || null;
+  const canRequest = item.status === "available" && !requestStatus;
+
+  const getRequestBadge = () => {
+    if (!requestStatus) return null;
+    const map = {
+      pending: "bg-yellow-100 text-yellow-700",
+      approved: "bg-green-100 text-green-700",
+      paid: "bg-blue-100 text-blue-700",
+      assigned: "bg-blue-100 text-blue-700",
+      in_transit: "bg-purple-100 text-purple-700",
+      delivered: "bg-indigo-100 text-indigo-700",
+      completed: "bg-gray-100 text-gray-700",
+      cancelled: "bg-red-100 text-red-700",
+    };
+    return (
+      <span className={`text-[10px] font-display font-black px-2.5 py-1 rounded-full ${map[requestStatus] || "bg-gray-100 text-gray-700"} border backdrop-blur-sm`}>
+        {requestStatus.replace("_", " ")}
+      </span>
+    );
+  };
+
+  const formatCurrency = (amount) =>
+    `KSh ${Number(amount || 0).toLocaleString("en-KE")}`;
 
   return (
     <motion.div
@@ -323,125 +131,427 @@ function ListingCard({ item, i }) {
       whileHover={{ y: -8 }}
       className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-[#11402D]/5 group"
     >
-      <div className="relative h-48 overflow-hidden">
-        <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+      <div className="relative h-48 overflow-hidden cursor-pointer" onClick={() => onSelect(item)}>
+        <img
+          src={item.image_url || "https://images.unsplash.com/photo-1581092335871-4c4c8b7cfad9?auto=format&fit=crop&w=600&q=85"}
+          alt={item.waste_type}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+          onError={(e) => {
+            e.target.src = "https://images.unsplash.com/photo-1581092335871-4c4c8b7cfad9?auto=format&fit=crop&w=600&q=85";
+          }}
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A1A0F]/60 via-transparent to-transparent" />
-        
+
         <div className="absolute top-3 left-3 flex gap-2">
           <span className="text-[10px] font-display font-black px-2.5 py-1 rounded-full bg-[#34D399]/20 text-[#34D399] border border-[#34D399]/30 backdrop-blur-sm">
-            {item.status}
+            {item.status || "Available"}
           </span>
-          {item.verified && (
-            <span className="text-[10px] font-display font-black px-2.5 py-1 rounded-full bg-[#818CF8]/20 text-[#818CF8] border border-[#818CF8]/30 backdrop-blur-sm">
-              ✓ Verified
-            </span>
-          )}
+          {requestStatus && getRequestBadge()}
         </div>
-        
-        <button 
-          onClick={() => setSaved(!saved)}
+
+        <button
+          onClick={(e) => { e.stopPropagation(); setSaved(!saved); }}
           className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/30 backdrop-blur flex items-center justify-center hover:bg-black/50 transition-colors"
         >
           <Bookmark className={`w-4 h-4 ${saved ? "fill-[#9CF06B] text-[#9CF06B]" : "text-white/70"}`} />
         </button>
-        
+
         <div className="absolute bottom-3 left-3 right-3">
-          <h3 className="text-white font-display font-bold text-lg">{item.title}</h3>
+          <h3 className="text-white font-display font-bold text-lg truncate">{item.waste_type}</h3>
           <p className="text-white/70 text-sm flex items-center gap-1">
-            <MapPin className="w-3 h-3" /> {item.location} • {item.distance} away
+            <MapPin className="w-3 h-3" /> {item.location || "N/A"}
           </p>
         </div>
       </div>
-      
+
       <div className="p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-[#5A7060]">{item.supplier}</span>
-            <span className="text-[10px] font-mono-cw font-bold bg-[#F6F8F4] px-2 py-0.5 rounded-full text-[#5A7060]">
-              {item.supplierType}
-            </span>
+            <span className="text-xs text-[#5A7060] truncate max-w-[100px]">{item.supplier_name || "Unknown"}</span>
           </div>
           <div className="flex items-center gap-1">
-            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-            <span className="font-display text-sm font-bold text-[#0A1A0F]">{item.rating}</span>
-            <span className="text-xs text-[#5A7060]">({item.reviews})</span>
+            <span className="font-display font-bold text-[#11402D]">
+              {formatCurrency(item.total_amount || 30)}
+            </span>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3 text-xs text-[#5A7060] mb-3">
-          <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {item.volume}</span>
-          <span className="flex items-center gap-1"><Leaf className="w-3 h-3" /> {item.co2Saved}</span>
-          <span className="font-display font-bold text-[#11402D] ml-auto">{item.price}</span>
+          <span className="flex items-center gap-1"><Package className="w-3 h-3" /> {item.quantity || 0} {item.unit || "kg"}</span>
+          <span className="flex items-center gap-1"><Leaf className="w-3 h-3" /> {item.category || "General"}</span>
         </div>
-        
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full py-2 rounded-xl text-xs font-display font-bold text-white bg-[#11402D] hover:bg-[#0A1A0F] transition-colors"
-        >
-          View Details
-        </motion.button>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => onSelect(item)}
+            className="flex-1 py-2 rounded-xl text-xs font-display font-bold text-[#11402D] border border-[#11402D]/20 hover:bg-[#11402D]/5 transition-colors"
+          >
+            <Eye className="w-3 h-3 inline mr-1" /> Details
+          </button>
+
+          {canRequest ? (
+            <button
+              onClick={() => onRequest(item.id)}
+              disabled={requesting === item.id}
+              className="flex-1 py-2 rounded-xl text-xs font-display font-bold text-white bg-[#11402D] hover:bg-[#0A1A0F] transition-colors disabled:opacity-70"
+            >
+              {requesting === item.id ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mx-auto" />
+              ) : (
+                "Request"
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/producer/requests")}
+              className="flex-1 py-2 rounded-xl text-xs font-display font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+            >
+              View Request
+            </button>
+          )}
+        </div>
       </div>
     </motion.div>
   );
 }
 
-function CategoryCard({ category, onClick, isActive }) {
-  const Icon = category.icon;
+function ListingDetailsModal({ listing, onClose, onRequest, requesting, myRequests }) {
+  const userRequest = myRequests?.find(r => r.listing_id === listing.id);
+  const requestStatus = userRequest?.status || null;
+  const canRequest = listing.status === "available" && !requestStatus;
+
+  const formatCurrency = (amount) =>
+    `KSh ${Number(amount || 0).toLocaleString("en-KE")}`;
+
+  const formatDate = (isoString) => {
+    if (!isoString) return "N/A";
+    return new Date(isoString).toLocaleDateString("en-KE", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const amounts = {
+    wasteAmount: listing.waste_value || 10,
+    transportFee: listing.transport_fee || 10,
+    platformFee: listing.platform_fee || 10,
+    totalAmount: listing.total_amount || 30,
+  };
+
   return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-200 relative rounded-xl ${
-        isActive 
-          ? "bg-[#11402D] text-white shadow-lg" 
-          : "hover:bg-[#F6F8F4] text-[#0E2A1C]/70"
-      }`}
-    >
-      <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 bg-[#9CF06B] rounded-r-full transition-all duration-200 ${
-        isActive ? "opacity-100" : "opacity-0"
-      }`} />
-      <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? "text-[#9CF06B]" : "text-[#142019]/40"}`} />
-      <span className="font-display text-sm flex-1 text-left">{category.name}</span>
-      <span className={`text-xs font-mono-cw ${isActive ? "text-[#9CF06B]" : "text-[#142019]/30"}`}>
-        {category.count}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+      <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="mb-5 flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">{listing.waste_type}</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Listed by {listing.supplier_name || "Unknown Supplier"} on {formatDate(listing.created_at)}
+            </p>
+          </div>
+          <button onClick={onClose} className="rounded-xl p-2 hover:bg-gray-100">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mb-4 rounded-2xl overflow-hidden bg-gray-100 h-48 flex items-center justify-center relative">
+          <img
+            src={listing.image_url || "https://images.unsplash.com/photo-1581092335871-4c4c8b7cfad9?auto=format&fit=crop&w=800&q=85"}
+            alt={listing.waste_type}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src = "https://images.unsplash.com/photo-1581092335871-4c4c8b7cfad9?auto=format&fit=crop&w=800&q=85";
+            }}
+          />
+          {requestStatus && (
+            <div className="absolute top-3 left-3">
+              <span className="text-xs font-display font-black px-3 py-1.5 rounded-full bg-[#11402D]/80 text-white backdrop-blur-sm border border-white/20">
+                {requestStatus.replace("_", " ")}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl bg-gray-50 p-4">
+            <h3 className="mb-3 font-bold text-gray-900">Waste Information</h3>
+            <div className="space-y-2 text-sm">
+              <Row label="Quantity" value={`${listing.quantity || 0} ${listing.unit || "kg"}`} />
+              <Row label="Category" value={listing.category || "General"} />
+              <Row label="Location" value={listing.location || "N/A"} />
+              <Row label="Supplier" value={listing.supplier_name || "Unknown Supplier"} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-[#F4FBF6] p-4">
+            <h3 className="mb-3 font-bold text-gray-900">Estimated Payment</h3>
+            <div className="space-y-2 text-sm">
+              <Row label="Waste Amount" value={formatCurrency(amounts.wasteAmount)} />
+              <Row label="Transport Fee" value={formatCurrency(amounts.transportFee)} />
+              <Row label="Platform Fee" value={formatCurrency(amounts.platformFee)} />
+              <div className="border-t border-green-100 pt-2">
+                <Row label="Total Amount" value={formatCurrency(amounts.totalAmount)} strong />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {listing.description && (
+          <div className="mt-4 rounded-2xl border border-gray-100 p-4">
+            <h3 className="mb-2 font-bold text-gray-900">Description</h3>
+            <p className="text-sm text-gray-600">{listing.description}</p>
+          </div>
+        )}
+
+        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+          <div className="flex items-center gap-2 font-bold">
+            <Truck className="h-4 w-4" />
+            Workflow
+          </div>
+          <p className="mt-1">
+            {requestStatus
+              ? `You have already ${requestStatus} this request. Track it in "My Requests".`
+              : "Request waste first. After the supplier approves it, you will pay through M-Pesa from My Requests."}
+          </p>
+        </div>
+
+        <div className="mt-5 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-xl border border-gray-200 py-3 font-bold text-gray-700 hover:bg-gray-50"
+          >
+            Close
+          </button>
+
+          {canRequest ? (
+            <button
+              onClick={() => onRequest(listing.id)}
+              disabled={requesting === listing.id}
+              className="flex-1 rounded-xl bg-[#11402D] py-3 font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-70"
+            >
+              {requesting === listing.id ? "Sending..." : "Request Waste"}
+            </button>
+          ) : requestStatus && (
+            <button
+              onClick={() => window.location.href = "/producer/requests"}
+              className="flex-1 rounded-xl bg-gray-200 py-3 font-bold text-gray-700 hover:bg-gray-300"
+            >
+              View Request
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, strong }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-gray-500">{label}</span>
+      <span className={strong ? "font-bold text-[#11402D]" : "font-medium text-gray-800"}>
+        {value}
       </span>
-    </button>
+    </div>
   );
 }
 
 /* ─── MAIN MARKETPLACE PAGE ─── */
 export default function MarketplacePage() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [listings, setListings] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAllListings, setShowAllListings] = useState(false);
-  const [activeTab, setActiveTab] = useState("listings");
+  const [requesting, setRequesting] = useState(null);
+  const [selectedListing, setSelectedListing] = useState(null);
   const { scrollYProgress } = useScroll();
   const progressWidth = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
 
-  const filteredListings = LISTINGS.filter(item => {
-    const matchesCategory = selectedCategory?.id === "all" || item.category === selectedCategory?.id;
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.location.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const getToken = () => localStorage.getItem("token");
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError("");
+
+    // ─── Check if user is authenticated ─────────────────────
+    const token = getToken();
+    if (!token) {
+      setError("Please log in to view the marketplace.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const [listingsRes, requestsRes] = await Promise.all([
+        fetch(`${API_URL}/producer/available-waste`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/producer/requests`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      const listingsData = await listingsRes.json().catch(() => ({}));
+      const requestsData = await requestsRes.json().catch(() => ({}));
+
+      if (listingsRes.status === 401 || listingsRes.status === 403) {
+        setError("Your session has expired. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
+      if (!listingsRes.ok) {
+        throw new Error(listingsData.message || "Failed to load marketplace");
+      }
+
+      setListings(Array.isArray(listingsData) ? listingsData : []);
+      setMyRequests(Array.isArray(requestsData) ? requestsData : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const filteredListings = useMemo(() => {
+    let filtered = [...listings];
+    if (selectedCategory?.id !== "all") {
+      const categoryMap = {
+        organic: ["Organic Waste", "Food Waste", "Hotel Waste", "Restaurant Waste", "Market Waste", "Fruit Waste"],
+        agricultural: ["Agricultural Waste", "Rice Husks", "Maize Stalks", "Sugarcane Bagasse", "Coffee Husks"],
+        plastic: ["Plastic Waste", "PET Bottles", "Plastic Containers", "Plastic Bags"],
+        industrial: ["Industrial Waste", "Scrap Metal", "Wood Chips", "Sawdust"],
+        biomass: ["Biomass Waste", "Wood Chips", "Sawdust", "Biomass Pellets"],
+        municipal: ["Municipal Waste", "Household Waste", "Commercial Waste"],
+      };
+      const keywords = categoryMap[selectedCategory.id] || [];
+      if (keywords.length) {
+        filtered = filtered.filter(item =>
+          keywords.some(k => item.waste_type?.toLowerCase().includes(k.toLowerCase()))
+        );
+      }
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(
+        (item) =>
+          item.waste_type?.toLowerCase().includes(q) ||
+          item.location?.toLowerCase().includes(q) ||
+          item.supplier_name?.toLowerCase().includes(q) ||
+          item.category?.toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }, [listings, selectedCategory, searchQuery]);
 
   const displayedListings = showAllListings ? filteredListings : filteredListings.slice(0, 6);
 
+  const handleRequest = async (listingId) => {
+    setRequesting(listingId);
+    try {
+      const token = getToken();
+      if (!token) throw new Error("Not authenticated");
+
+      const response = await fetch(`${API_URL}/producer/request-waste/${listingId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: "I would like to request this waste." }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data.message || "Request failed");
+      }
+
+      toast.success("Waste request sent successfully");
+      await fetchData();
+      setSelectedListing(null);
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setRequesting(null);
+    }
+  };
+
+  // ─── Loading state ──────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto h-16 w-16 animate-spin rounded-full border-4 border-[#11402D] border-t-[#9CF06B]" />
+          <p className="mt-4 text-gray-500">Loading marketplace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Error state ────────────────────────────────────────────
+  if (error) {
+    const isAuthError = error === "Please log in to view the marketplace." || error === "Your session has expired. Please log in again.";
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-12">
+        <div className={`mx-auto max-w-2xl rounded-3xl border ${isAuthError ? 'border-yellow-200 bg-yellow-50' : 'border-red-200 bg-red-50'} p-8 text-center`}>
+          <AlertCircle className={`mx-auto mb-4 h-16 w-16 ${isAuthError ? 'text-yellow-500' : 'text-red-500'}`} />
+          <h3 className={`text-xl font-bold ${isAuthError ? 'text-yellow-700' : 'text-red-700'}`}>
+            {isAuthError ? 'Authentication Required' : 'Unable to Load Marketplace'}
+          </h3>
+          <p className={`mt-2 ${isAuthError ? 'text-yellow-600' : 'text-red-600'}`}>{error}</p>
+          <div className="mt-6 flex flex-wrap gap-4 justify-center">
+            {isAuthError ? (
+              <>
+                <button
+                  onClick={() => navigate("/login")}
+                  className="rounded-xl bg-[#11402D] px-6 py-3 font-medium text-white hover:bg-[#0E2A1C]"
+                >
+                  Log In
+                </button>
+                <button
+                  onClick={() => navigate("/register")}
+                  className="rounded-xl border border-[#11402D] px-6 py-3 font-medium text-[#11402D] hover:bg-[#11402D]/5"
+                >
+                  Register
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={fetchData}
+                className="rounded-xl bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-700"
+              >
+                Try Again
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Main render ────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F6F8F4] text-[#142019] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
         .font-display { font-family: 'Space Grotesk', sans-serif; }
         .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
       `}</style>
 
-      {/* ── SCROLL PROGRESS ── */}
+      {/* Scroll progress */}
       <motion.div className="fixed top-0 left-0 h-0.5 bg-[#9CF06B] z-50 origin-left"
         style={{ width: progressWidth }} />
 
-      {/* ============ HERO SECTION ============ */}
+      {/* ─── HERO ─── */}
       <section className="relative min-h-[55vh] flex items-center bg-white pt-0 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 right-10 w-96 h-96 bg-[#9CF06B]/5 rounded-full blur-3xl" />
@@ -477,18 +587,18 @@ export default function MarketplacePage() {
               </p>
 
               <div className="flex flex-wrap gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
+                <button
+                  onClick={() => document.getElementById("listings-section")?.scrollIntoView({ behavior: "smooth" })}
                   className="bg-[#11402D] text-white font-display font-bold px-8 py-3.5 rounded-full text-sm shadow-lg flex items-center gap-2"
                 >
                   Browse Opportunities <ArrowRight className="w-4 h-4" />
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
+                </button>
+                <button
+                  onClick={() => navigate("/register")}
                   className="border-2 border-[#11402D]/20 text-[#11402D] font-display font-bold px-8 py-3.5 rounded-full text-sm hover:border-[#11402D] hover:bg-[#11402D]/5 transition-all"
                 >
                   Join Marketplace
-                </motion.button>
+                </button>
               </div>
             </motion.div>
 
@@ -512,7 +622,7 @@ export default function MarketplacePage() {
                     <Zap className="w-5 h-5 text-[#9CF06B]" />
                   </div>
                   <div>
-                    <div className="font-display font-bold text-[#0E2A1C]">1,250+ Listings</div>
+                    <div className="font-display font-bold text-[#0E2A1C]">{listings.length} Listings</div>
                     <div className="text-xs text-[#5A7060]">Live across Africa</div>
                   </div>
                 </div>
@@ -522,11 +632,16 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      {/* ============ STATS ============ */}
+      {/* ─── STATS ─── */}
       <section className="bg-[#0E2A1C] py-8">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {STATS.map((stat, i) => {
+            {[
+              { value: listings.length, label: "Active Listings", icon: Package },
+              { value: new Set(listings.map(l => l.supplier_id)).size, label: "Waste Suppliers", icon: Building2 },
+              { value: 320, label: "Energy Producers", icon: Zap },
+              { value: 150, label: "Transport Partners", icon: Truck },
+            ].map((stat, i) => {
               const Icon = stat.icon;
               return (
                 <motion.div
@@ -548,7 +663,7 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      {/* ============ SEARCH BAR ============ */}
+      {/* ─── SEARCH BAR ─── */}
       <section className="py-4 bg-white border-b border-[#11402D]/5 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex flex-col md:flex-row gap-3">
@@ -562,20 +677,22 @@ export default function MarketplacePage() {
                 className="w-full pl-11 pr-4 py-3 rounded-xl border border-[#11402D]/10 focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/10 transition-all bg-[#F6F8F4] text-sm"
               />
             </div>
-            <button className="px-6 py-3 rounded-xl bg-[#11402D] text-white font-display font-bold text-sm flex items-center gap-2 whitespace-nowrap">
-              <Search className="w-4 h-4" />
-              Search
+            <button
+              onClick={() => fetchData()}
+              className="px-6 py-3 rounded-xl bg-[#11402D] text-white font-display font-bold text-sm flex items-center gap-2 whitespace-nowrap"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
             </button>
           </div>
         </div>
       </section>
 
-      {/* ============ CATEGORIES & LISTINGS ============ */}
-      <section className="py-8 bg-[#F6F8F4]">
+      {/* ─── CATEGORIES & LISTINGS ─── */}
+      <section id="listings-section" className="py-8 bg-[#F6F8F4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex flex-col lg:flex-row gap-6">
-            
-            {/* Categories Sidebar */}
+            {/* Sidebar */}
             <div className="lg:w-72 flex-shrink-0">
               <div className="bg-white rounded-2xl shadow-sm border border-[#11402D]/5 overflow-hidden sticky top-28">
                 <div className="p-4 border-b border-[#11402D]/5">
@@ -595,15 +712,18 @@ export default function MarketplacePage() {
               </div>
             </div>
 
-            {/* Listings Area */}
+            {/* Listings */}
             <div className="flex-1">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="font-display font-bold text-xl text-[#0E2A1C]">
-                    {selectedCategory?.name} • {filteredListings.length} Listings                  </h2>
-                  <p className="text-sm text-[#142019]/55">{selectedCategory?.description}</p>
+                    {selectedCategory?.name} • {filteredListings.length} Listings
+                  </h2>
+                  <p className="text-sm text-[#142019]/55">
+                    {selectedCategory?.description || "All waste opportunities"}
+                  </p>
                 </div>
-                <span className="font-mono-cw text-xs text-[#142019]/55">Updated: 2 min ago</span>
+                <span className="font-mono-cw text-xs text-[#142019]/55">Updated: {new Date().toLocaleTimeString()}</span>
               </div>
 
               <AnimatePresence mode="wait">
@@ -616,7 +736,16 @@ export default function MarketplacePage() {
                   className="grid md:grid-cols-2 xl:grid-cols-3 gap-5"
                 >
                   {displayedListings.map((item, i) => (
-                    <ListingCard key={item.id} item={item} i={i} />
+                    <ListingCard
+                      key={item.id}
+                      item={item}
+                      i={i}
+                      onRequest={handleRequest}
+                      requesting={requesting}
+                      selected={selectedListing}
+                      onSelect={setSelectedListing}
+                      myRequests={myRequests}
+                    />
                   ))}
                 </motion.div>
               </AnimatePresence>
@@ -646,7 +775,7 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      {/* ============ HOW IT WORKS ============ */}
+      {/* ─── HOW IT WORKS ─── */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
@@ -659,9 +788,7 @@ export default function MarketplacePage() {
               <div className="w-12 h-px bg-[#11402D]" />
             </div>
             <p className="font-mono-cw text-sm uppercase tracking-wider text-[#11402D]/80 mb-3">How It Works</p>
-            <h2 className="font-display text-4xl sm:text-5xl text-[#0E2A1C] mb-4">
-              From Waste to Value
-            </h2>
+            <h2 className="font-display text-4xl sm:text-5xl text-[#0E2A1C] mb-4">From Waste to Value</h2>
             <p className="text-lg text-[#142019]/65">A simple process that turns waste into valuable energy</p>
           </motion.div>
 
@@ -699,7 +826,7 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      {/* ============ ENERGY PRODUCTS ============ */}
+      {/* ─── ENERGY PRODUCTS ─── */}
       <section className="py-16 bg-[#F6F8F4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
@@ -712,9 +839,7 @@ export default function MarketplacePage() {
               <div className="w-12 h-px bg-[#11402D]" />
             </div>
             <p className="font-mono-cw text-sm uppercase tracking-wider text-[#11402D]/80 mb-3">What We Produce</p>
-            <h2 className="font-display text-4xl sm:text-5xl text-[#0E2A1C] mb-4">
-              Energy Products From Waste
-            </h2>
+            <h2 className="font-display text-4xl sm:text-5xl text-[#0E2A1C] mb-4">Energy Products From Waste</h2>
             <p className="text-lg text-[#142019]/65">Different waste streams become valuable energy products</p>
           </motion.div>
 
@@ -744,51 +869,7 @@ export default function MarketplacePage() {
         </div>
       </section>
 
-      {/* ============ IMPACT STATS ============ */}
-      <section className="py-20 bg-[#0E2A1C]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center max-w-3xl mx-auto mb-12"
-          >
-            <div className="flex justify-center mb-6">
-              <div className="w-12 h-px bg-[#9CF06B]/30" />
-            </div>
-            <p className="font-mono-cw text-sm uppercase tracking-wider text-[#9CF06B]/70 mb-3">Environmental Impact</p>
-            <h2 className="font-display text-4xl sm:text-5xl text-white mb-4">
-              Our Impact Together
-            </h2>
-            <p className="text-lg text-white/50">Real numbers showing our collective impact on the planet</p>
-          </motion.div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {IMPACT_STATS.map((stat, i) => {
-              const Icon = stat.icon;
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="text-center bg-white/5 rounded-2xl p-6 backdrop-blur border border-white/10 hover:bg-white/10 transition-all"
-                >
-                  <Icon className="w-8 h-8 text-[#9CF06B] mx-auto mb-3" />
-                  <div className="font-display text-3xl md:text-4xl font-bold text-[#9CF06B] mb-2">
-                    <Counter to={stat.value} suffix={stat.suffix} />
-                  </div>
-                  <div className="font-display text-sm text-white/60">{stat.label}</div>
-                  <div className="font-mono-cw text-xs text-white/30 mt-1">{stat.detail}</div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ============ CTA SECTION ============ */}
+      {/* ─── CTA ─── */}
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
           <motion.div
@@ -806,80 +887,84 @@ export default function MarketplacePage() {
               Join thousands of partners building a cleaner, greener, and more sustainable future.
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
+              <button
+                onClick={() => navigate("/register")}
                 className="bg-[#11402D] text-white font-display font-bold px-8 py-4 rounded-full text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
               >
                 Join Marketplace <ArrowRight className="w-4 h-4" />
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.98 }}
+              </button>
+              <button
+                onClick={() => window.location.href = "tel:+254700123456"}
                 className="border-2 border-[#11402D]/20 text-[#11402D] font-display font-bold px-8 py-4 rounded-full text-sm hover:border-[#11402D] hover:bg-[#11402D]/5 transition-all"
               >
                 <Phone className="w-4 h-4" /> Contact Sales
-              </motion.button>
+              </button>
             </div>
           </motion.div>
         </div>
       </section>
 
-    <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
-                <div className="lg:col-span-2">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
-                      <Recycle className="w-5 h-5 text-[#9CF06B]" />
-                    </div>
-    
-                    <span className="font-display text-xl font-semibold">
-                      ReVive Energy
-                    </span>
-                  </div>
-    
-                  <p className="text-white/50 text-sm leading-relaxed max-w-sm">
-                    Designing and operating waste-to-energy infrastructure that
-                    turns disposal problems into clean energy opportunities.
-                  </p>
+      {/* ─── FOOTER ─── */}
+      <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
+                  <Recycle className="w-5 h-5 text-[#9CF06B]" />
                 </div>
-    
-                {[
-                  ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
-                  ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
-                  ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
-                ].map(([title, links], index) => (
-                  <div key={index}>
-                    <h3 className="font-display font-semibold mb-4">{title}</h3>
-    
-                    <ul className="space-y-2.5 text-sm text-white/50">
-                      {links.map((link, i) => (
-                        <li key={i}>
-                          <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                            {link}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+                <span className="font-display text-xl font-semibold">ReVive Energy</span>
               </div>
-    
-              <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
-                <span>© 2026 ReVive Energy. All rights reserved.</span>
-    
-                <div className="flex flex-wrap justify-center gap-5">
-                  <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                    Privacy Policy
-                  </a>
-                  <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                    Terms of Service
-                  </a>
-                </div>
-              </div>
+              <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+                Designing and operating waste-to-energy infrastructure that
+                turns disposal problems into clean energy opportunities.
+              </p>
             </div>
-          </footer>
+
+            {[
+              ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
+              ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
+              ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
+            ].map(([title, links], index) => (
+              <div key={index}>
+                <h3 className="font-display font-semibold mb-4">{title}</h3>
+                <ul className="space-y-2.5 text-sm text-white/50">
+                  {links.map((link, i) => (
+                    <li key={i}>
+                      <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                        {link}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
+            <span>© 2026 ReVive Energy. All rights reserved.</span>
+            <div className="flex flex-wrap justify-center gap-5">
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                Privacy Policy
+              </a>
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                Terms of Service
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* ─── DETAILS MODAL ─── */}
+      {selectedListing && (
+        <ListingDetailsModal
+          listing={selectedListing}
+          onClose={() => setSelectedListing(null)}
+          onRequest={handleRequest}
+          requesting={requesting}
+          myRequests={myRequests}
+        />
+      )}
     </div>
   );
 }

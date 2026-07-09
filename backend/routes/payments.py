@@ -9,24 +9,18 @@ import uuid
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/api/payments")
 
-# ─── FIXED AMOUNTS (TEST VALUES) ──────────────────────────────
-FIXED_WASTE_AMOUNT = 10.0          # was 1000.0
-FIXED_TRANSPORT_FEE = 10.0         # was 500.0
-FIXED_PLATFORM_FEE = 10.0          # was 500.0
-FIXED_TOTAL_AMOUNT = FIXED_WASTE_AMOUNT + FIXED_TRANSPORT_FEE + FIXED_PLATFORM_FEE  # 30.0
+FIXED_WASTE_AMOUNT = 10.0
+FIXED_TRANSPORT_FEE = 10.0
+FIXED_PLATFORM_FEE = 10.0
+FIXED_TOTAL_AMOUNT = FIXED_WASTE_AMOUNT + FIXED_TRANSPORT_FEE + FIXED_PLATFORM_FEE
 
 
 def current_user_id():
     return int(get_jwt_identity())
 
 
-def safe_float(value, default=0):
-    try:
-        if value is None or value == "":
-            return default
-        return float(value)
-    except Exception:
-        return default
+def now():
+    return datetime.utcnow()
 
 
 def safe_int(value, default=0):
@@ -38,98 +32,17 @@ def safe_int(value, default=0):
         return default
 
 
-def now():
-    return datetime.utcnow()
+def safe_float(value, default=0):
+    try:
+        if value is None or value == "":
+            return default
+        return float(value)
+    except Exception:
+        return default
 
 
 def make_unique_code(prefix):
     return f"{prefix}-{int(time.time() * 1000)}-{uuid.uuid4().hex[:6].upper()}"
-
-
-def create_notification(user_id, title, message, notification_type="payment", reference_id=None):
-    if not user_id:
-        return
-
-    try:
-        notification_data = {
-            "user_id": user_id,
-            "title": title,
-            "message": message,
-            "type": notification_type,
-            "is_read": False,
-        }
-
-        if hasattr(Notification, "reference_id"):
-            notification_data["reference_id"] = reference_id
-
-        db.session.add(Notification(**notification_data))
-
-    except Exception as e:
-        current_app.logger.warning(f"Notification skipped: {e}")
-
-
-def generate_receipt_for_payment(payment):
-    """Create a receipt for a payment if one doesn't already exist."""
-    existing = Receipt.query.filter_by(payment_id=payment.id).first()
-    if existing:
-        return existing
-
-    # Generate a unique receipt number
-    receipt_number = f"REV-{payment.id:06d}"
-    # Ensure uniqueness (just in case)
-    counter = 1
-    while Receipt.query.filter_by(receipt_number=receipt_number).first():
-        receipt_number = f"REV-{payment.id:06d}-{counter}"
-        counter += 1
-
-    receipt = Receipt(
-        payment_id=payment.id,
-        receipt_number=receipt_number,
-        qr_code_path=None,
-        generated_at=datetime.utcnow()
-    )
-    db.session.add(receipt)
-    db.session.commit()
-    return receipt
-
-
-def payment_to_dict(payment):
-    if hasattr(payment, "to_dict"):
-        return payment.to_dict()
-
-    return {
-        "id": payment.id,
-        "payer_id": payment.payer_id,
-        "supplier_id": payment.supplier_id,
-        "producer_id": payment.producer_id,
-        "transporter_id": payment.transporter_id,
-        "listing_id": payment.listing_id,
-        "request_id": payment.request_id,
-        "transport_job_id": payment.transport_job_id,
-        "amount": payment.amount,
-        "total_amount": payment.total_amount,
-        "waste_amount": payment.waste_amount,
-        "transport_fee": payment.transport_fee,
-        "platform_fee": payment.platform_fee,
-        "commission": payment.commission,
-        "supplier_amount": payment.supplier_amount,
-        "transporter_amount": payment.transporter_amount,
-        "phone_number": payment.phone_number,
-        "mpesa_receipt": payment.mpesa_receipt,
-        "transaction_id": payment.transaction_id,
-        "receipt_number": payment.receipt_number,
-        "checkout_request_id": payment.checkout_request_id,
-        "merchant_request_id": payment.merchant_request_id,
-        "payment_method": payment.payment_method,
-        "status": payment.status,
-        "payment_status": payment.payment_status,
-        "escrow_status": payment.escrow_status,
-        "delivery_confirmed": payment.delivery_confirmed,
-        "created_at": payment.created_at.isoformat() if payment.created_at else None,
-        "updated_at": payment.updated_at.isoformat() if payment.updated_at else None,
-        "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
-        "completed_at": payment.completed_at.isoformat() if payment.completed_at else None,
-    }
 
 
 def normalize_phone(phone):
@@ -159,22 +72,121 @@ def validate_payment_payload(data):
     return None
 
 
-def _create_transport_job(payment):
+def create_notification(user_id, title, message, notification_type="payment", reference_id=None):
+    if not user_id:
+        return
+
+    try:
+        data = {
+            "user_id": user_id,
+            "title": title,
+            "message": message,
+            "type": notification_type,
+            "is_read": False,
+        }
+
+        if hasattr(Notification, "reference_id"):
+            data["reference_id"] = reference_id
+
+        db.session.add(Notification(**data))
+
+    except Exception as e:
+        current_app.logger.warning(f"Notification skipped: {e}")
+
+
+def generate_receipt_for_payment(payment):
+    existing = Receipt.query.filter_by(payment_id=payment.id).first()
+    if existing:
+        return existing
+
+    receipt_number = payment.receipt_number or f"REV-{payment.id:06d}"
+    counter = 1
+
+    while Receipt.query.filter_by(receipt_number=receipt_number).first():
+        receipt_number = f"REV-{payment.id:06d}-{counter}"
+        counter += 1
+
+    receipt = Receipt(
+        payment_id=payment.id,
+        receipt_number=receipt_number,
+        qr_code_path=None,
+        generated_at=now(),
+    )
+
+    db.session.add(receipt)
+    return receipt
+
+
+def payment_to_dict(payment):
+    return {
+        "id": payment.id,
+        "payer_id": payment.payer_id,
+        "supplier_id": payment.supplier_id,
+        "producer_id": payment.producer_id,
+        "transporter_id": payment.transporter_id,
+        "listing_id": payment.listing_id,
+        "request_id": payment.request_id,
+        "transport_job_id": payment.transport_job_id,
+
+        "amount": payment.amount,
+        "total_amount": getattr(payment, "total_amount", payment.amount),
+        "waste_amount": getattr(payment, "waste_amount", 0),
+        "transport_fee": payment.transport_fee,
+        "platform_fee": payment.platform_fee,
+        "commission": payment.commission,
+        "supplier_amount": payment.supplier_amount,
+        "transporter_amount": payment.transporter_amount,
+
+        "phone_number": getattr(payment, "phone_number", None),
+        "mpesa_receipt": payment.mpesa_receipt,
+        "transaction_id": payment.transaction_id,
+        "receipt_number": payment.receipt_number,
+        "checkout_request_id": payment.checkout_request_id,
+        "merchant_request_id": payment.merchant_request_id,
+
+        "payment_method": payment.payment_method,
+        "status": payment.status,
+        "payment_status": payment.payment_status,
+        "escrow_status": payment.escrow_status,
+        "delivery_confirmed": payment.delivery_confirmed,
+
+        "created_at": payment.created_at.isoformat() if payment.created_at else None,
+        "updated_at": payment.updated_at.isoformat() if payment.updated_at else None,
+        "paid_at": payment.paid_at.isoformat() if getattr(payment, "paid_at", None) else None,
+        "completed_at": payment.completed_at.isoformat() if payment.completed_at else None,
+    }
+
+
+def mark_request_as_paid(payment):
+    if payment.request_id:
+        waste_request = db.session.get(WasteRequest, payment.request_id)
+        if waste_request:
+            waste_request.status = "paid"
+
+    if payment.listing_id:
+        listing = db.session.get(WasteListing, payment.listing_id)
+        if listing:
+            listing.status = "assigned"
+
+
+def create_transport_job(payment):
     try:
         if not payment.request_id or not payment.listing_id:
             current_app.logger.warning("Transport job skipped: missing request_id or listing_id")
             return None
 
         listing = db.session.get(WasteListing, payment.listing_id)
-        request_obj = db.session.get(WasteRequest, payment.request_id)
+        waste_request = db.session.get(WasteRequest, payment.request_id)
 
-        if not listing or not request_obj:
+        if not listing or not waste_request:
             current_app.logger.warning("Transport job skipped: listing/request not found")
             return None
 
         existing_job = TransportJob.query.filter_by(request_id=payment.request_id).first()
         if existing_job:
             payment.transport_job_id = existing_job.id
+            waste_request.status = "paid"
+            listing.status = "assigned"
             return existing_job
 
         producer = db.session.get(User, payment.producer_id)
@@ -184,7 +196,7 @@ def _create_transport_job(payment):
             listing_id=payment.listing_id,
             supplier_id=payment.supplier_id,
             producer_id=payment.producer_id,
-            pickup_location=listing.location or listing.pickup_address or "Supplier location",
+            pickup_location=listing.pickup_address or listing.location or "Supplier location",
             delivery_location=(producer.location if producer else None) or "Producer location",
             waste_type=listing.waste_type,
             quantity=listing.quantity,
@@ -195,8 +207,8 @@ def _create_transport_job(payment):
         db.session.flush()
 
         payment.transport_job_id = transport_job.id
+        waste_request.status = "paid"
         listing.status = "assigned"
-        request_obj.status = "paid"
 
         create_notification(
             payment.supplier_id,
@@ -227,67 +239,8 @@ def _create_transport_job(payment):
         return transport_job
 
     except Exception as e:
-        current_app.logger.error(f"_create_transport_job error: {e}", exc_info=True)
+        current_app.logger.error(f"create_transport_job error: {e}", exc_info=True)
         return None
-
-
-@payments_bp.route("/", methods=["POST"])
-@jwt_required()
-def create_payment():
-    try:
-        user_id = current_user_id()
-        data = request.get_json() or {}
-
-        error = validate_payment_payload(data)
-        if error:
-            return jsonify({"message": error}), 400
-
-        supplier_id = safe_int(data.get("supplier_id"))
-        phone = normalize_phone(data.get("phone") or data.get("phone_number"))
-
-        # ─── FIXED AMOUNTS ──────────────────────────────────────
-        waste_amount = FIXED_WASTE_AMOUNT
-        transport_fee = FIXED_TRANSPORT_FEE
-        platform_fee = FIXED_PLATFORM_FEE
-        total_amount = FIXED_TOTAL_AMOUNT
-
-        payment = Payment(
-            payer_id=user_id,
-            producer_id=user_id,
-            supplier_id=supplier_id,
-            listing_id=safe_int(data.get("listing_id"), 0),
-            request_id=safe_int(data.get("request_id"), 0),
-            transport_job_id=safe_int(data.get("transport_job_id"), 0),
-            transporter_id=safe_int(data.get("transporter_id"), None),
-            amount=total_amount,
-            total_amount=total_amount,
-            waste_amount=waste_amount,
-            transport_fee=transport_fee,
-            platform_fee=platform_fee,
-            commission=platform_fee,
-            supplier_amount=waste_amount,
-            transporter_amount=transport_fee,
-            payment_method=data.get("payment_method", "mpesa"),
-            payment_status="pending",
-            status="pending",
-            escrow_status="waiting",
-            phone_number=phone,
-            created_at=now(),
-            updated_at=now(),
-        )
-
-        db.session.add(payment)
-        db.session.commit()
-
-        return jsonify({
-            "message": "Payment created successfully.",
-            "payment": payment_to_dict(payment),
-        }), 201
-
-    except Exception as e:
-        db.session.rollback()
-        current_app.logger.error(f"create_payment error: {e}", exc_info=True)
-        return jsonify({"message": str(e)}), 500
 
 
 @payments_bp.route("/initiate", methods=["POST"])
@@ -305,13 +258,6 @@ def initiate_payment():
 
         supplier_id = safe_int(data.get("supplier_id"))
         phone = normalize_phone(data.get("phone") or data.get("phone_number"))
-
-        # ─── FIXED AMOUNTS ──────────────────────────────────────
-        waste_amount = FIXED_WASTE_AMOUNT
-        transport_fee = FIXED_TRANSPORT_FEE
-        platform_fee = FIXED_PLATFORM_FEE
-        total_amount = FIXED_TOTAL_AMOUNT
-
         request_id = safe_int(data.get("request_id"), 0)
         listing_id = safe_int(data.get("listing_id"), 0)
 
@@ -324,11 +270,37 @@ def initiate_payment():
             if not waste_request:
                 return jsonify({"message": "Waste request not found"}), 422
 
-            if waste_request.producer_id != user_id:
+            if int(waste_request.producer_id) != int(user_id):
                 return jsonify({"message": "Unauthorized request"}), 403
 
-            if waste_request.status not in ["approved", "pending", "paid"]:
-                return jsonify({"message": f"Request cannot be paid while status is {waste_request.status}"}), 422
+            existing_paid = Payment.query.filter_by(
+                request_id=request_id,
+                producer_id=user_id,
+                payment_status="paid",
+            ).first()
+
+            if existing_paid:
+                return jsonify({"message": "This request has already been paid"}), 409
+
+            old_pending_payments = Payment.query.filter_by(
+                request_id=request_id,
+                producer_id=user_id,
+                payment_status="pending",
+            ).all()
+
+            for old_payment in old_pending_payments:
+                old_payment.payment_status = "failed"
+                old_payment.status = "failed"
+                old_payment.escrow_status = "waiting"
+                old_payment.updated_at = now()
+
+            if waste_request.status in ["paid", "delivered", "completed"]:
+                return jsonify({"message": "This request has already been paid"}), 409
+
+            if waste_request.status not in ["approved", "pending"]:
+                return jsonify({
+                    "message": f"Request cannot be paid while status is {waste_request.status}"
+                }), 422
 
         if listing_id:
             listing = db.session.get(WasteListing, listing_id)
@@ -343,14 +315,16 @@ def initiate_payment():
             request_id=request_id,
             transport_job_id=safe_int(data.get("transport_job_id"), 0),
             transporter_id=safe_int(data.get("transporter_id"), None),
-            amount=total_amount,
-            total_amount=total_amount,
-            waste_amount=waste_amount,
-            transport_fee=transport_fee,
-            platform_fee=platform_fee,
-            commission=platform_fee,
-            supplier_amount=waste_amount,
-            transporter_amount=transport_fee,
+
+            amount=FIXED_TOTAL_AMOUNT,
+            total_amount=FIXED_TOTAL_AMOUNT,
+            waste_amount=FIXED_WASTE_AMOUNT,
+            transport_fee=FIXED_TRANSPORT_FEE,
+            platform_fee=FIXED_PLATFORM_FEE,
+            commission=FIXED_PLATFORM_FEE,
+            supplier_amount=FIXED_WASTE_AMOUNT,
+            transporter_amount=FIXED_TRANSPORT_FEE,
+
             phone_number=phone,
             payment_method="mpesa",
             payment_status="pending",
@@ -374,10 +348,25 @@ def initiate_payment():
             payment.completed_at = now()
             payment.updated_at = now()
 
-            # ─── Generate receipt for mock payment ────────────────
+            mark_request_as_paid(payment)
+            create_transport_job(payment)
             generate_receipt_for_payment(payment)
 
-            _create_transport_job(payment)
+            create_notification(
+                payment.producer_id,
+                "Payment Successful",
+                f"Your payment of KES {payment.amount:,.2f} was successful and is held in escrow.",
+                "payment_success",
+                payment.id,
+            )
+
+            create_notification(
+                payment.supplier_id,
+                "Payment Secured",
+                f"A producer has paid KES {payment.amount:,.2f}. Money is held in escrow.",
+                "payment_secured",
+                payment.id,
+            )
 
             db.session.commit()
 
@@ -391,12 +380,16 @@ def initiate_payment():
 
         description = data.get("description") or f"ReVive Energy payment #{payment.id}"
 
+        current_app.logger.info("Calling MpesaService.stk_push()...")
+
         mpesa_response = MpesaService.stk_push(
             phone=phone,
-            amount=total_amount,
+            amount=FIXED_TOTAL_AMOUNT,
             description=description,
             payment_id=payment.id,
         )
+
+        current_app.logger.info(f"Mpesa response: {mpesa_response}")
 
         checkout_request_id = mpesa_response.get("CheckoutRequestID")
         merchant_request_id = mpesa_response.get("MerchantRequestID")
@@ -405,6 +398,7 @@ def initiate_payment():
         if str(response_code) != "0" or not checkout_request_id:
             payment.payment_status = "failed"
             payment.status = "failed"
+            payment.escrow_status = "waiting"
             payment.updated_at = now()
             db.session.commit()
 
@@ -460,15 +454,22 @@ def mpesa_callback():
 
         if not payment:
             current_app.logger.warning("Payment not found for M-Pesa callback")
-            return jsonify({"ResultCode": 0, "ResultDesc": "Callback received"}), 200
+            return jsonify({
+                "ResultCode": 0,
+                "ResultDesc": "Callback received but payment not found",
+            }), 200
 
-        if int(result_code or 1) == 0:
+        current_app.logger.info(
+            f"Processing callback for payment {payment.id}, result_code={result_code}"
+        )
+
+        if result_code is not None and int(result_code) == 0:
             payment.payment_status = "paid"
             payment.status = "paid"
             payment.escrow_status = "held"
             payment.mpesa_receipt = parsed.get("mpesa_receipt") or make_unique_code("MPESA")
             payment.transaction_id = parsed.get("mpesa_receipt") or make_unique_code("TXN")
-            payment.receipt_number = make_unique_code("REV")
+            payment.receipt_number = payment.receipt_number or make_unique_code("REV")
             payment.paid_at = now()
             payment.completed_at = now()
             payment.updated_at = now()
@@ -479,10 +480,9 @@ def mpesa_callback():
             if parsed.get("phone_number"):
                 payment.phone_number = str(parsed.get("phone_number"))
 
-            # ─── Generate receipt for successful payment ──────────
+            mark_request_as_paid(payment)
+            create_transport_job(payment)
             generate_receipt_for_payment(payment)
-
-            _create_transport_job(payment)
 
             create_notification(
                 payment.producer_id,
@@ -500,6 +500,8 @@ def mpesa_callback():
                 payment.id,
             )
 
+            current_app.logger.info(f"Payment {payment.id} marked as PAID")
+
         else:
             payment.payment_status = "failed"
             payment.status = "failed"
@@ -512,6 +514,10 @@ def mpesa_callback():
                 parsed.get("result_desc") or "M-Pesa payment was not completed.",
                 "payment_failed",
                 payment.id,
+            )
+
+            current_app.logger.warning(
+                f"Payment {payment.id} failed. Result code: {result_code}"
             )
 
         db.session.commit()
@@ -555,7 +561,10 @@ def check_payment_status(payment_id):
         "mpesa_receipt": payment.mpesa_receipt,
         "receipt_number": payment.receipt_number,
         "amount": payment.amount,
-        "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
+        "paid_at": payment.paid_at.isoformat() if getattr(payment, "paid_at", None) else None,
+        "completed_at": payment.completed_at.isoformat() if payment.completed_at else None,
+        "checkout_request_id": payment.checkout_request_id,
+        "merchant_request_id": payment.merchant_request_id,
     }), 200
 
 
@@ -610,6 +619,11 @@ def update_payment_status(payment_id):
         payment.escrow_status = data.get("escrow_status", payment.escrow_status)
         payment.updated_at = now()
 
+        if payment.status == "paid" or payment.payment_status == "paid":
+            mark_request_as_paid(payment)
+            create_transport_job(payment)
+            generate_receipt_for_payment(payment)
+
         db.session.commit()
 
         return jsonify({
@@ -640,28 +654,27 @@ def delete_payment(payment_id):
         return jsonify({"message": str(e)}), 500
 
 
-# ─── NEW: RECEIPT ENDPOINT ──────────────────────────────────
 @payments_bp.route("/receipt/<int:payment_id>", methods=["GET"])
 @jwt_required()
 def get_receipt(payment_id):
     user_id = current_user_id()
-
     payment = Payment.query.get(payment_id)
+
     if not payment:
         return jsonify({"message": "Payment not found"}), 404
 
-    # Check user is a participant
     allowed_users = [
         payment.payer_id,
         payment.producer_id,
         payment.supplier_id,
         payment.transporter_id,
     ]
+
     if user_id not in allowed_users:
         return jsonify({"message": "Unauthorized"}), 403
 
-    # Generate receipt if missing
     receipt = generate_receipt_for_payment(payment)
+    db.session.commit()
 
     return jsonify({
         "payment": payment_to_dict(payment),

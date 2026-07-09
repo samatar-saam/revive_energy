@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Menu, X, ChevronDown, User, Shield, LogOut } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import logo from "../assets/logo.png";
@@ -13,13 +13,15 @@ const ReViveNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check if user is logged in
+  // ─── Check user authentication and role ──────────────────────
   const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
   const user = JSON.parse(localStorage.getItem("user") || "null");
+  const isProducer = user && (user.role === "producer" || user.role === "energy-producer");
 
-  const navLinks = [
+  // ─── Define base nav links ──────────────────────────────────
+  const allNavLinks = [
     { name: "Home", href: "/", hasDropdown: false },
-    { name: "Marketplace", href: "/marketplace", hasDropdown: false },
+    { name: "Marketplace", href: "/marketplace", hasDropdown: false, requiresProducer: true },
     {
       name: "Solutions",
       href: "/solutions",
@@ -39,7 +41,17 @@ const ReViveNavbar = () => {
     { name: "Contact", href: "/contact", hasDropdown: false },
   ];
 
-  // Calculate scroll progress
+  // ─── Filter nav links based on role ──────────────────────────
+  const navLinks = useMemo(() => {
+    return allNavLinks.filter(link => {
+      if (link.requiresProducer) {
+        return isProducer; // only show Marketplace if user is a producer
+      }
+      return true; // always show other links
+    });
+  }, [isProducer]);
+
+  // ─── Scroll progress ──────────────────────────────────────────
   useEffect(() => {
     const calculateScrollProgress = () => {
       const windowHeight = window.innerHeight;
@@ -71,7 +83,6 @@ const ReViveNavbar = () => {
     };
   }, []);
 
-  // Reset scroll progress on route change
   useEffect(() => {
     setScrollProgress(0);
   }, [location.pathname]);

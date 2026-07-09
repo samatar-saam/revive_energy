@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from utils.decorators import role_required
-from models import User, WasteListing, WasteRequest, TransportJob, Notification
+from models import User, WasteListing, WasteRequest, TransportJob, Notification, Payment
 from database import db
 
 producer_bp = Blueprint("producer", __name__)
@@ -301,6 +301,16 @@ def get_my_requests():
             supplier = db.session.get(User, r.supplier_id) if r.supplier_id else None
             amounts = calculate_amounts(listing)
 
+            # ─── Find the most recent Payment for this request ──
+            payment = Payment.query.filter_by(request_id=r.id).order_by(Payment.id.desc()).first()
+
+            # ─── Determine the effective status for the frontend ──
+            # If a paid payment exists, show "paid" regardless of request status.
+            if payment and payment.payment_status == "paid":
+                display_status = "paid"
+            else:
+                display_status = r.status
+
             result.append({
                 "id": r.id,
                 "listing_id": r.listing_id,
@@ -310,7 +320,11 @@ def get_my_requests():
                 "unit": listing.unit if listing else "kg",
                 "supplier_name": supplier.full_name if supplier else "Unknown Supplier",
                 "supplier_location": supplier.location if supplier else "",
-                "status": r.status,
+                "status": display_status,               # This is what the frontend uses for badges
+                "request_status": r.status,             # Original request status (optional)
+                "payment_status": payment.payment_status if payment else None,
+                "escrow_status": payment.escrow_status if payment else None,
+                "payment_id": payment.id if payment else None,
                 "message": r.message,
                 "created_at": iso(r.created_at),
                 # ─── Fixed pricing ──────────────────────────
