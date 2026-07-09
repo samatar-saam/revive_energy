@@ -137,6 +137,11 @@ export default function Support() {
     });
   };
 
+  // ─── Helper: check if ticket is from a guest ────────────────
+  const isGuestTicket = (ticket) => {
+    return !ticket.user_id || ticket.user_id === null;
+  };
+
   // ─── Handlers ─────────────────────────────────────────────────
   const openView = (ticket) => {
     setSelectedTicket(ticket);
@@ -205,7 +210,6 @@ export default function Support() {
       toast.success('Reply sent');
       setReplyText('');
       fetchTickets();
-      // Refresh selected ticket details if needed
     } catch (err) {
       toast.error(err.message || 'Failed to send reply');
     } finally {
@@ -351,7 +355,14 @@ export default function Support() {
                     <tr key={ticket.id} className="hover:bg-gray-50/50 transition">
                       <td className="px-4 py-3 font-mono-cw text-sm text-gray-500">#{ticket.id}</td>
                       <td className="px-4 py-3 font-medium text-gray-900">{ticket.subject}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{ticket.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700 flex items-center gap-1.5">
+                        {ticket.name}
+                        {isGuestTicket(ticket) && (
+                          <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full font-normal">
+                            Guest
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{ticket.email}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(ticket.status)}`}>
@@ -464,7 +475,14 @@ export default function Support() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase text-gray-400">From</p>
-                    <p className="mt-1 text-sm text-gray-700">{selectedTicket.name}</p>
+                    <p className="mt-1 text-sm text-gray-700 flex items-center gap-1.5">
+                      {selectedTicket.name}
+                      {isGuestTicket(selectedTicket) && (
+                        <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded-full font-normal">
+                          Guest
+                        </span>
+                      )}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase text-gray-400">Email</p>

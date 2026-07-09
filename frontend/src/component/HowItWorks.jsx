@@ -929,6 +929,61 @@ export default function HowItWorksPage() {
           </motion.div>
         </div>
       </section>
+      <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
+                  <div className="lg:col-span-2">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
+                        <Recycle className="w-5 h-5 text-[#9CF06B]" />
+                      </div>
+      
+                      <span className="font-display text-xl font-semibold">
+                        ReVive Energy
+                      </span>
+                    </div>
+      
+                    <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+                      Designing and operating waste-to-energy infrastructure that
+                      turns disposal problems into clean energy opportunities.
+                    </p>
+                  </div>
+      
+                  {[
+                    ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
+                    ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
+                    ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
+                  ].map(([title, links], index) => (
+                    <div key={index}>
+                      <h3 className="font-display font-semibold mb-4">{title}</h3>
+      
+                      <ul className="space-y-2.5 text-sm text-white/50">
+                        {links.map((link, i) => (
+                          <li key={i}>
+                            <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                              {link}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+      
+                <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
+                  <span>© 2026 ReVive Energy. All rights reserved.</span>
+      
+                  <div className="flex flex-wrap justify-center gap-5">
+                    <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                      Privacy Policy
+                    </a>
+                    <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                      Terms of Service
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </footer>
     </div>
   );
 }

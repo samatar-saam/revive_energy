@@ -112,11 +112,39 @@ export default function ReViveEnergyHomepage() {
   ];
 
   const quickActions = [
-    { icon: Mail, label: "Email", color: "#34D399" },
-    { icon: Phone, label: "Call Us", color: "#60A5FA" },
-    { icon: MessageCircle, label: "Live Chat", color: "#F59E0B" },
-    { icon: Calculator, label: "Impact Calculator", color: "#818CF8" },
+    { 
+      icon: Mail, 
+      label: "Email", 
+      color: "#34D399",
+      onClick: () => window.location.href = "mailto:info@revive-energy.com"
+    },
+    { 
+      icon: Phone, 
+      label: "Call Us", 
+      color: "#60A5FA",
+      onClick: () => window.location.href = "tel:+254700000000"
+    },
+    { 
+      icon: MessageCircle, 
+      label: "Live Chat", 
+      color: "#F59E0B",
+      onClick: () => alert("💬 Live chat coming soon! For now, please email us.")
+    },
+    { 
+      icon: Calculator, 
+      label: "Impact Calculator", 
+      color: "#818CF8",
+      onClick: () => alert("📊 Impact Calculator will be available in the next update.")
+    },
   ];
+
+  // Smooth scroll helper
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F6F8F4] text-[#142019] font-['Inter'] overflow-x-hidden">
@@ -182,12 +210,18 @@ export default function ReViveEnergyHomepage() {
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              <button className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-[#11402D] text-white font-semibold text-sm sm:text-[15px] hover:bg-[#0C2F20] transition-colors flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(17,64,45,0.5)]">
+              <button 
+                onClick={() => scrollToSection("solutions")}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-[#11402D] text-white font-semibold text-sm sm:text-[15px] hover:bg-[#0C2F20] transition-colors flex items-center justify-center gap-2 shadow-[0_8px_24px_-8px_rgba(17,64,45,0.5)]"
+              >
                 Explore Our Facilities
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              <button className="w-full sm:w-auto px-7 py-3.5 rounded-full border border-[#142019]/15 font-semibold text-sm sm:text-[15px] hover:border-[#11402D]/40 hover:bg-white transition-colors">
+              <button 
+                onClick={() => alert("📄 Impact report download will begin shortly.")}
+                className="w-full sm:w-auto px-7 py-3.5 rounded-full border border-[#142019]/15 font-semibold text-sm sm:text-[15px] hover:border-[#11402D]/40 hover:bg-white transition-colors"
+              >
                 Download Impact Report
               </button>
             </div>
@@ -258,6 +292,7 @@ export default function ReViveEnergyHomepage() {
                         return (
                           <button
                             key={index}
+                            onClick={action.onClick}
                             className="flex items-center gap-3 text-white hover:text-[#9CF06B] transition-colors group"
                           >
                             <span className="font-display text-sm font-medium text-white/90 group-hover:text-white">
@@ -575,7 +610,10 @@ export default function ReViveEnergyHomepage() {
             </h2>
           </div>
 
-          <button className="flex items-center gap-2 font-semibold text-[#11402D] group">
+          <button 
+            onClick={() => scrollToSection("solutions")}
+            className="flex items-center gap-2 font-semibold text-[#11402D] group"
+          >
             View all technologies
             <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
@@ -750,12 +788,18 @@ export default function ReViveEnergyHomepage() {
           </p>
 
           <div className="mt-9 flex flex-col sm:flex-row justify-center gap-4">
-            <button className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-white text-[#0E2A1C] font-semibold text-sm sm:text-[15px] hover:bg-[#F5F4F0] transition-colors flex items-center justify-center gap-2">
+            <button 
+              onClick={() => scrollToSection("contact")}
+              className="w-full sm:w-auto px-7 py-3.5 rounded-full bg-white text-[#0E2A1C] font-semibold text-sm sm:text-[15px] hover:bg-[#F5F4F0] transition-colors flex items-center justify-center gap-2"
+            >
               Schedule a Consultation
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            <button className="w-full sm:w-auto px-7 py-3.5 rounded-full border border-white/30 text-white font-semibold text-sm sm:text-[15px] hover:bg-white/10 transition-colors">
+            <button 
+              onClick={() => alert("📘 Brochure download will begin shortly.")}
+              className="w-full sm:w-auto px-7 py-3.5 rounded-full border border-white/30 text-white font-semibold text-sm sm:text-[15px] hover:bg-white/10 transition-colors"
+            >
               Download Brochure
             </button>
           </div>

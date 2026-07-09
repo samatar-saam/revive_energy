@@ -3,8 +3,17 @@ from database import db
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import create_access_token
 import re
+import json
+import random
+import string
 
 bcrypt = Bcrypt()
+
+
+def generate_random_password(length=12):
+    """Generate a random alphanumeric password."""
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
 
 # ========== USER ==========
 class User(db.Model):
@@ -156,7 +165,7 @@ class PhoneVerification(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-# ========== COLLECTION (legacy, kept for backward compatibility) ==========
+# ========== COLLECTION (legacy) ==========
 class Collection(db.Model):
     __tablename__ = 'collections'
     id = db.Column(db.Integer, primary_key=True)
@@ -252,7 +261,7 @@ class WasteListing(db.Model):
     transport_jobs = db.relationship('TransportJob', backref='listing', lazy=True)
 
 
-# ========== PROCESSING PLANT (NEW) ==========
+# ========== PROCESSING PLANT ==========
 class ProcessingPlant(db.Model):
     __tablename__ = 'processing_plants'
 
@@ -430,11 +439,11 @@ class Notification(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
-# ========== SUPPORT TICKET ==========
+# ========== SUPPORT TICKET (FIXED: user_id nullable) ==========
 class SupportTicket(db.Model):
     __tablename__ = 'support_tickets'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)   # ✅ now allows guest tickets
     subject = db.Column(db.String(200), nullable=False)
     message = db.Column(db.Text, nullable=False)
     email = db.Column(db.String(100))
@@ -570,24 +579,97 @@ class Message(db.Model):
         }
 
 
-# ========== DISPUTE ==========
+# ========== DISPUTE (single definition) ==========
 class Dispute(db.Model):
     __tablename__ = 'disputes'
 
     id = db.Column(db.Integer, primary_key=True)
-    raised_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False)
+    producer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    transporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 
-    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=True)
-    request_id = db.Column(db.Integer, db.ForeignKey('waste_requests.id'), nullable=True)
-    transport_job_id = db.Column(db.Integer, db.ForeignKey('transport_jobs.id'), nullable=True)
-
-    title = db.Column(db.String(150), nullable=False)
     reason = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(30), default='open')
-    resolution = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(30), default='open')  # open, under_investigation, awaiting_response, resolved, closed, refunded
+    escrow_status = db.Column(db.String(30), default='held')  # held, frozen, released, refunded
+    evidence = db.Column(db.Text)  # JSON array of file URLs or metadata
+    timeline = db.Column(db.Text)  # JSON array of { description, timestamp }
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # relationships
+    payment = db.relationship('Payment', backref='disputes')
+    producer = db.relationship('User', foreign_keys=[producer_id])
+    supplier = db.relationship('User', foreign_keys=[supplier_id])
+    transporter = db.relationship('User', foreign_keys=[transporter_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'payment_id': self.payment_id,
+            'producer_id': self.producer_id,
+            'producer_name': self.producer.full_name if self.producer else None,
+            'supplier_id': self.supplier_id,
+            'supplier_name': self.supplier.full_name if self.supplier else None,
+            'transporter_id': self.transporter_id,
+            'transporter_name': self.transporter.full_name if self.transporter else None,
+            'reason': self.reason,
+            'status': self.status,
+            'escrow_status': self.escrow_status,
+            'evidence': json.loads(self.evidence) if self.evidence else [],
+            'timeline': json.loads(self.timeline) if self.timeline else [],
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'amount': self.payment.amount if self.payment else 0,
+            'waste_type': self.payment.waste_type if self.payment else None,
+        }
+
+
+# ========== AUDIT LOG (single definition) ==========
+class AuditLog(db.Model):
+    __tablename__ = 'audit_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    event = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    ip_address = db.Column(db.String(45))
+    device = db.Column(db.String(100))
+    browser = db.Column(db.String(100))
+    location = db.Column(db.String(100))
+    status = db.Column(db.String(20), default='info')  # info, success, warning, error
+    request_payload = db.Column(db.Text)
+    response_payload = db.Column(db.Text)
+    previous_values = db.Column(db.Text)
+    new_values = db.Column(db.Text)
+    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    admin = db.relationship('User', foreign_keys=[admin_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user_name': self.user.full_name if self.user else None,
+            'user_role': self.user.role if self.user else None,
+            'event': self.event,
+            'description': self.description,
+            'ip_address': self.ip_address,
+            'device': self.device,
+            'browser': self.browser,
+            'location': self.location,
+            'status': self.status,
+            'request_payload': json.loads(self.request_payload) if self.request_payload else None,
+            'response_payload': json.loads(self.response_payload) if self.response_payload else None,
+            'previous_values': json.loads(self.previous_values) if self.previous_values else None,
+            'new_values': json.loads(self.new_values) if self.new_values else None,
+            'admin_name': self.admin.full_name if self.admin else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 # ========== PRICING SETTINGS ==========
@@ -618,23 +700,6 @@ class AdminSetting(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
-# ========== AUDIT LOG ==========
-class AuditLog(db.Model):
-    __tablename__ = 'audit_logs'
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    action = db.Column(db.String(150), nullable=False)
-
-    table_name = db.Column(db.String(100), nullable=True)
-    record_id = db.Column(db.Integer, nullable=True)
-    details = db.Column(db.Text, nullable=True)
-    ip_address = db.Column(db.String(100), nullable=True)
-
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # ========== CARBON CREDIT ==========
@@ -738,96 +803,4 @@ class WithdrawalRequest(db.Model):
             'admin_notes': self.admin_notes,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-        }
-
-        # ========== DISPUTE ==========
-class Dispute(db.Model):
-    __tablename__ = 'disputes'
-
-    id = db.Column(db.Integer, primary_key=True)
-    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False)
-    producer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    supplier_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    transporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-
-    reason = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(30), default='open')  # open, under_investigation, awaiting_response, resolved, closed, refunded
-    escrow_status = db.Column(db.String(30), default='held')  # held, frozen, released, refunded
-    evidence = db.Column(db.Text)  # JSON array of file URLs or metadata
-    timeline = db.Column(db.Text)  # JSON array of { description, timestamp }
-
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # relationships
-    payment = db.relationship('Payment', backref='disputes')
-    producer = db.relationship('User', foreign_keys=[producer_id])
-    supplier = db.relationship('User', foreign_keys=[supplier_id])
-    transporter = db.relationship('User', foreign_keys=[transporter_id])
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'payment_id': self.payment_id,
-            'producer_id': self.producer_id,
-            'producer_name': self.producer.full_name if self.producer else None,
-            'supplier_id': self.supplier_id,
-            'supplier_name': self.supplier.full_name if self.supplier else None,
-            'transporter_id': self.transporter_id,
-            'transporter_name': self.transporter.full_name if self.transporter else None,
-            'reason': self.reason,
-            'status': self.status,
-            'escrow_status': self.escrow_status,
-            'evidence': json.loads(self.evidence) if self.evidence else [],
-            'timeline': json.loads(self.timeline) if self.timeline else [],
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'amount': self.payment.amount if self.payment else 0,
-            'waste_type': self.payment.waste_type if self.payment else None,
-        }
-
-
-# ========== AUDIT LOG ==========
-class AuditLog(db.Model):
-    __tablename__ = 'audit_logs'
-
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    event = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=False)
-    ip_address = db.Column(db.String(45))
-    device = db.Column(db.String(100))
-    browser = db.Column(db.String(100))
-    location = db.Column(db.String(100))
-    status = db.Column(db.String(20), default='info')  # info, success, warning, error
-    request_payload = db.Column(db.Text)
-    response_payload = db.Column(db.Text)
-    previous_values = db.Column(db.Text)
-    new_values = db.Column(db.Text)
-    admin_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    user = db.relationship('User', foreign_keys=[user_id])
-    admin = db.relationship('User', foreign_keys=[admin_id])
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'user_id': self.user_id,
-            'user_name': self.user.full_name if self.user else None,
-            'user_role': self.user.role if self.user else None,
-            'event': self.event,
-            'description': self.description,
-            'ip_address': self.ip_address,
-            'device': self.device,
-            'browser': self.browser,
-            'location': self.location,
-            'status': self.status,
-            'request_payload': json.loads(self.request_payload) if self.request_payload else None,
-            'response_payload': json.loads(self.response_payload) if self.response_payload else None,
-            'previous_values': json.loads(self.previous_values) if self.previous_values else None,
-            'new_values': json.loads(self.new_values) if self.new_values else None,
-            'admin_name': self.admin.full_name if self.admin else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
         }

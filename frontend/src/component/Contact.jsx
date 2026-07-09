@@ -1,12 +1,14 @@
-import { useState, useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowRight, CheckCircle2, Mail, Phone, MapPin, Clock,
   Send, MessageSquare, User, Building2, Globe, ChevronRight,
   Headphones, Award, Users, Zap, Leaf, Recycle
 } from "lucide-react";
+import { toast } from "react-toastify";
 
-/* ─── MAIN CONTACT PAGE ─── */
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: "",
@@ -26,12 +28,34 @@ export default function ContactPage() {
     });
   };
 
-  const handleSubmit = (e) => {
+  // ─── REAL SUBMISSION ─────────────────────────────────────────
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate submission
-    setTimeout(() => {
-      setIsSubmitting(false);
+
+    try {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        company: formData.company,
+        subject: formData.subject,
+        message: formData.message,
+      };
+
+      const response = await fetch(`${API_URL}/contact/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || "Failed to send message");
+      }
+
+      toast.success(data.message || "Message sent successfully!");
       setIsSubmitted(true);
       setFormData({
         name: "",
@@ -42,7 +66,22 @@ export default function ContactPage() {
         message: ""
       });
       setTimeout(() => setIsSubmitted(false), 5000);
-    }, 1500);
+    } catch (err) {
+      toast.error(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // ─── HELPERS ────────────────────────────────────────────────
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleFooterLink = (e, link) => {
+    e.preventDefault();
+    alert(`📄 ${link} page coming soon!`);
   };
 
   const contactInfo = [
@@ -50,25 +89,29 @@ export default function ContactPage() {
       icon: Phone,
       title: "Phone",
       details: ["+254 700 123 456", "+254 700 123 457"],
-      action: "Call us →"
+      action: "Call us →",
+      onClick: () => window.location.href = "tel:+254700123456"
     },
     {
       icon: Mail,
       title: "Email",
-      details: ["info@reviveenergy.com", "support@reviveenergy.com"],
-      action: "Send email →"
+      details: ["info@reviveenergy.com", "samatar3470@gmail.com"],
+      action: "Send email →",
+      onClick: () => window.location.href = "mailto:info@reviveenergy.com"
     },
     {
       icon: MapPin,
       title: "Office",
       details: ["Nairobi, Kenya", "Westlands, 8th Floor"],
-      action: "Get directions →"
+      action: "Get directions →",
+      onClick: () => window.open("https://maps.google.com/maps?daddr=Westlands+Business+Park+Nairobi+Kenya", "_blank")
     },
     {
       icon: Clock,
       title: "Working Hours",
       details: ["Mon - Fri: 8:00 - 18:00", "Sat: 9:00 - 13:00"],
-      action: "Book appointment →"
+      action: "Book appointment →",
+      onClick: () => alert("📅 Book an appointment with our team. We'll call you back.")
     }
   ];
 
@@ -76,31 +119,25 @@ export default function ContactPage() {
     <div className="min-h-screen bg-[#F6F8F4] text-[#142019] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-        .font-display {
-          font-family: 'Space Grotesk', sans-serif;
-        }
-
-        .font-mono-cw {
-          font-family: 'JetBrains Mono', monospace;
-        }
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
       `}</style>
 
-      {/* ============ HERO SECTION - MOVED UP ============ */}
-      <section className="relative min-h-[45vh] flex items-center bg-white pt-0">
+      {/* ─── HERO ─── */}
+      <section className="relative min-h-[40vh] flex items-center bg-white pt-0">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 right-10 w-96 h-96 bg-[#9CF06B]/5 rounded-full blur-3xl" />
           <div className="absolute bottom-20 left-10 w-80 h-80 bg-[#11402D]/5 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-8 lg:py-12">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-6 lg:py-8">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-center max-w-4xl mx-auto"
           >
-            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl text-[#0E2A1C] leading-[1.1] tracking-tight mb-6">
+            <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl text-[#0E2A1C] leading-[1.1] tracking-tight mb-4">
               Let's
               <span className="relative inline-block mx-3">
                 <span className="relative z-10 text-[#11402D]">connect.</span>
@@ -110,14 +147,14 @@ export default function ContactPage() {
               </span>
             </h1>
             
-            <p className="text-xl text-[#142019]/65 leading-relaxed max-w-2xl mx-auto">
+            <p className="text-lg sm:text-xl text-[#142019]/65 leading-relaxed max-w-2xl mx-auto">
               Have questions about our solutions? Need a custom proposal? Our team is here to help you turn waste into value.
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* ============ CONTACT INFO CARDS ============ */}
+      {/* ─── CONTACT INFO CARDS ─── */}
       <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid md:grid-cols-4 gap-4">
@@ -137,7 +174,10 @@ export default function ContactPage() {
                 {item.details.map((detail, j) => (
                   <p key={j} className="text-sm text-[#142019]/55 text-center">{detail}</p>
                 ))}
-                <button className="font-mono-cw text-xs font-semibold text-[#11402D] mt-3 hover:text-[#0E2A1C] transition-colors flex items-center justify-center gap-1 mx-auto">
+                <button
+                  onClick={item.onClick}
+                  className="font-mono-cw text-xs font-semibold text-[#11402D] mt-3 hover:text-[#0E2A1C] transition-colors flex items-center justify-center gap-1 mx-auto"
+                >
                   {item.action}
                 </button>
               </motion.div>
@@ -146,7 +186,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* ============ CONTACT FORM & MAP ============ */}
+      {/* ─── FORM & MAP ─── */}
       <section className="py-24 bg-[#F6F8F4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid lg:grid-cols-5 gap-12">
@@ -340,7 +380,10 @@ export default function ContactPage() {
                       <Recycle className="w-8 h-8 text-[#9CF06B] mx-auto mb-2" />
                       <p className="text-sm font-display font-semibold">Free Waste Assessment</p>
                       <p className="text-xs text-white/60 mt-1">Book a consultation today</p>
-                      <button className="mt-3 text-xs font-display font-bold text-[#0E2A1C] bg-[#9CF06B] px-4 py-2 rounded-full hover:bg-[#8AE05A] transition-colors">
+                      <button
+                        onClick={() => alert("📋 Book your free waste assessment! We'll contact you within 24 hours.")}
+                        className="mt-3 text-xs font-display font-bold text-[#0E2A1C] bg-[#9CF06B] px-4 py-2 rounded-full hover:bg-[#8AE05A] transition-colors"
+                      >
                         Book Now
                       </button>
                     </div>
@@ -352,7 +395,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* ============ MAP SECTION ============ */}
+      {/* ─── MAP ─── */}
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
@@ -364,12 +407,8 @@ export default function ContactPage() {
             <div className="flex justify-center mb-6">
               <div className="w-12 h-px bg-[#11402D]" />
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl text-[#0E2A1C] mb-4">
-              Find Us Here
-            </h2>
-            <p className="text-lg text-[#142019]/65">
-              Visit our headquarters in Nairobi, Kenya
-            </p>
+            <h2 className="font-display text-3xl sm:text-4xl text-[#0E2A1C] mb-4">Find Us Here</h2>
+            <p className="text-lg text-[#142019]/65">Visit our headquarters in Nairobi, Kenya</p>
           </motion.div>
 
           <motion.div
@@ -422,7 +461,7 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* ============ CTA SECTION ============ */}
+      {/* ─── CTA ─── */}
       <section className="py-20 bg-[#0E2A1C]">
         <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
           <motion.div
@@ -440,14 +479,18 @@ export default function ContactPage() {
               Our team is ready to help. Reach out and we'll respond within 24 hours.
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => window.location.href = "tel:+254700123456"}
                 className="bg-[#9CF06B] text-[#0E2A1C] font-display font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
               >
                 <Phone className="w-4 h-4" /> Call Now
               </motion.button>
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => window.location.href = "mailto:info@reviveenergy.com"}
                 className="border-2 border-white/20 text-white font-display font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
               >
                 <Mail className="w-4 h-4" /> Email Us
@@ -456,6 +499,61 @@ export default function ContactPage() {
           </motion.div>
         </div>
       </section>
+
+      {/* ─── FOOTER ─── */}
+      <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
+                  <Recycle className="w-5 h-5 text-[#9CF06B]" />
+                </div>
+                <span className="font-display text-xl font-semibold">ReVive Energy</span>
+              </div>
+              <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+                Designing and operating waste-to-energy infrastructure that
+                turns disposal problems into clean energy opportunities.
+              </p>
+            </div>
+
+            {[
+              ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
+              ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
+              ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
+            ].map(([title, links], index) => (
+              <div key={index}>
+                <h3 className="font-display font-semibold mb-4">{title}</h3>
+                <ul className="space-y-2.5 text-sm text-white/50">
+                  {links.map((link, i) => (
+                    <li key={i}>
+                      <a
+                        href="#"
+                        onClick={(e) => handleFooterLink(e, link)}
+                        className="hover:text-[#9CF06B] transition-colors"
+                      >
+                        {link}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
+            <span>© 2026 ReVive Energy. All rights reserved.</span>
+            <div className="flex flex-wrap justify-center gap-5">
+              <a href="#" onClick={(e) => handleFooterLink(e, "Privacy Policy")} className="hover:text-[#9CF06B] transition-colors">
+                Privacy Policy
+              </a>
+              <a href="#" onClick={(e) => handleFooterLink(e, "Terms of Service")} className="hover:text-[#9CF06B] transition-colors">
+                Terms of Service
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
