@@ -1,7 +1,7 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from utils.decorators import role_required
-from database import db   # ✅ import db from database, not models
+from database import db
 from models import (
     TransportJob,
     Notification,
@@ -9,24 +9,45 @@ from models import (
     WasteListing,
     WasteRequest,
     Conversation,
+    User,
 )
 
 transporter_bp = Blueprint("transporter", __name__)
 
 
 def job_to_dict(job):
+    """
+    Convert a TransportJob to a dictionary with full related names.
+    """
+    # Fetch related users
+    supplier = User.query.get(job.supplier_id)
+    producer = User.query.get(job.producer_id)
+    transporter = User.query.get(job.transporter_id) if job.transporter_id else None
+
+    # Fetch listing to get unit
+    listing = WasteListing.query.get(job.listing_id) if job.listing_id else None
+
+    # Calculate transport fee (could be stored in job or fetched from Payment)
+    # For now, default to 0; frontend will fallback to other fields
+    transport_fee = getattr(job, "transport_fee", 0) or 0
+
     return {
         "id": job.id,
         "request_id": job.request_id,
         "listing_id": job.listing_id,
         "supplier_id": job.supplier_id,
+        "supplier_name": supplier.full_name if supplier else "Unknown Supplier",
         "producer_id": job.producer_id,
+        "producer_name": producer.full_name if producer else "Unknown Producer",
         "transporter_id": job.transporter_id,
+        "transporter_name": transporter.full_name if transporter else "Not assigned",
         "waste_type": job.waste_type,
         "quantity": job.quantity,
+        "unit": listing.unit if listing else "kg",
         "pickup_location": job.pickup_location,
         "delivery_location": job.delivery_location,
         "status": job.status,
+        "transport_fee": transport_fee,
         "created_at": job.created_at.isoformat() if job.created_at else None,
     }
 
@@ -66,7 +87,7 @@ def create_notification(user_id, title, message, notification_type="transport"):
 
 @transporter_bp.route("/transporter/dashboard", methods=["GET"])
 @jwt_required()
-@role_required("transporter")
+@role_required("transporter", "transport-partner")
 def transporter_dashboard():
     current_user_id = int(get_jwt_identity())
 
@@ -107,7 +128,7 @@ def transporter_dashboard():
 
 @transporter_bp.route("/transporter/jobs", methods=["GET"])
 @jwt_required()
-@role_required("transporter")
+@role_required("transporter", "transport-partner")
 def get_open_jobs():
     jobs = TransportJob.query.filter_by(status="open").order_by(
         TransportJob.created_at.desc()
@@ -118,7 +139,7 @@ def get_open_jobs():
 
 @transporter_bp.route("/transporter/jobs/<int:job_id>/accept", methods=["PATCH"])
 @jwt_required()
-@role_required("transporter")
+@role_required("transporter", "transport-partner")
 def accept_job(job_id):
     current_user_id = int(get_jwt_identity())
 
@@ -177,13 +198,13 @@ def accept_job(job_id):
 
 @transporter_bp.route("/transporter/accepted-jobs", methods=["GET"])
 @jwt_required()
-@role_required("transporter")
+@role_required("transporter", "transport-partner")
 def get_accepted_jobs():
     current_user_id = int(get_jwt_identity())
 
     jobs = TransportJob.query.filter(
         TransportJob.transporter_id == current_user_id,
-        TransportJob.status.in_(["accepted", "picked_up", "in_transit", "delivered"]),
+        TransportJob.status.in_(["accepted", "picked_up", "in_transit", "delivered", "completed"]),
     ).order_by(TransportJob.created_at.desc()).all()
 
     return jsonify({"jobs": [job_to_dict(job) for job in jobs]}), 200
@@ -191,7 +212,7 @@ def get_accepted_jobs():
 
 @transporter_bp.route("/transporter/jobs/<int:job_id>/picked-up", methods=["PATCH"])
 @jwt_required()
-@role_required("transporter")
+@role_required("transporter", "transport-partner")
 def mark_picked_up(job_id):
     current_user_id = int(get_jwt_identity())
 
@@ -239,7 +260,7 @@ def mark_picked_up(job_id):
 
 @transporter_bp.route("/transporter/jobs/<int:job_id>/in-transit", methods=["PATCH"])
 @jwt_required()
-@role_required("transporter")
+@role_required("transporter", "transport-partner")
 def mark_in_transit(job_id):
     current_user_id = int(get_jwt_identity())
 
@@ -276,7 +297,7 @@ def mark_in_transit(job_id):
 
 @transporter_bp.route("/transporter/jobs/<int:job_id>/delivered", methods=["PATCH"])
 @jwt_required()
-@role_required("transporter")
+@role_required("transporter", "transport-partner")
 def mark_delivered(job_id):
     current_user_id = int(get_jwt_identity())
 
@@ -324,7 +345,7 @@ def mark_delivered(job_id):
 
 @transporter_bp.route("/transporter/earnings", methods=["GET"])
 @jwt_required()
-@role_required("transporter")
+@role_required("transporter", "transport-partner")
 def transporter_earnings():
     current_user_id = int(get_jwt_identity())
 
