@@ -1,5 +1,6 @@
 // src/users/pages/transporter/ActiveDeliveries.jsx
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Truck,
   MapPin,
@@ -17,23 +18,38 @@ import {
   Route,
   Camera,
   Phone,
-  X,
-  Eye,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function ActiveDeliveries() {
+  const navigate = useNavigate();
   const [deliveries, setDeliveries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedJob, setSelectedJob] = useState(null);
 
   const getToken = () => localStorage.getItem("token");
+
+  // ─── Role guard: only transporters can view this page ──────
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const user = JSON.parse(storedUser);
+        const allowedRoles = ["transporter", "transport-partner"];
+        if (!allowedRoles.includes(user.role)) {
+          toast.error("This page is for transporters only.");
+          navigate("/dashboard/routes", { replace: true });
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, [navigate]);
 
   const fetchDeliveries = async () => {
     setLoading(true);
@@ -48,10 +64,14 @@ export default function ActiveDeliveries() {
       });
 
       const data = await res.json().catch(() => ({}));
+
+      if (res.status === 403) {
+        throw new Error("You are not authorized to view this page.");
+      }
+
       if (!res.ok) throw new Error(data.message || "Failed to load active deliveries");
 
       const jobs = Array.isArray(data) ? data : data.jobs || [];
-      // Only show jobs in progress (not yet delivered)
       setDeliveries(
         jobs.filter((job) =>
           ["accepted", "picked_up", "in_transit"].includes(job.status)
@@ -60,6 +80,9 @@ export default function ActiveDeliveries() {
     } catch (err) {
       setError(err.message || "Something went wrong");
       setDeliveries([]);
+      if (err.message.toLowerCase().includes("authorized")) {
+        setTimeout(() => navigate("/dashboard/routes"), 2000);
+      }
     } finally {
       setLoading(false);
     }
@@ -91,7 +114,6 @@ export default function ActiveDeliveries() {
     }
   };
 
-  // ─── Contact handler ──────────────────────────────────────────
   const handleContact = (job) => {
     const phone = job.supplier_phone || job.producer_phone;
     if (phone) {
@@ -101,7 +123,6 @@ export default function ActiveDeliveries() {
     }
   };
 
-  // ─── Proof upload handler ──────────────────────────────────────
   const handleProof = (job) => {
     const input = document.createElement("input");
     input.type = "file";
@@ -222,6 +243,7 @@ export default function ActiveDeliveries() {
     return { active, pickedUp, inTransit, totalEarnings };
   }, [deliveries]);
 
+  // ─── Loading state ──────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex min-h-[55vh] items-center justify-center">
@@ -233,6 +255,35 @@ export default function ActiveDeliveries() {
     );
   }
 
+  // ─── Error state ────────────────────────────────────────────
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] px-4 py-8">
+        <div className="mx-auto max-w-xl rounded-3xl border border-red-200 bg-red-50 p-8 text-center shadow-sm">
+          <AlertCircle className="mx-auto h-14 w-14 text-red-500" />
+          <h2 className="mt-4 font-display text-xl font-bold text-red-700">Unable to Load</h2>
+          <p className="mt-2 text-sm text-red-600">{error}</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <button
+              onClick={fetchDeliveries}
+              className="rounded-2xl bg-red-600 px-6 py-2.5 font-semibold text-white hover:bg-red-700"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => navigate("/dashboard/routes")}
+              className="inline-flex items-center gap-2 rounded-2xl border border-gray-300 bg-white px-6 py-2.5 font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Go to Route Tracking
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Main content ──────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
       <style>{`
@@ -242,7 +293,7 @@ export default function ActiveDeliveries() {
       `}</style>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6">
-        {/* ─── Header ───────────────────────────────────────────── */}
+        {/* Header */}
         <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -251,7 +302,6 @@ export default function ActiveDeliveries() {
                 Manage live pickups, transit updates, and delivery completion.
               </p>
             </div>
-
             <button
               onClick={fetchDeliveries}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
@@ -262,30 +312,15 @@ export default function ActiveDeliveries() {
           </div>
         </div>
 
-        {/* ─── Stats ───────────────────────────────────────────── */}
+        {/* Stats */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Active" value={stats.active} icon={Truck} />
-          <Stat
-            label="Picked Up"
-            value={stats.pickedUp}
-            icon={Package}
-            color="text-blue-600"
-          />
-          <Stat
-            label="In Transit"
-            value={stats.inTransit}
-            icon={Navigation}
-            color="text-purple-600"
-          />
-          <Stat
-            label="Earnings"
-            value={formatCurrency(stats.totalEarnings)}
-            icon={CreditCard}
-            color="text-[#11402D]"
-          />
+          <Stat label="Picked Up" value={stats.pickedUp} icon={Package} color="text-blue-600" />
+          <Stat label="In Transit" value={stats.inTransit} icon={Navigation} color="text-purple-600" />
+          <Stat label="Earnings" value={formatCurrency(stats.totalEarnings)} icon={CreditCard} color="text-[#11402D]" />
         </div>
 
-        {/* ─── Search ───────────────────────────────────────────── */}
+        {/* Search */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -296,18 +331,8 @@ export default function ActiveDeliveries() {
           />
         </div>
 
-        {/* ─── Error ───────────────────────────────────────────── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
-              <p className="font-medium">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {/* ─── Empty State ──────────────────────────────────────── */}
-        {!error && filteredDeliveries.length === 0 && (
+        {/* Empty state */}
+        {filteredDeliveries.length === 0 && (
           <div className="rounded-3xl border border-gray-200 bg-white p-12 text-center shadow-sm">
             <Truck className="mx-auto h-16 w-16 text-[#11402D]" />
             <h2 className="mt-4 font-display text-xl font-bold text-gray-900">No active deliveries</h2>
@@ -317,7 +342,7 @@ export default function ActiveDeliveries() {
           </div>
         )}
 
-        {/* ─── Delivery Cards ────────────────────────────────────── */}
+        {/* Delivery Cards */}
         {filteredDeliveries.length > 0 && (
           <div className="grid gap-5 lg:grid-cols-2">
             {filteredDeliveries.map((job) => {
@@ -326,16 +351,12 @@ export default function ActiveDeliveries() {
               const earnings = getEarnings(job);
 
               return (
-                <div
-                  key={job.id}
-                  className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                >
+                <div key={job.id} className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#11402D]/10">
                         <Truck className="h-6 w-6 text-[#11402D]" />
                       </div>
-
                       <div>
                         <h3 className="font-display font-bold text-gray-900">
                           {job.waste_type || "Active Delivery"}
@@ -345,10 +366,7 @@ export default function ActiveDeliveries() {
                         </p>
                       </div>
                     </div>
-
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusBadge(job.status)}`}
-                    >
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusBadge(job.status)}`}>
                       {getStatusLabel(job.status)}
                     </span>
                   </div>
@@ -392,7 +410,6 @@ export default function ActiveDeliveries() {
                       <Phone className="h-4 w-4" />
                       Contact
                     </button>
-
                     <button
                       onClick={() => handleProof(job)}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
@@ -400,7 +417,6 @@ export default function ActiveDeliveries() {
                       <Camera className="h-4 w-4" />
                       Proof
                     </button>
-
                     {action ? (
                       <button
                         onClick={() => updateStatus(job.id, action.action)}
@@ -426,7 +442,7 @@ export default function ActiveDeliveries() {
   );
 }
 
-// ─── Subcomponents ─────────────────────────────────────────────
+// ─── Subcomponents ────────────────────────────────────────────
 
 function Stat({ label, value, icon: Icon, color = "text-gray-900" }) {
   return (
@@ -447,9 +463,7 @@ function Info({ icon: Icon, label, value }) {
     <div className="flex items-start gap-3 rounded-2xl bg-gray-50 p-4">
       <Icon className="mt-0.5 h-5 w-5 text-[#11402D]" />
       <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-          {label}
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{label}</p>
         <p className="mt-1 truncate text-sm font-semibold text-gray-900">{value}</p>
       </div>
     </div>
@@ -472,7 +486,6 @@ function ProgressTimeline({ status }) {
         <Clock className="h-4 w-4 text-[#11402D]" />
         Delivery Progress
       </div>
-
       <div className="flex flex-wrap gap-2">
         {steps.map((step, index) => {
           const active = index <= currentIndex;

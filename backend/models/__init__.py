@@ -1,14 +1,11 @@
-# backend/models/__init__.py
-
 from .user import User
 from .login_history import UserDevice
 from .business_verification import BusinessVerification
 from .processing_plant import ProcessingPlant
 from .carbon_credit import CarbonCredit
 from .review import Review
-from .admin_settings import AdminSetting          # <-- moved up
+from .admin_settings import AdminSetting
 
-# Legacy models (does NOT include AdminSetting)
 from .legacy import (
     Collection,
     Waste,
@@ -23,7 +20,6 @@ from .legacy import (
     Message,
 )
 
-# New models
 from .payment import Payment
 from .receipt import Receipt
 from .transport_job import TransportJob
@@ -31,8 +27,9 @@ from .escrow_transaction import EscrowTransaction
 from .ticket_reply import TicketReply
 from .wallet import Wallet, WalletTransaction
 from .withdrawal import WithdrawalRequest
-from .dispute import Dispute               # <-- ADDED
-from .audit_log import AuditLog             # <-- ADDED
+from .dispute import Dispute
+from .audit_log import AuditLog
+from .transport_location import TransportLocation   # <-- NEW
 
 __all__ = [
     "User",
@@ -42,8 +39,6 @@ __all__ = [
     "CarbonCredit",
     "Review",
     "AdminSetting",
-
-    # Legacy
     "Collection",
     "Waste",
     "WasteListing",
@@ -55,8 +50,6 @@ __all__ = [
     "PhoneVerification",
     "Conversation",
     "Message",
-
-    # New
     "Payment",
     "Receipt",
     "TransportJob",
@@ -65,6 +58,7 @@ __all__ = [
     "Wallet",
     "WalletTransaction",
     "WithdrawalRequest",
-    "Dispute",           # <-- ADDED
-    "AuditLog",          # <-- ADDED
+    "Dispute",
+    "AuditLog",
+    "TransportLocation",   # <-- NEW
 ]

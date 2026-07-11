@@ -45,6 +45,7 @@ from routes.messages import messages_bp
 from routes.admin import admin_bp
 from routes.wallet import wallet_bp          # <-- ADDED
 from routes.contact import contact_bp        # 👈 NEW: import contact blueprint
+from routes.tracking import tracking_bp      # 👈 NEW: import tracking blueprint
 
 from services.mpesa import MpesaService
 
@@ -77,6 +78,8 @@ def create_app():
     app.register_blueprint(admin_bp)                  # admin blueprint
     app.register_blueprint(wallet_bp)                 # <-- ADDED wallet blueprint
     app.register_blueprint(contact_bp)                # 👈 NEW: register contact blueprint
+    # ✅ FIXED: Do NOT override the blueprint's own url_prefix ('/api/tracking')
+    app.register_blueprint(tracking_bp)               # now serves /api/tracking/...
 
     # ─── Helper: generate QR code ────────────────────────────────
     def generate_qr_code(payment):

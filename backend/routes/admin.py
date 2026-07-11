@@ -1,4 +1,3 @@
-# backend/routes/admin.py
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash
@@ -23,8 +22,8 @@ from models import (
     Wallet,
     WalletTransaction,
     WithdrawalRequest,
-    Dispute,          # <-- ADDED
-    AuditLog,         # <-- ADDED
+    Dispute,
+    AuditLog,
 )
 from database import db
 from utils.decorators import role_required
@@ -45,7 +44,6 @@ def log_audit(user_id=None, event=None, description=None, status='info',
               request_payload=None, response_payload=None,
               previous_values=None, new_values=None, admin_id=None):
     try:
-        # If no IP, get from request context if available
         if ip_address is None:
             try:
                 ip_address = request.remote_addr
@@ -78,7 +76,6 @@ def log_audit(user_id=None, event=None, description=None, status='info',
 @jwt_required()
 @role_required('admin')
 def get_users():
-    """Get all users with optional filters, search, and pagination."""
     try:
         role = request.args.get('role')
         status = request.args.get('status')
@@ -767,6 +764,11 @@ def get_payment_activity():
 @jwt_required()
 @role_required('admin')
 def release_payment(payment_id):
+    """
+    Release a payment from escrow.
+    Credits both supplier and transporter (if present).
+    If transporter_amount is missing, uses transport_fee and looks up transporter from TransportJob.
+    """
     try:
         payment = db.session.get(Payment, payment_id)
         if not payment:
@@ -777,6 +779,26 @@ def release_payment(payment_id):
 
         if payment.status not in ["paid", "completed"]:
             return jsonify({"message": "Only paid payments can be released"}), 400
+
+        # ─── Ensure we have transporter details ─────────────────────
+        transporter_id = payment.transporter_id
+        transporter_amount = payment.transporter_amount or 0
+
+        # If transporter_id is missing, try to fetch from TransportJob
+        if not transporter_id and payment.transport_job_id:
+            transport_job = db.session.get(TransportJob, payment.transport_job_id)
+            if transport_job and transport_job.transporter_id:
+                transporter_id = transport_job.transporter_id
+                payment.transporter_id = transporter_id  # Save for future
+
+        # If transporter_amount is 0, try to use transport_fee
+        if transporter_amount <= 0 and payment.transport_fee:
+            transporter_amount = payment.transport_fee
+            payment.transporter_amount = transporter_amount  # Save for future
+
+        # Also ensure supplier_amount is set
+        if not payment.supplier_amount:
+            payment.supplier_amount = payment.waste_amount or 0
 
         # ─── Credit supplier wallet ──────────────────────────────
         supplier = User.query.get(payment.supplier_id)
@@ -798,24 +820,27 @@ def release_payment(payment_id):
                 )
                 db.session.add(tx_supplier)
 
-        # ─── Credit transporter wallet ────────────────────────────
-        if payment.transporter_id and payment.transporter_amount and payment.transporter_amount > 0:
-            transporter = User.query.get(payment.transporter_id)
+        # ─── Credit transporter wallet (if applicable) ────────────
+        if transporter_id and transporter_amount > 0:
+            transporter = User.query.get(transporter_id)
             if transporter:
                 transporter_wallet = Wallet.query.filter_by(user_id=transporter.id).first()
                 if not transporter_wallet:
                     transporter_wallet = Wallet(user_id=transporter.id, balance=0.0)
                     db.session.add(transporter_wallet)
 
-                transporter_wallet.balance += payment.transporter_amount
+                transporter_wallet.balance += transporter_amount
                 tx_transporter = WalletTransaction(
                     wallet_id=transporter_wallet.id,
-                    amount=payment.transporter_amount,
+                    amount=transporter_amount,
                     type='payment_release',
                     description=f'Payment #{payment.id} released – transport fee',
                     status='completed'
                 )
                 db.session.add(tx_transporter)
+
+                payment.transporter_id = transporter_id
+                payment.transporter_amount = transporter_amount
 
         # ─── Update payment status ────────────────────────────────
         payment.escrow_status = "released"
@@ -832,7 +857,7 @@ def release_payment(payment_id):
         log_audit(
             user_id=admin_id,
             event='payment_released',
-            description=f'Admin {admin_user.full_name} released payment #{payment.id}',
+            description=f'Admin {admin_user.full_name} released payment #{payment.id} (transporter credited: {transporter_amount})',
             status='success',
             admin_id=admin_id
         )
@@ -865,7 +890,6 @@ def refund_payment(payment_id):
         payment.updated_at = datetime.utcnow()
         db.session.commit()
 
-        # ─── Log the action ────────────────────────────────────────
         admin_id = int(get_jwt_identity())
         admin_user = db.session.get(User, admin_id)
         log_audit(
@@ -1505,14 +1529,12 @@ def update_settings():
         admin_id = int(get_jwt_identity())
         admin_user = db.session.get(User, admin_id)
 
-        # Get old values for audit log
         old_settings = {}
         for key in data.keys():
             setting = AdminSetting.query.filter_by(key=key).first()
             if setting:
                 old_settings[key] = setting.value
 
-        # Update or create settings
         for key, value in data.items():
             setting = AdminSetting.query.filter_by(key=key).first()
             if setting:
@@ -1523,7 +1545,6 @@ def update_settings():
 
         db.session.commit()
 
-        # ─── Log changes ──────────────────────────────────────────
         log_audit(
             user_id=admin_id,
             event='settings_updated',
@@ -1667,7 +1688,6 @@ def admin_delete_ticket(ticket_id):
 @jwt_required()
 @role_required('admin')
 def get_all_wallets():
-    """Get all user wallets (suppliers & transporters)."""
     try:
         users = User.query.filter(User.role.in_(['supplier', 'transporter'])).all()
         result = []
@@ -1740,7 +1760,6 @@ def get_withdrawal_requests():
 @jwt_required()
 @role_required('admin')
 def approve_withdrawal(withdrawal_id):
-    """Approve a withdrawal request: deduct from wallet, mark as approved."""
     try:
         req = WithdrawalRequest.query.get(withdrawal_id)
         if not req:
@@ -1754,11 +1773,9 @@ def approve_withdrawal(withdrawal_id):
         if wallet.balance < req.amount:
             return jsonify({'message': 'Insufficient balance'}), 400
 
-        # Deduct from wallet
         wallet.balance -= req.amount
         wallet.updated_at = datetime.utcnow()
 
-        # Create transaction
         tx = WalletTransaction(
             wallet_id=wallet.id,
             amount=-req.amount,
@@ -1772,7 +1789,6 @@ def approve_withdrawal(withdrawal_id):
         req.updated_at = datetime.utcnow()
         db.session.commit()
 
-        # ─── Log the action ────────────────────────────────────────
         admin_id = int(get_jwt_identity())
         admin_user = db.session.get(User, admin_id)
         log_audit(
@@ -1793,7 +1809,6 @@ def approve_withdrawal(withdrawal_id):
 @jwt_required()
 @role_required('admin')
 def reject_withdrawal(withdrawal_id):
-    """Reject a withdrawal request: mark as rejected."""
     try:
         req = WithdrawalRequest.query.get(withdrawal_id)
         if not req:
@@ -1805,7 +1820,6 @@ def reject_withdrawal(withdrawal_id):
         req.updated_at = datetime.utcnow()
         db.session.commit()
 
-        # ─── Log the action ────────────────────────────────────────
         admin_id = int(get_jwt_identity())
         admin_user = db.session.get(User, admin_id)
         log_audit(
@@ -1826,7 +1840,6 @@ def reject_withdrawal(withdrawal_id):
 @jwt_required()
 @role_required('admin')
 def complete_withdrawal(withdrawal_id):
-    """Mark a withdrawal as completed (money sent)."""
     try:
         req = WithdrawalRequest.query.get(withdrawal_id)
         if not req:
@@ -1838,7 +1851,6 @@ def complete_withdrawal(withdrawal_id):
         req.updated_at = datetime.utcnow()
         db.session.commit()
 
-        # ─── Log the action ────────────────────────────────────────
         admin_id = int(get_jwt_identity())
         admin_user = db.session.get(User, admin_id)
         log_audit(
@@ -1967,7 +1979,6 @@ def dispute_action(dispute_id):
         if not admin_user or admin_user.role != 'admin':
             return jsonify({'message': 'Admin only'}), 403
 
-        # Map actions to status changes
         status_map = {
             'request_more_info': 'awaiting_response',
             'freeze_escrow': 'under_investigation',
@@ -1996,7 +2007,6 @@ def dispute_action(dispute_id):
                     payment.status = 'refunded'
                     payment.escrow_status = 'refunded'
 
-        # Add to timeline
         timeline = json.loads(dispute.timeline) if dispute.timeline else []
         timeline.append({
             'description': f'Admin {admin_user.full_name} performed "{action}" on dispute #{dispute.id}',
@@ -2007,7 +2017,6 @@ def dispute_action(dispute_id):
 
         db.session.commit()
 
-        # ─── Log the action ────────────────────────────────────────
         log_audit(
             user_id=admin_id,
             event='dispute_action',

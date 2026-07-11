@@ -95,6 +95,7 @@ export default function UserDashboard() {
       { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
       { name: "Messages", path: "/dashboard/messages", icon: MessageCircle },
       { name: "Support", path: "/dashboard/support", icon: LifeBuoy },
+      { name: "Route Tracking", path: "/dashboard/routes", icon: MapPin }, // ✅ moved here – shared
       { name: "Profile", path: "/dashboard/profile", icon: User },
     ];
 
@@ -120,7 +121,7 @@ export default function UserDashboard() {
         { name: "Available Jobs", path: "/dashboard/jobs", icon: ClipboardList },
         { name: "Accepted Jobs", path: "/dashboard/accepted-jobs", icon: CheckCircle },
         { name: "Active Deliveries", path: "/dashboard/deliveries", icon: Truck },
-        { name: "Route Tracking", path: "/dashboard/routes", icon: MapPin },
+        // Route Tracking removed from here – now in commonItems
         { name: "Earnings", path: "/dashboard/earnings", icon: DollarSign },
       ];
     } else {
