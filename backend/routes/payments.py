@@ -9,10 +9,9 @@ import uuid
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/api/payments")
 
-FIXED_WASTE_AMOUNT = 10.0
-FIXED_TRANSPORT_FEE = 10.0
-FIXED_PLATFORM_FEE = 10.0
-FIXED_TOTAL_AMOUNT = FIXED_WASTE_AMOUNT + FIXED_TRANSPORT_FEE + FIXED_PLATFORM_FEE
+# ─── No more hardcoded constants ────────────────────────────────
+# Remove FIXED_WASTE_AMOUNT, FIXED_TRANSPORT_FEE, etc.
+# We will use the values from the frontend.
 
 
 def current_user_id():
@@ -261,6 +260,15 @@ def initiate_payment():
         request_id = safe_int(data.get("request_id"), 0)
         listing_id = safe_int(data.get("listing_id"), 0)
 
+        # ─── Get amounts from frontend ────────────────────────────
+        total_amount = safe_float(data.get("amount") or data.get("total_amount"), 0)
+        waste_amount = safe_float(data.get("waste_amount"), 0)
+        transport_fee = safe_float(data.get("transport_fee"), 0)
+        platform_fee = safe_float(data.get("platform_fee"), 0)
+
+        if total_amount <= 0:
+            return jsonify({"message": "Invalid amount"}), 422
+
         supplier = db.session.get(User, supplier_id)
         if not supplier:
             return jsonify({"message": "Supplier not found"}), 422
@@ -307,6 +315,7 @@ def initiate_payment():
             if not listing:
                 return jsonify({"message": "Waste listing not found"}), 422
 
+        # ─── Create payment with dynamic amounts ──────────────────
         payment = Payment(
             payer_id=user_id,
             producer_id=user_id,
@@ -316,14 +325,14 @@ def initiate_payment():
             transport_job_id=safe_int(data.get("transport_job_id"), 0),
             transporter_id=safe_int(data.get("transporter_id"), None),
 
-            amount=FIXED_TOTAL_AMOUNT,
-            total_amount=FIXED_TOTAL_AMOUNT,
-            waste_amount=FIXED_WASTE_AMOUNT,
-            transport_fee=FIXED_TRANSPORT_FEE,
-            platform_fee=FIXED_PLATFORM_FEE,
-            commission=FIXED_PLATFORM_FEE,
-            supplier_amount=FIXED_WASTE_AMOUNT,
-            transporter_amount=FIXED_TRANSPORT_FEE,
+            amount=total_amount,
+            total_amount=total_amount,
+            waste_amount=waste_amount,
+            transport_fee=transport_fee,
+            platform_fee=platform_fee,
+            commission=platform_fee,          # Platform fee as commission (or 0 if needed)
+            supplier_amount=waste_amount,     # Supplier gets waste amount (or adjusted)
+            transporter_amount=transport_fee, # Transporter gets transport fee
 
             phone_number=phone,
             payment_method="mpesa",
@@ -337,6 +346,7 @@ def initiate_payment():
         db.session.add(payment)
         db.session.flush()
 
+        # ─── Mock mode ─────────────────────────────────────────────
         if current_app.config.get("MPESA_MOCK_MODE", False):
             payment.payment_status = "paid"
             payment.status = "paid"
@@ -378,13 +388,14 @@ def initiate_payment():
                 "payment": payment_to_dict(payment),
             }), 200
 
+        # ─── Real M-Pesa STK Push ──────────────────────────────────
         description = data.get("description") or f"ReVive Energy payment #{payment.id}"
 
         current_app.logger.info("Calling MpesaService.stk_push()...")
 
         mpesa_response = MpesaService.stk_push(
             phone=phone,
-            amount=FIXED_TOTAL_AMOUNT,
+            amount=total_amount,          # ← use dynamic amount
             description=description,
             payment_id=payment.id,
         )
@@ -431,6 +442,8 @@ def initiate_payment():
         current_app.logger.error(f"initiate_payment error: {e}", exc_info=True)
         return jsonify({"message": str(e)}), 500
 
+
+# ─── (rest of the file remains unchanged) ──────────────────────
 
 @payments_bp.route("/callback", methods=["POST"])
 def mpesa_callback():

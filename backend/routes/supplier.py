@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from database import db
-from models import User, WasteListing, WasteRequest, TransportJob, Notification
+from models import User, WasteListing, WasteRequest, TransportJob, Notification, Collection
 from utils.decorators import role_required
 import logging
 
@@ -19,82 +19,138 @@ def current_user_id():
 @jwt_required()
 @role_required("supplier")
 def supplier_dashboard():
-    user_id = current_user_id()
-    current_app.logger.info(f"📊 Supplier dashboard requested for user_id: {user_id}")
+    try:
+        user_id = current_user_id()
+        current_app.logger.info(f"📊 Supplier dashboard requested for user_id: {user_id}")
 
-    listings_query = WasteListing.query.filter_by(supplier_id=user_id)
-    total_listings = listings_query.count()
-    current_app.logger.info(f"📋 Total listings for user {user_id}: {total_listings}")
+        # ─── Listings Stats ──────────────────────────────────────
+        total_listings = WasteListing.query.filter_by(supplier_id=user_id).count()
+        
+        active_statuses = ["available", "requested", "assigned", "collected"]
+        active_listings = WasteListing.query.filter(
+            WasteListing.supplier_id == user_id,
+            WasteListing.status.in_(active_statuses)
+        ).count()
+        
+        completed_listings = WasteListing.query.filter(
+            WasteListing.supplier_id == user_id,
+            WasteListing.status == "completed"
+        ).count()
 
-    active_statuses = ["available", "requested", "assigned", "collected"]
-    active_listings = listings_query.filter(WasteListing.status.in_(active_statuses)).count()
-    current_app.logger.info(f"📋 Active listings: {active_listings}")
+        # ─── Collection Requests (WasteRequest) ─────────────────
+        pending_requests = WasteRequest.query.join(WasteListing).filter(
+            WasteListing.supplier_id == user_id,
+            WasteRequest.status == "pending"
+        ).count()
+        
+        approved_requests = WasteRequest.query.join(WasteListing).filter(
+            WasteListing.supplier_id == user_id,
+            WasteRequest.status == "approved"
+        ).count()
 
-    completed_listings = listings_query.filter(WasteListing.status == "completed").count()
+        # ─── Transport Jobs (Collections) ────────────────────────
+        # All transport jobs for this supplier
+        all_transport_jobs = TransportJob.query.filter_by(supplier_id=user_id).count()
+        
+        # Pending collections (open or accepted)
+        pending_collections = TransportJob.query.filter(
+            TransportJob.supplier_id == user_id,
+            TransportJob.status.in_(["open", "accepted"])
+        ).count()
+        
+        # In progress collections (picked_up, in_transit)
+        in_progress_collections = TransportJob.query.filter(
+            TransportJob.supplier_id == user_id,
+            TransportJob.status.in_(["picked_up", "in_transit"])
+        ).count()
+        
+        # Completed collections
+        completed_collections = TransportJob.query.filter(
+            TransportJob.supplier_id == user_id,
+            TransportJob.status.in_(["delivered", "completed"])
+        ).count()
 
-    pending_requests = WasteRequest.query.join(WasteListing).filter(
-        WasteListing.supplier_id == user_id,
-        WasteRequest.status == "pending"
-    ).count()
-    current_app.logger.info(f"📩 Pending requests: {pending_requests}")
+        # ─── Recent Data ──────────────────────────────────────────
+        recent_listings = WasteListing.query.filter_by(
+            supplier_id=user_id
+        ).order_by(
+            WasteListing.created_at.desc()
+        ).limit(5).all()
 
-    recent_listings = listings_query.order_by(
-        WasteListing.created_at.desc()
-    ).limit(5).all()
+        upcoming_pickups = TransportJob.query.filter(
+            TransportJob.supplier_id == user_id,
+            TransportJob.status.in_(["open", "accepted", "picked_up", "in_transit"])
+        ).order_by(
+            TransportJob.created_at.asc()
+        ).limit(5).all()
 
-    upcoming_pickups = TransportJob.query.filter_by(
-        supplier_id=user_id
-    ).filter(
-        TransportJob.status.in_(["open", "accepted", "picked_up", "in_transit"])
-    ).order_by(TransportJob.created_at.desc()).limit(5).all()
+        notifications = Notification.query.filter_by(
+            user_id=user_id,
+            is_read=False
+        ).order_by(
+            Notification.created_at.desc()
+        ).limit(5).all()
 
-    notifications = Notification.query.filter_by(
-        user_id=user_id,
-        is_read=False
-    ).order_by(Notification.created_at.desc()).limit(5).all()
+        # ─── Logging ──────────────────────────────────────────────
+        current_app.logger.info(f"📋 Total listings: {total_listings}")
+        current_app.logger.info(f"📋 Active listings: {active_listings}")
+        current_app.logger.info(f"📩 Pending requests: {pending_requests}")
+        current_app.logger.info(f"🚚 All transport jobs: {all_transport_jobs}")
+        current_app.logger.info(f"🚚 Pending collections: {pending_collections}")
+        current_app.logger.info(f"🚚 Completed collections: {completed_collections}")
 
-    return jsonify({
-        "stats": {
-            "totalListings": total_listings,
-            "myListings": active_listings,
-            "collectionRequests": pending_requests,
-            "pendingCollections": pending_requests,
-            "completedCollections": completed_listings,
-        },
-        "recentListings": [
-            {
-                "id": item.id,
-                "waste_type": item.waste_type,
-                "quantity": item.quantity,
-                "unit": item.unit,
-                "location": item.location,
-                "status": item.status,
-                "created_at": item.created_at.isoformat() if item.created_at else None,
-            }
-            for item in recent_listings
-        ],
-        "upcomingPickups": [
-            {
-                "id": job.id,
-                "waste_type": job.waste_type,
-                "quantity": job.quantity,
-                "location": job.pickup_location,
-                "pickup_date": job.created_at.strftime("%Y-%m-%d") if job.created_at else None,
-                "pickup_time": job.created_at.strftime("%I:%M %p") if job.created_at else None,
-            }
-            for job in upcoming_pickups
-        ],
-        "notifications": [
-            {
-                "id": item.id,
-                "title": item.title,
-                "message": item.message,
-                "is_read": item.is_read,
-                "created_at": item.created_at.isoformat() if item.created_at else None,
-            }
-            for item in notifications
-        ],
-    }), 200
+        return jsonify({
+            "stats": {
+                "myListings": active_listings,
+                "totalListings": total_listings,
+                "collectionRequests": all_transport_jobs,
+                "pendingCollections": pending_collections,
+                "completedCollections": completed_collections,
+                "inProgressCollections": in_progress_collections,
+                "pendingRequests": pending_requests,
+                "approvedRequests": approved_requests,
+            },
+            "recentListings": [
+                {
+                    "id": item.id,
+                    "waste_type": item.waste_type,
+                    "quantity": item.quantity,
+                    "unit": item.unit,
+                    "location": item.location,
+                    "status": item.status,
+                    "created_at": item.created_at.isoformat() if item.created_at else None,
+                }
+                for item in recent_listings
+            ],
+            "upcomingPickups": [
+                {
+                    "id": job.id,
+                    "waste_type": job.waste_type,
+                    "quantity": job.quantity,
+                    "unit": getattr(job, "unit", "kg"),
+                    "location": job.pickup_location,
+                    "pickup_date": job.created_at.strftime("%Y-%m-%d") if job.created_at else None,
+                    "pickup_time": job.created_at.strftime("%I:%M %p") if job.created_at else None,
+                    "status": job.status,
+                    "transporter": job.transporter.full_name if job.transporter else "Not assigned",
+                }
+                for job in upcoming_pickups
+            ],
+            "notifications": [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "message": item.message,
+                    "is_read": item.is_read,
+                    "created_at": item.created_at.isoformat() if item.created_at else None,
+                }
+                for item in notifications
+            ],
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"❌ Supplier dashboard error: {e}", exc_info=True)
+        return jsonify({"message": f"Internal server error: {str(e)}"}), 500
 
 
 @supplier_bp.route("/supplier/listings", methods=["POST"])
@@ -371,11 +427,60 @@ def get_supplier_collections():
             "id": job.id,
             "waste_type": job.waste_type,
             "quantity": job.quantity,
+            "unit": getattr(job, "unit", "kg"),
             "pickup_location": job.pickup_location,
             "delivery_location": job.delivery_location,
             "status": job.status,
             "transporter_name": job.transporter.full_name if job.transporter else None,
+            "transporter_id": job.transporter_id,
             "created_at": job.created_at.isoformat() if job.created_at else None,
         }
         for job in jobs
     ]), 200
+
+
+# ─── NEW: Approve Pickup for Transport Job ──────────────────────
+@supplier_bp.route('/supplier/transport-jobs/<int:job_id>/approve-pickup', methods=['PATCH'])
+@jwt_required()
+@role_required('supplier')
+def approve_pickup(job_id):
+    try:
+        user_id = current_user_id()
+        job = TransportJob.query.get_or_404(job_id)
+
+        if job.supplier_id != user_id:
+            return jsonify({'message': 'Unauthorized: this job does not belong to you'}), 403
+
+        if job.status != 'accepted':
+            return jsonify({'message': 'Only accepted jobs can be approved for pickup'}), 400
+
+        job.status = 'approved_for_pickup'
+        db.session.commit()
+
+        # Notify transporter that pickup is approved
+        if job.transporter_id:
+            notification = Notification(
+                user_id=job.transporter_id,
+                title='Pickup Approved',
+                message=f'Your pickup for {job.waste_type} has been approved by the supplier.',
+                type='pickup_approved'
+            )
+            db.session.add(notification)
+            db.session.commit()
+
+        return jsonify({
+            'message': 'Pickup approved successfully',
+            'job': {
+                'id': job.id,
+                'status': job.status,
+                'waste_type': job.waste_type,
+                'quantity': job.quantity,
+                'pickup_location': job.pickup_location,
+                'delivery_location': job.delivery_location,
+            }
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in approve_pickup: {e}", exc_info=True)
+        return jsonify({'message': f'Internal server error: {str(e)}'}), 500

@@ -619,6 +619,7 @@ def get_all_payments():
         date_to = request.args.get('date_to')
         sort_field = request.args.get('sort_field', 'created_at')
         sort_order = request.args.get('sort_order', 'desc')
+        ready = request.args.get('ready')  # NEW: 'true' or 'false'
 
         query = Payment.query
 
@@ -649,6 +650,18 @@ def get_all_payments():
 
         if escrow_status and escrow_status != 'all':
             query = query.filter(Payment.escrow_status == escrow_status)
+
+        # ─── NEW: Filter by "Ready to Release" ──────────────────
+        if ready is not None:
+            if ready.lower() == 'true':
+                query = query.filter(
+                    Payment.escrow_status == "held",
+                    Payment.status.in_(["paid", "completed"])
+                )
+            elif ready.lower() == 'false':
+                query = query.filter(
+                    ~(Payment.escrow_status == "held") | ~(Payment.status.in_(["paid", "completed"]))
+                )
 
         if date_from:
             query = query.filter(Payment.created_at >= datetime.fromisoformat(date_from))

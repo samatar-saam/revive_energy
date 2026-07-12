@@ -87,7 +87,7 @@ export default function UserDashboard() {
   };
 
   const getNavItems = () => {
-    // ─── Common items for all roles ──────────────────────────
+    // ─── Common items (always visible) ──────────────────────────
     const commonItems = [
       { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, end: true },
       { name: "Payments", path: "/dashboard/payments", icon: CreditCard },
@@ -95,8 +95,7 @@ export default function UserDashboard() {
       { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
       { name: "Messages", path: "/dashboard/messages", icon: MessageCircle },
       { name: "Support", path: "/dashboard/support", icon: LifeBuoy },
-      { name: "Route Tracking", path: "/dashboard/routes", icon: MapPin }, // ✅ moved here – shared
-      { name: "Profile", path: "/dashboard/profile", icon: User },
+      { name: "Route Tracking", path: "/dashboard/routes", icon: MapPin },
     ];
 
     // ─── Wallet & Withdrawals – only for supplier & transporter ──
@@ -121,7 +120,6 @@ export default function UserDashboard() {
         { name: "Available Jobs", path: "/dashboard/jobs", icon: ClipboardList },
         { name: "Accepted Jobs", path: "/dashboard/accepted-jobs", icon: CheckCircle },
         { name: "Active Deliveries", path: "/dashboard/deliveries", icon: Truck },
-        // Route Tracking removed from here – now in commonItems
         { name: "Earnings", path: "/dashboard/earnings", icon: DollarSign },
       ];
     } else {
@@ -134,8 +132,11 @@ export default function UserDashboard() {
       ];
     }
 
-    // Combine: common + wallet (if any) + role‑specific
-    return [...commonItems, ...walletItems, ...roleItems];
+    // ─── Profile – always at the end ──────────────────────────
+    const profileItem = [{ name: "Profile", path: "/dashboard/profile", icon: User }];
+
+    // Combine in this order: common → wallet → role‑specific → profile
+    return [...commonItems, ...walletItems, ...roleItems, ...profileItem];
   };
 
   const renderDashboardContent = () => {

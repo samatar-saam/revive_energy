@@ -1,3 +1,4 @@
+// src/users/pages/supplier/SupplierDashboardContent.jsx
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -15,6 +16,8 @@ import {
   TrendingUp,
   BarChart3,
   PieChart as PieChartIcon,
+  Bell,
+  ArrowRight,
 } from 'lucide-react';
 import {
   PieChart,
@@ -234,6 +237,46 @@ const SupplierDashboardContent = () => {
         </div>
       </div>
 
+      {/* ─── UPCOMING PICKUPS ────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-[#11402D]" />
+            Upcoming Pickups
+          </h3>
+          <Link to="/dashboard/tracking" className="text-sm text-[#11402D] hover:underline">
+            View All
+          </Link>
+        </div>
+        {upcomingPickups.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 text-sm">No upcoming pickups scheduled.</div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {upcomingPickups.map((pickup) => (
+              <div key={pickup.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50/50 transition">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                    <Truck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{pickup.waste_type}</p>
+                    <p className="text-sm text-gray-500">
+                      {pickup.quantity} {pickup.unit || 'kg'} · {pickup.location}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    {new Date(pickup.pickup_date).toLocaleDateString()}
+                  </p>
+                  <p className="text-xs text-gray-400">{pickup.status}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ─── TABLE: Recent Listings ──────────────────────────────── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -287,6 +330,42 @@ const SupplierDashboardContent = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+
+      {/* ─── NOTIFICATIONS ───────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2">
+            <Bell className="w-5 h-5 text-[#11402D]" />
+            Notifications
+          </h3>
+          <Link to="/dashboard/notifications" className="text-sm text-[#11402D] hover:underline">
+            View All
+          </Link>
+        </div>
+        {notifications.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 text-sm">No new notifications.</div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {notifications.slice(0, 5).map((notif) => (
+              <div key={notif.id} className="px-6 py-4 flex items-start gap-4 hover:bg-gray-50/50 transition">
+                <div className="w-8 h-8 rounded-full bg-[#11402D]/10 flex items-center justify-center text-[#11402D] flex-shrink-0">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{notif.title}</p>
+                  <p className="text-sm text-gray-500 truncate">{notif.message}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {new Date(notif.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                {!notif.is_read && (
+                  <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

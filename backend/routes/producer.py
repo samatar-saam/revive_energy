@@ -67,8 +67,8 @@ def calculate_amounts(listing=None):
         "transport_fee": transport_fee,
         "platform_fee": platform_fee,
         "total_amount": total_amount,
-        "price_per_unit": 0.0,          # not used in this version
-        "transport_rate_per_unit": 0.0, # not used
+        "price_per_unit": 0.0,
+        "transport_rate_per_unit": 0.0,
     }
 
 
@@ -78,7 +78,7 @@ def listing_to_dict(listing, include_supplier=True):
         return None
 
     supplier_name = get_user_name(listing.supplier_id, "Unknown Supplier")
-    amounts = calculate_amounts(listing)  # listing is not used but passed for consistency
+    amounts = calculate_amounts(listing)
 
     return {
         "id": listing.id,
@@ -94,7 +94,6 @@ def listing_to_dict(listing, include_supplier=True):
         "image_url": listing.image_url,
         "status": listing.status,
         "created_at": iso(listing.created_at),
-        # ─── Pricing from settings ──────────────────────────
         "price_per_unit": amounts["price_per_unit"],
         "transport_rate_per_unit": amounts["transport_rate_per_unit"],
         "waste_value": amounts["waste_value"],
@@ -324,10 +323,8 @@ def get_my_requests():
             supplier = db.session.get(User, r.supplier_id) if r.supplier_id else None
             amounts = calculate_amounts(listing)
 
-            # ─── Find the most recent Payment for this request ──
             payment = Payment.query.filter_by(request_id=r.id).order_by(Payment.id.desc()).first()
 
-            # ─── Determine the effective status for the frontend ──
             if payment and payment.payment_status == "paid":
                 display_status = "paid"
             else:
@@ -349,7 +346,6 @@ def get_my_requests():
                 "payment_id": payment.id if payment else None,
                 "message": r.message,
                 "created_at": iso(r.created_at),
-                # ─── Pricing from settings ──────────────────────
                 "price_per_unit": amounts["price_per_unit"],
                 "transport_rate_per_unit": amounts["transport_rate_per_unit"],
                 "waste_value": amounts["waste_value"],
@@ -434,3 +430,51 @@ def get_incoming_deliveries():
     except Exception as e:
         current_app.logger.error(f"Error in get_incoming_deliveries: {e}", exc_info=True)
         return jsonify({"message": "Internal server error"}), 500
+
+
+# ─── CONFIRM DELIVERY (new) ─────────────────────────────────
+@producer_bp.route('/producer/deliveries/<int:job_id>/confirm', methods=['PATCH'])
+@jwt_required()
+@role_required("producer", "energy-producer")
+def confirm_delivery(job_id):
+    try:
+        user_id = current_user_id()
+        job = TransportJob.query.get_or_404(job_id)
+
+        if job.producer_id != user_id:
+            return jsonify({'message': 'Unauthorized: you are not the producer for this job'}), 403
+
+        if job.status != 'delivered':
+            return jsonify({'message': 'Only delivered jobs can be confirmed'}), 400
+
+        # Update status to "awaiting_confirmation" – admin will release payment
+        job.status = 'awaiting_confirmation'
+        db.session.commit()
+
+        # Optionally notify admin that payment is ready to release
+        # (You can create a notification for admins here)
+
+        # Return updated job with all fields (using existing helper)
+        return jsonify({
+            'message': 'Delivery confirmed. Admin will release payment shortly.',
+            'job': {
+                "id": job.id,
+                "waste_type": job.waste_type,
+                "quantity": job.quantity,
+                "unit": getattr(job, "unit", "kg"),
+                "pickup_location": getattr(job, "pickup_location", ""),
+                "delivery_location": getattr(job, "delivery_location", ""),
+                "status": job.status,
+                "supplier_id": getattr(job, "supplier_id", None),
+                "supplier_name": get_user_name(job.supplier_id, "Unknown Supplier"),
+                "transporter_id": getattr(job, "transporter_id", None),
+                "transporter_name": get_user_name(job.transporter_id, "Not assigned"),
+                "transport_fee": getattr(job, "transport_fee", 0),
+                "created_at": iso(job.created_at),
+            }
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in confirm_delivery: {e}", exc_info=True)
+        return jsonify({"message": f"Internal server error: {str(e)}"}), 500

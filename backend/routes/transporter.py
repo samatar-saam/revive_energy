@@ -19,16 +19,10 @@ def job_to_dict(job):
     """
     Convert a TransportJob to a dictionary with full related names.
     """
-    # Fetch related users
     supplier = User.query.get(job.supplier_id)
     producer = User.query.get(job.producer_id)
     transporter = User.query.get(job.transporter_id) if job.transporter_id else None
-
-    # Fetch listing to get unit
     listing = WasteListing.query.get(job.listing_id) if job.listing_id else None
-
-    # Calculate transport fee (could be stored in job or fetched from Payment)
-    # For now, default to 0; frontend will fallback to other fields
     transport_fee = getattr(job, "transport_fee", 0) or 0
 
     return {
@@ -100,9 +94,10 @@ def transporter_dashboard():
         status="accepted",
     ).order_by(TransportJob.created_at.desc()).all()
 
+    # ─── Include approved_for_pickup in active deliveries ──────────
     active_deliveries = TransportJob.query.filter(
         TransportJob.transporter_id == current_user_id,
-        TransportJob.status.in_(["accepted", "picked_up", "in_transit"]),
+        TransportJob.status.in_(["accepted", "approved_for_pickup", "picked_up", "in_transit"]),
     ).order_by(TransportJob.created_at.desc()).all()
 
     completed_deliveries_count = TransportJob.query.filter(
@@ -133,7 +128,6 @@ def get_open_jobs():
     jobs = TransportJob.query.filter_by(status="open").order_by(
         TransportJob.created_at.desc()
     ).all()
-
     return jsonify({"jobs": [job_to_dict(job) for job in jobs]}), 200
 
 
@@ -144,7 +138,6 @@ def accept_job(job_id):
     current_user_id = int(get_jwt_identity())
 
     job = TransportJob.query.get(job_id)
-
     if not job:
         return jsonify({"message": "Transport job not found"}), 404
 
@@ -159,7 +152,6 @@ def accept_job(job_id):
 
     if request:
         request.status = "assigned"
-
     if listing:
         listing.status = "assigned"
 
@@ -181,7 +173,6 @@ def accept_job(job_id):
         "Transport Partner Assigned",
         f"A transporter accepted the job for {job.waste_type}.",
     )
-
     create_notification(
         job.producer_id,
         "Delivery Assigned",
@@ -189,7 +180,6 @@ def accept_job(job_id):
     )
 
     db.session.commit()
-
     return jsonify({
         "message": "Job accepted successfully",
         "job": job_to_dict(job),
@@ -202,9 +192,17 @@ def accept_job(job_id):
 def get_accepted_jobs():
     current_user_id = int(get_jwt_identity())
 
+    # ─── Include approved_for_pickup in the list ──────────────────
     jobs = TransportJob.query.filter(
         TransportJob.transporter_id == current_user_id,
-        TransportJob.status.in_(["accepted", "picked_up", "in_transit", "delivered", "completed"]),
+        TransportJob.status.in_([
+            "accepted",
+            "approved_for_pickup",
+            "picked_up",
+            "in_transit",
+            "delivered",
+            "completed"
+        ]),
     ).order_by(TransportJob.created_at.desc()).all()
 
     return jsonify({"jobs": [job_to_dict(job) for job in jobs]}), 200
@@ -217,15 +215,15 @@ def mark_picked_up(job_id):
     current_user_id = int(get_jwt_identity())
 
     job = TransportJob.query.get(job_id)
-
     if not job:
         return jsonify({"message": "Transport job not found"}), 404
 
     if job.transporter_id != current_user_id:
         return jsonify({"message": "You are not assigned to this job"}), 403
 
-    if job.status != "accepted":
-        return jsonify({"message": "Job must be accepted first"}), 400
+    # ─── Allow both accepted and approved_for_pickup ──────────────
+    if job.status not in ["accepted", "approved_for_pickup"]:
+        return jsonify({"message": "Job must be accepted or approved for pickup"}), 400
 
     job.status = "picked_up"
 
@@ -234,7 +232,6 @@ def mark_picked_up(job_id):
 
     if listing:
         listing.status = "collected"
-
     if request:
         request.status = "in_transit"
 
@@ -243,7 +240,6 @@ def mark_picked_up(job_id):
         "Waste Collected",
         f"{job.waste_type} has been picked up by the transporter.",
     )
-
     create_notification(
         job.producer_id,
         "Waste Picked Up",
@@ -251,7 +247,6 @@ def mark_picked_up(job_id):
     )
 
     db.session.commit()
-
     return jsonify({
         "message": "Job marked as picked up",
         "job": job_to_dict(job),
@@ -265,7 +260,6 @@ def mark_in_transit(job_id):
     current_user_id = int(get_jwt_identity())
 
     job = TransportJob.query.get(job_id)
-
     if not job:
         return jsonify({"message": "Transport job not found"}), 404
 
@@ -288,7 +282,6 @@ def mark_in_transit(job_id):
     )
 
     db.session.commit()
-
     return jsonify({
         "message": "Job marked as in transit",
         "job": job_to_dict(job),
@@ -302,7 +295,6 @@ def mark_delivered(job_id):
     current_user_id = int(get_jwt_identity())
 
     job = TransportJob.query.get(job_id)
-
     if not job:
         return jsonify({"message": "Transport job not found"}), 404
 
@@ -319,7 +311,6 @@ def mark_delivered(job_id):
 
     if listing:
         listing.status = "delivered"
-
     if request:
         request.status = "delivered"
 
@@ -328,7 +319,6 @@ def mark_delivered(job_id):
         "Delivery Completed",
         f"{job.waste_type} has been delivered successfully.",
     )
-
     create_notification(
         job.producer_id,
         "Waste Delivered",
@@ -336,7 +326,6 @@ def mark_delivered(job_id):
     )
 
     db.session.commit()
-
     return jsonify({
         "message": "Job marked as delivered",
         "job": job_to_dict(job),

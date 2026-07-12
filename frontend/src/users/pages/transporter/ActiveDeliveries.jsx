@@ -52,7 +52,6 @@ export default function ActiveDeliveries() {
     const user = getStoredUser();
     if (user) {
       setUserRole(user.role);
-      // Redirect if not transporter
       const allowedRoles = ["transporter", "transport-partner"];
       if (!allowedRoles.includes(user.role)) {
         toast.warning("This page is for transporters only. Redirecting to Route Tracking.");
@@ -75,7 +74,6 @@ export default function ActiveDeliveries() {
 
       const data = await res.json().catch(() => ({}));
 
-      // Handle 403 explicitly
       if (res.status === 403) {
         throw new Error(
           data.message || "Access denied. You must be a transporter to view this page."
@@ -85,15 +83,15 @@ export default function ActiveDeliveries() {
       if (!res.ok) throw new Error(data.message || "Failed to load active deliveries");
 
       const jobs = Array.isArray(data) ? data : data.jobs || [];
+      // ─── Include all relevant statuses ──────────────────────────
       setDeliveries(
         jobs.filter((job) =>
-          ["accepted", "picked_up", "in_transit"].includes(job.status)
+          ["accepted", "approved_for_pickup", "picked_up", "in_transit"].includes(job.status)
         )
       );
     } catch (err) {
       setError(err.message || "Something went wrong");
       setDeliveries([]);
-      // If error is about role, redirect after a moment
       if (err.message.toLowerCase().includes("transporter")) {
         toast.error("Redirecting to the correct page...");
         setTimeout(() => navigate("/dashboard/routes"), 2000);
@@ -201,6 +199,7 @@ export default function ActiveDeliveries() {
   const getStatusBadge = (status) => {
     const map = {
       accepted: "bg-yellow-100 text-yellow-700",
+      approved_for_pickup: "bg-orange-100 text-orange-700",
       picked_up: "bg-blue-100 text-blue-700",
       in_transit: "bg-purple-100 text-purple-700",
       delivered: "bg-green-100 text-green-700",
@@ -213,6 +212,7 @@ export default function ActiveDeliveries() {
   const getStatusLabel = (status) => {
     const map = {
       accepted: "Accepted",
+      approved_for_pickup: "Approved for Pickup",
       picked_up: "Picked Up",
       in_transit: "In Transit",
       delivered: "Delivered",
@@ -223,7 +223,8 @@ export default function ActiveDeliveries() {
   };
 
   const nextAction = (status) => {
-    if (status === "accepted") {
+    // Allow "Mark Picked Up" for both accepted and approved_for_pickup
+    if (status === "accepted" || status === "approved_for_pickup") {
       return {
         label: "Mark Picked Up",
         action: "picked-up",
@@ -531,6 +532,7 @@ function Info({ icon: Icon, label, value }) {
 function ProgressTimeline({ status }) {
   const steps = [
     { key: "accepted", label: "Accepted" },
+    { key: "approved_for_pickup", label: "Approved for Pickup" },
     { key: "picked_up", label: "Picked Up" },
     { key: "in_transit", label: "In Transit" },
     { key: "delivered", label: "Delivered" },

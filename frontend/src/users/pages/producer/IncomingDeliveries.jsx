@@ -125,9 +125,7 @@ export default function IncomingDeliveries() {
       toast.info("No phone number available.");
       return;
     }
-    // Clean the phone number
     const cleanPhone = phone.replace(/\s/g, "").replace(/^0/, "254");
-    // Use the phone number directly
     window.location.href = `tel:${cleanPhone}`;
   };
 
@@ -139,14 +137,14 @@ export default function IncomingDeliveries() {
     navigate(`/dashboard/messages?transporter=${transporterId}&job=${deliveryId}`);
   };
 
-  // ─── ACCEPT DELIVERY ──────────────────────────────────────────
-  const handleAcceptDelivery = async (deliveryId) => {
+  // ─── CONFIRM DELIVERY ──────────────────────────────────────────
+  const handleConfirmDelivery = async (deliveryId) => {
     setActionLoading(true);
     try {
       const token = getToken();
       
       // Try the primary endpoint
-      let res = await fetch(`${API_URL}/producer/deliveries/${deliveryId}/accept`, {
+      let res = await fetch(`${API_URL}/producer/deliveries/${deliveryId}/confirm`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -156,39 +154,27 @@ export default function IncomingDeliveries() {
 
       // If that fails, try the alternative endpoint
       if (!res.ok && res.status === 404) {
-        res = await fetch(`${API_URL}/transport-jobs/${deliveryId}/confirm`, {
+        res = await fetch(`${API_URL}/tracking/jobs/${deliveryId}/confirm`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ status: "completed" }),
-        });
-      }
-
-      // If still not ok, try the generic update endpoint
-      if (!res.ok && res.status === 404) {
-        res = await fetch(`${API_URL}/tracking/jobs/${deliveryId}/status`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: "completed" }),
+          body: JSON.stringify({ status: "awaiting_confirmation" }),
         });
       }
 
       const data = await res.json().catch(() => ({}));
       
       if (!res.ok) {
-        throw new Error(data.message || "Failed to accept delivery. Please try again.");
+        throw new Error(data.message || "Failed to confirm delivery. Please try again.");
       }
 
-      toast.success("✅ Delivery accepted successfully!");
+      toast.success("✅ Delivery confirmed! Admin will release payment shortly.");
       await fetchDeliveries();
       closeModal();
     } catch (err) {
-      toast.error(err.message || "Failed to accept delivery. Please try again.");
+      toast.error(err.message || "Failed to confirm delivery. Please try again.");
     } finally {
       setActionLoading(false);
     }
@@ -196,7 +182,6 @@ export default function IncomingDeliveries() {
 
   // ─── REPORT ISSUE ─────────────────────────────────────────────
   const handleReportIssue = (deliveryId) => {
-    // Navigate to support page with the delivery ID
     navigate(`/dashboard/support?type=delivery&id=${deliveryId}&reason=delivery_issue`);
     toast.info("Opening support ticket for this delivery...");
     closeModal();
@@ -221,7 +206,6 @@ export default function IncomingDeliveries() {
         }
         const data = await altRes.json();
         toast.success("Receipt ready!");
-        // Handle the receipt data
         console.log("Receipt data:", data);
         return;
       }
@@ -376,6 +360,7 @@ export default function IncomingDeliveries() {
               <option value="picked_up">Picked Up</option>
               <option value="in_transit">In Transit</option>
               <option value="delivered">Delivered</option>
+              <option value="awaiting_confirmation">Awaiting Confirmation</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
@@ -465,7 +450,7 @@ export default function IncomingDeliveries() {
           onTrackLive={handleTrackLive}
           onContact={handleContact}
           onChat={handleChat}
-          onAccept={handleAcceptDelivery}
+          onConfirmDelivery={handleConfirmDelivery}
           onReport={handleReportIssue}
           onDownloadReceipt={handleDownloadReceipt}
           onRate={handleRateSupplier}
@@ -516,6 +501,7 @@ function getStatusBadge(status) {
     picked_up: "bg-purple-100 text-purple-700",
     in_transit: "bg-indigo-100 text-indigo-700",
     delivered: "bg-green-100 text-green-700",
+    awaiting_confirmation: "bg-orange-100 text-orange-700",
     completed: "bg-gray-100 text-gray-700",
     cancelled: "bg-red-100 text-red-700",
   };
@@ -529,6 +515,7 @@ function getStatusLabel(status) {
     picked_up: "Picked Up",
     in_transit: "In Transit",
     delivered: "Delivered",
+    awaiting_confirmation: "Awaiting Confirmation",
     completed: "Completed",
     cancelled: "Cancelled",
   };
@@ -543,7 +530,7 @@ function DetailModal({
   onTrackLive,
   onContact,
   onChat,
-  onAccept,
+  onConfirmDelivery,
   onReport,
   onDownloadReceipt,
   onRate,
@@ -588,6 +575,7 @@ function DetailModal({
     { key: "picked_up", label: "Picked Up" },
     { key: "in_transit", label: "In Transit" },
     { key: "delivered", label: "Delivered" },
+    { key: "awaiting_confirmation", label: "Awaiting Confirmation" },
     { key: "completed", label: "Completed" },
   ];
   const currentIndex = steps.findIndex((s) => s.key === delivery.status);
@@ -876,7 +864,7 @@ function DetailModal({
             {delivery.status === "delivered" && (
               <>
                 <button
-                  onClick={() => onAccept(delivery.id)}
+                  onClick={() => onConfirmDelivery(delivery.id)}
                   disabled={actionLoading}
                   className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-green-700 transition flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -888,7 +876,7 @@ function DetailModal({
                   ) : (
                     <>
                       <Check className="h-4 w-4" />
-                      Accept Delivery
+                      Confirm Delivery
                     </>
                   )}
                 </button>
@@ -900,6 +888,11 @@ function DetailModal({
                   Report Issue
                 </button>
               </>
+            )}
+            {delivery.status === "awaiting_confirmation" && (
+              <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-2 text-sm text-orange-700">
+                Awaiting admin payment release
+              </div>
             )}
             {delivery.status === "completed" && (
               <>
