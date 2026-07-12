@@ -78,22 +78,35 @@ export default function AdminDashboardOverview() {
     }
 
     try {
-      // ─── Fetch data ──────────────────────────────────────────
-      const [usersRes, listingsRes, paymentsRes, jobsRes] = await Promise.all([
-        fetch(`${API_URL}/admin/users`, { headers: { Authorization: `Bearer ${token}` } }),
+      // ─── Use ADMIN endpoints ──────────────────────────────
+      const [
+        usersRes,
+        listingsRes,
+        paymentsRes,
+        collectionsRes,
+      ] = await Promise.all([
+        fetch(`${API_URL}/admin/users?per_page=100`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_URL}/admin/waste-sources`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/payments`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/transporter/jobs`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_URL}/admin/payments?per_page=100`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_URL}/admin/collections?per_page=100`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
+      // Check for auth errors
       if (usersRes.status === 401 || usersRes.status === 403) {
         throw new Error('Session expired. Please login again.');
       }
 
-      const users = usersRes.ok ? await usersRes.json() : [];
-      const listings = listingsRes.ok ? await listingsRes.json() : [];
-      const payments = paymentsRes.ok ? await paymentsRes.json() : [];
-      const jobs = jobsRes.ok ? await jobsRes.json() : [];
+      // ─── Parse responses ──────────────────────────────────
+      const usersData = usersRes.ok ? await usersRes.json() : { data: [] };
+      const listingsData = listingsRes.ok ? await listingsRes.json() : [];
+      const paymentsData = paymentsRes.ok ? await paymentsRes.json() : { data: [] };
+      const collectionsData = collectionsRes.ok ? await collectionsRes.json() : { data: [] };
+
+      // Extract arrays (admin endpoints often return { data: [...] })
+      const users = usersData.data || usersData || [];
+      const listings = listingsData.data || listingsData || [];
+      const payments = paymentsData.data || paymentsData || [];
+      const collections = collectionsData.data || collectionsData || [];
 
       // ─── Stats ──────────────────────────────────────────────
       const totalUsers = users.length;
@@ -101,20 +114,20 @@ export default function AdminDashboardOverview() {
       const totalPayments = payments.length;
       const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
       const totalWaste = listings.reduce((sum, l) => sum + (l.quantity || 0), 0);
-      const activeJobs = jobs.filter(j => j.status !== 'completed' && j.status !== 'cancelled').length;
+      const activeJobs = collections.filter(c => c.status !== 'completed' && c.status !== 'cancelled').length;
 
       // ─── Waste by category ──────────────────────────────────
       const categoryMap = {};
       listings.forEach(l => {
-        const cat = l.type || 'other';
+        const cat = l.type || l.category || 'other';
         categoryMap[cat] = (categoryMap[cat] || 0) + 1;
       });
-      const wasteByCategory = Object.entries(categoryMap).map(([name, value]) => ({
+      let wasteByCategory = Object.entries(categoryMap).map(([name, value]) => ({
         name: name.charAt(0).toUpperCase() + name.slice(1),
         value,
       }));
       if (wasteByCategory.length === 0) {
-        wasteByCategory.push({ name: 'No Data', value: 1 });
+        wasteByCategory = [{ name: 'No Data', value: 1 }];
       }
 
       // ─── Revenue trend (last 7 days) ──────────────────────
@@ -131,13 +144,13 @@ export default function AdminDashboardOverview() {
         return { day: new Date(day).toLocaleDateString('en-US', { weekday: 'short' }), revenue: dailyTotal };
       });
 
-      // ─── Transport trend ────────────────────────────────────
+      // ─── Collection trend (instead of transport) ──────────
       const transportTrend = days.map(day => {
-        const dayJobs = jobs.filter(j => j.created_at && j.created_at.startsWith(day));
+        const dayCollections = collections.filter(c => c.created_at && c.created_at.startsWith(day));
         return {
           day: new Date(day).toLocaleDateString('en-US', { weekday: 'short' }),
-          created: dayJobs.length,
-          completed: dayJobs.filter(j => j.status === 'completed' || j.status === 'delivered').length,
+          created: dayCollections.length,
+          completed: dayCollections.filter(c => c.status === 'completed' || c.status === 'delivered').length,
         };
       });
 
@@ -154,7 +167,7 @@ export default function AdminDashboardOverview() {
       const recentListings = listings.slice(0, 5).map(l => ({
         id: l.id,
         supplier: l.supplier_name || 'Unknown',
-        waste: l.name,
+        waste: l.name || l.waste_type,
         status: l.status,
         date: l.created_at,
       }));
@@ -238,7 +251,6 @@ export default function AdminDashboardOverview() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
-      {/* ─── Fonts ────────────────────────────────────────────────── */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         .font-display { font-family: 'Space Grotesk', sans-serif; }

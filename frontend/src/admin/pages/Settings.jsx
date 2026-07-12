@@ -20,6 +20,7 @@ import {
   Zap,
   Truck,
   Leaf,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -29,7 +30,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('pricing'); // default to pricing tab
   const [settings, setSettings] = useState({});
   const [formData, setFormData] = useState({});
 
@@ -123,6 +124,61 @@ export default function Settings() {
   };
 
   // ─── Tab content ─────────────────────────────────────────────
+
+  // ── New Pricing Tab ──
+  const renderPricing = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Waste Price (KES)</label>
+        <div className="relative">
+          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="number"
+            name="waste_price"
+            value={formData.waste_price ?? 10}
+            onChange={handleChange}
+            step="0.5"
+            min="0"
+            className="w-full rounded-xl border border-gray-200 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Fixed price per unit (default: 10 KES)</p>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Platform Fee (KES)</label>
+        <div className="relative">
+          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="number"
+            name="platform_fee"
+            value={formData.platform_fee ?? 10}
+            onChange={handleChange}
+            step="0.5"
+            min="0"
+            className="w-full rounded-xl border border-gray-200 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Fixed platform fee per transaction (default: 10 KES)</p>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Transport Fee (KES)</label>
+        <div className="relative">
+          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="number"
+            name="transport_fee"
+            value={formData.transport_fee ?? 10}
+            onChange={handleChange}
+            step="0.5"
+            min="0"
+            className="w-full rounded-xl border border-gray-200 pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <p className="text-xs text-gray-500 mt-1">Fixed transport fee per job (default: 10 KES)</p>
+      </div>
+    </div>
+  );
+
   const renderGeneral = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
@@ -468,6 +524,7 @@ export default function Settings() {
 
   // ─── Tabs ─────────────────────────────────────────────────────
   const tabs = [
+    { id: 'pricing', label: 'Pricing', icon: SettingsIcon },
     { id: 'general', label: 'General', icon: Globe },
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'payment', label: 'Payment', icon: CreditCard },
@@ -506,7 +563,6 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
-      {/* ─── Fonts ────────────────────────────────────────────────── */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         .font-display { font-family: 'Space Grotesk', sans-serif; }
@@ -564,6 +620,7 @@ export default function Settings() {
 
         {/* ─── Content ───────────────────────────────────────────── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          {activeTab === 'pricing' && renderPricing()}
           {activeTab === 'general' && renderGeneral()}
           {activeTab === 'users' && renderUserManagement()}
           {activeTab === 'payment' && renderPayment()}

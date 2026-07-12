@@ -1,7 +1,15 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from utils.decorators import role_required
-from models import User, WasteListing, WasteRequest, TransportJob, Notification, Payment
+from models import (
+    User,
+    WasteListing,
+    WasteRequest,
+    TransportJob,
+    Notification,
+    Payment,
+    AdminSetting,          # <── added
+)
 from database import db
 
 producer_bp = Blueprint("producer", __name__)
@@ -28,24 +36,39 @@ def iso(dt):
     return dt.isoformat() if dt else None
 
 
-def calculate_amounts(listing):
+# ─── NEW: helper to fetch a setting from the database ──────────
+def get_setting(key, default=10.0):
     """
-    Return fixed pricing amounts regardless of the listing.
-    Updated to test values: 10, 10, 10, 30.
+    Fetch a setting value from AdminSetting and convert to float.
+    If the setting doesn't exist, returns the default.
     """
-    # ─── FIXED VALUES (TEST AMOUNTS) ──────────────────────────
-    waste_value = 10.00
-    transport_fee = 10.00
-    platform_fee = 10.00
-    total_amount = waste_value + transport_fee + platform_fee  # 30.00
+    setting = AdminSetting.query.filter_by(key=key).first()
+    if setting and setting.value is not None:
+        try:
+            return float(setting.value)
+        except (ValueError, TypeError):
+            return default
+    return default
+
+
+def calculate_amounts(listing=None):
+    """
+    Return pricing amounts read from admin settings.
+    Keys: waste_price, platform_fee, transport_fee.
+    Default: 10.00 each.
+    """
+    waste_value = get_setting('waste_price', 10.00)
+    platform_fee = get_setting('platform_fee', 10.00)
+    transport_fee = get_setting('transport_fee', 10.00)
+    total_amount = waste_value + platform_fee + transport_fee
 
     return {
         "waste_value": waste_value,
         "transport_fee": transport_fee,
         "platform_fee": platform_fee,
         "total_amount": total_amount,
-        "price_per_unit": 0.0,
-        "transport_rate_per_unit": 0.0,
+        "price_per_unit": 0.0,          # not used in this version
+        "transport_rate_per_unit": 0.0, # not used
     }
 
 
@@ -55,7 +78,7 @@ def listing_to_dict(listing, include_supplier=True):
         return None
 
     supplier_name = get_user_name(listing.supplier_id, "Unknown Supplier")
-    amounts = calculate_amounts(listing)
+    amounts = calculate_amounts(listing)  # listing is not used but passed for consistency
 
     return {
         "id": listing.id,
@@ -71,7 +94,7 @@ def listing_to_dict(listing, include_supplier=True):
         "image_url": listing.image_url,
         "status": listing.status,
         "created_at": iso(listing.created_at),
-        # ─── Fixed pricing ──────────────────────────────────
+        # ─── Pricing from settings ──────────────────────────
         "price_per_unit": amounts["price_per_unit"],
         "transport_rate_per_unit": amounts["transport_rate_per_unit"],
         "waste_value": amounts["waste_value"],
@@ -305,7 +328,6 @@ def get_my_requests():
             payment = Payment.query.filter_by(request_id=r.id).order_by(Payment.id.desc()).first()
 
             # ─── Determine the effective status for the frontend ──
-            # If a paid payment exists, show "paid" regardless of request status.
             if payment and payment.payment_status == "paid":
                 display_status = "paid"
             else:
@@ -320,14 +342,14 @@ def get_my_requests():
                 "unit": listing.unit if listing else "kg",
                 "supplier_name": supplier.full_name if supplier else "Unknown Supplier",
                 "supplier_location": supplier.location if supplier else "",
-                "status": display_status,               # This is what the frontend uses for badges
-                "request_status": r.status,             # Original request status (optional)
+                "status": display_status,
+                "request_status": r.status,
                 "payment_status": payment.payment_status if payment else None,
                 "escrow_status": payment.escrow_status if payment else None,
                 "payment_id": payment.id if payment else None,
                 "message": r.message,
                 "created_at": iso(r.created_at),
-                # ─── Fixed pricing ──────────────────────────
+                # ─── Pricing from settings ──────────────────────
                 "price_per_unit": amounts["price_per_unit"],
                 "transport_rate_per_unit": amounts["transport_rate_per_unit"],
                 "waste_value": amounts["waste_value"],

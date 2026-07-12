@@ -36,6 +36,8 @@ import {
   Award,
   RefreshCw,
   Clock,
+  Globe,
+  Users,
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -75,6 +77,9 @@ function Login() {
     fleetSize: "",
     coverageArea: "",
     licenseNumber: "",
+    referralCode: "",
+    country: "KE",
+    termsAccepted: false,
   });
 
   const [emailCode, setEmailCode] = useState("");
@@ -155,6 +160,17 @@ function Login() {
 
   const fleetSizeOptions = ["1-2", "3-5", "6-10", "11-20", "20+"];
 
+  const countryOptions = [
+    { code: "KE", name: "Kenya" },
+    { code: "UG", name: "Uganda" },
+    { code: "TZ", name: "Tanzania" },
+    { code: "RW", name: "Rwanda" },
+    { code: "ET", name: "Ethiopia" },
+    { code: "NG", name: "Nigeria" },
+    { code: "ZA", name: "South Africa" },
+    { code: "GH", name: "Ghana" },
+  ];
+
   const currentRole =
     roleOptions.find((role) => role.id === selectedRole) || roleOptions[0];
 
@@ -162,7 +178,6 @@ function Login() {
     if (location.state?.message) {
       toast.success(location.state.message);
     }
-
     if (location.state?.email) {
       setLoginData((prev) => ({
         ...prev,
@@ -174,7 +189,6 @@ function Login() {
 
   useEffect(() => {
     let interval;
-
     if (emailTimer > 0) {
       interval = setInterval(() => {
         setEmailTimer((prev) => prev - 1);
@@ -182,7 +196,6 @@ function Login() {
     } else if (emailTimer === 0 && emailCodeSent) {
       setResendEmailDisabled(false);
     }
-
     return () => clearInterval(interval);
   }, [emailTimer, emailCodeSent]);
 
@@ -211,6 +224,9 @@ function Login() {
       fleetSize: "",
       coverageArea: "",
       licenseNumber: "",
+      referralCode: "",
+      country: "KE",
+      termsAccepted: false,
     });
   };
 
@@ -235,20 +251,19 @@ function Login() {
 
   const handleSignupChange = (e) => {
     setSignupError("");
+    const { name, value, type, checked } = e.target;
     setSignupData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: type === "checkbox" ? checked : value,
     }));
   };
 
   const toggleSelection = (arrayKey, id) => {
     setSignupData((prev) => {
       const current = Array.isArray(prev[arrayKey]) ? prev[arrayKey] : [];
-
       const updated = current.includes(id)
         ? current.filter((item) => item !== id)
         : [...current, id];
-
       return {
         ...prev,
         [arrayKey]: updated,
@@ -260,16 +275,22 @@ function Login() {
     if (step === 1) {
       if (!signupData.full_name.trim()) {
         setSignupError("Full name is required");
+        toast.error("Full name is required");
         return;
       }
-
       if (!signupData.business_name.trim()) {
         setSignupError("Business name is required");
+        toast.error("Business name is required");
         return;
       }
-
       if (!signupData.business_type) {
         setSignupError("Business type is required");
+        toast.error("Business type is required");
+        return;
+      }
+      if (!signupData.country) {
+        setSignupError("Country is required");
+        toast.error("Country is required");
         return;
       }
     }
@@ -281,16 +302,17 @@ function Login() {
 
       if (selectedRole === "waste-supplier" && wasteLen === 0) {
         setSignupError("Select at least one waste type");
+        toast.error("Select at least one waste type");
         return;
       }
-
       if (selectedRole === "energy-producer" && energyLen === 0) {
         setSignupError("Select at least one energy type");
+        toast.error("Select at least one energy type");
         return;
       }
-
       if (selectedRole === "transport-partner" && vehicleLen === 0) {
         setSignupError("Select at least one vehicle type");
+        toast.error("Select at least one vehicle type");
         return;
       }
     }
@@ -298,27 +320,34 @@ function Login() {
     if (step === 3) {
       if (!signupData.email || !signupData.email.includes("@")) {
         setSignupError("Valid email is required");
+        toast.error("Valid email is required");
         return;
       }
-
       if (!signupData.phone.trim()) {
         setSignupError("Phone number is required");
+        toast.error("Phone number is required");
         return;
       }
-
       if (signupData.password.length < 6) {
         setSignupError("Password must be at least 6 characters");
+        toast.error("Password must be at least 6 characters");
         return;
       }
-
       if (signupData.password !== signupData.confirmPassword) {
         setSignupError("Passwords do not match");
+        toast.error("Passwords do not match");
         return;
       }
     }
 
+    if (step === 4 && !signupData.termsAccepted) {
+      setSignupError("You must accept the terms and conditions");
+      toast.error("You must accept the terms and conditions");
+      return;
+    }
+
     setSignupError("");
-    setStep((prev) => Math.min(prev + 1, 4));
+    setStep((prev) => Math.min(prev + 1, 5));
   };
 
   const prevStep = () => {
@@ -331,20 +360,18 @@ function Login() {
       toast.error("Please enter a valid email address");
       return;
     }
-
     if (!signupData.phone.trim()) {
       toast.error("Please enter your phone number");
       return;
     }
 
     setIsSendingEmail(true);
+    const toastId = toast.loading("Sending verification code...");
 
     try {
       const res = await fetch(`${API_URL}/register/start`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: signupData.email,
           phone: signupData.phone,
@@ -352,17 +379,25 @@ function Login() {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to send verification email");
-      }
+      if (!res.ok) throw new Error(data.message || "Failed to send verification email");
 
       setEmailCodeSent(true);
       setEmailTimer(60);
       setResendEmailDisabled(true);
-      toast.success("Verification code sent to your email");
+
+      toast.update(toastId, {
+        render: "Verification code sent to your email 📧",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (err) {
-      toast.error(err.message || "Failed to send verification code");
+      toast.update(toastId, {
+        render: err.message || "Failed to send verification code",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
     } finally {
       setIsSendingEmail(false);
     }
@@ -370,16 +405,16 @@ function Login() {
 
   const verifyEmailCode = async () => {
     if (emailCode.length !== 6) {
-      toast.error("Enter the 6-digit verification code");
+      toast.error("Enter the 6‑digit verification code");
       return;
     }
+
+    const toastId = toast.loading("Verifying email...");
 
     try {
       const res = await fetch(`${API_URL}/register/verify-email`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: signupData.email,
           code: emailCode,
@@ -387,15 +422,23 @@ function Login() {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Invalid verification code");
-      }
+      if (!res.ok) throw new Error(data.message || "Invalid verification code");
 
       setEmailVerified(true);
-      toast.success("Email verified successfully");
+
+      toast.update(toastId, {
+        render: "Email verified successfully! ✅",
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
     } catch (err) {
-      toast.error(err.message || "Email verification failed");
+      toast.update(toastId, {
+        render: err.message || "Email verification failed",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
     }
   };
 
@@ -406,6 +449,7 @@ function Login() {
     }
 
     setIsSigningUp(true);
+    const toastId = toast.loading("Creating your account...");
 
     try {
       const payload = {
@@ -418,33 +462,39 @@ function Login() {
         fleet_size: signupData.fleetSize || "",
         coverage_area: signupData.coverageArea || "",
         license_number: signupData.licenseNumber || "",
+        referral_code: signupData.referralCode || "",
+        country: signupData.country,
       };
 
       const res = await fetch(`${API_URL}/register/complete`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Registration failed");
 
-      if (!res.ok) {
-        throw new Error(data.message || "Registration failed");
-      }
-
-      toast.success("Account created successfully. Please login.");
+      toast.update(toastId, {
+        render: "Account created successfully! 🎉 Please login.",
+        type: "success",
+        isLoading: false,
+        autoClose: 4000,
+      });
 
       setShowSignup(false);
       setLoginData((prev) => ({
         ...prev,
         email: signupData.email,
       }));
-
       resetSignupState();
     } catch (err) {
-      toast.error(err.message || "Registration failed");
+      toast.update(toastId, {
+        render: err.message || "Registration failed",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
     } finally {
       setIsSigningUp(false);
     }
@@ -453,23 +503,25 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
 
+    if (!loginData.email.trim() || !loginData.password.trim()) {
+      setLoginError("Please enter both email and password");
+      toast.error("Please enter both email and password");
+      return;
+    }
+
     setIsSubmitting(true);
     setLoginError("");
+    const toastId = toast.loading("Logging in...");
 
     try {
       const res = await fetch(`${API_URL}/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(loginData),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Login failed");
-      }
+      if (!res.ok) throw new Error(data.message || "Login failed");
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
@@ -477,7 +529,12 @@ function Login() {
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("loginTime", new Date().toISOString());
 
-      toast.success(`Welcome ${data.user.full_name}!`);
+      toast.update(toastId, {
+        render: `Welcome ${data.user.full_name}! 🎉`,
+        type: "success",
+        isLoading: false,
+        autoClose: 3000,
+      });
 
       const redirectMap = {
         supplier: "/dashboard",
@@ -486,45 +543,46 @@ function Login() {
         admin: "/admin",
       };
 
-      navigate(redirectMap[data.user.role] || "/dashboard");
+      setTimeout(() => {
+        navigate(redirectMap[data.user.role] || "/dashboard");
+      }, 800);
     } catch (err) {
       setLoginError(err.message);
-      toast.error(err.message);
+      toast.update(toastId, {
+        render: err.message || "Login failed",
+        type: "error",
+        isLoading: false,
+        autoClose: 4000,
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleGoogleLogin = () => {
+    toast.info("Redirecting to Google...");
     window.location.href = `${API_URL}/google-auth`;
   };
 
   const handleOtpChange = (e, index) => {
     const value = e.target.value.replace(/\D/g, "");
-
     if (!value) {
       const newCode = emailCode.split("");
       newCode[index] = "";
       setEmailCode(newCode.join(""));
       return;
     }
-
     const newCode = emailCode.split("");
     newCode[index] = value[0];
     setEmailCode(newCode.join(""));
-
     const nextInput = document.getElementById(`email-code-${index + 1}`);
-    if (nextInput) {
-      nextInput.focus();
-    }
+    if (nextInput) nextInput.focus();
   };
 
   const handleOtpKeyDown = (e, index) => {
     if (e.key === "Backspace" && !e.target.value && index > 0) {
       const prevInput = document.getElementById(`email-code-${index - 1}`);
-      if (prevInput) {
-        prevInput.focus();
-      }
+      if (prevInput) prevInput.focus();
     }
   };
 
@@ -537,12 +595,10 @@ function Login() {
           <label className="font-display block text-sm font-semibold text-slate-700 mb-3">
             Select Waste Types *
           </label>
-
           <div className="grid grid-cols-2 gap-2">
             {wasteTypeOptions.map((type) => {
               const Icon = type.icon;
               const selected = isSelected("wasteTypes", type.id);
-
               return (
                 <button
                   key={type.id}
@@ -559,7 +615,6 @@ function Login() {
                       selected ? "text-[#11402D]" : "text-slate-400"
                     }`}
                   />
-
                   <div
                     className={`font-display text-[10px] font-bold ${
                       selected ? "text-[#11402D]" : "text-slate-600"
@@ -567,10 +622,7 @@ function Login() {
                   >
                     {type.label}
                   </div>
-
-                  {selected && (
-                    <Check className="w-3 h-3 mx-auto mt-1 text-[#34D399]" />
-                  )}
+                  {selected && <Check className="w-3 h-3 mx-auto mt-1 text-[#34D399]" />}
                 </button>
               );
             })}
@@ -585,12 +637,10 @@ function Login() {
           <label className="font-display block text-sm font-semibold text-slate-700 mb-3">
             Select Energy Types *
           </label>
-
           <div className="grid grid-cols-2 gap-2">
             {energyTypeOptions.map((type) => {
               const Icon = type.icon;
               const selected = isSelected("energyTypes", type.id);
-
               return (
                 <button
                   key={type.id}
@@ -607,7 +657,6 @@ function Login() {
                       selected ? "text-[#11402D]" : "text-slate-400"
                     }`}
                   />
-
                   <div
                     className={`font-display text-[10px] font-bold ${
                       selected ? "text-[#11402D]" : "text-slate-600"
@@ -615,23 +664,17 @@ function Login() {
                   >
                     {type.label}
                   </div>
-
-                  {selected && (
-                    <Check className="w-3 h-3 mx-auto mt-1 text-[#34D399]" />
-                  )}
+                  {selected && <Check className="w-3 h-3 mx-auto mt-1 text-[#34D399]" />}
                 </button>
               );
             })}
           </div>
-
           <div className="mt-4">
             <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
               Facility Capacity
             </label>
-
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
               <Gauge className="w-4 h-4 text-slate-400" />
-
               <select
                 name="capacity"
                 value={signupData.capacity}
@@ -639,7 +682,6 @@ function Login() {
                 className="w-full bg-transparent outline-none text-slate-700 text-sm"
               >
                 <option value="">Select capacity</option>
-
                 {capacityOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
@@ -658,10 +700,8 @@ function Login() {
           <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
             Fleet Size
           </label>
-
           <div className="relative">
             <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-
             <select
               name="fleetSize"
               value={signupData.fleetSize}
@@ -669,7 +709,6 @@ function Login() {
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-green-500 transition appearance-none"
             >
               <option value="">Select fleet size</option>
-
               {fleetSizeOptions.map((option) => (
                 <option key={option} value={option}>
                   {option} vehicles
@@ -682,12 +721,10 @@ function Login() {
         <label className="font-display block text-sm font-semibold text-slate-700 mb-3">
           Vehicle Types *
         </label>
-
         <div className="grid grid-cols-2 gap-2">
           {vehicleTypeOptions.map((type) => {
             const Icon = type.icon;
             const selected = isSelected("vehicleTypes", type.id);
-
             return (
               <button
                 key={type.id}
@@ -704,7 +741,6 @@ function Login() {
                     selected ? "text-[#11402D]" : "text-slate-400"
                   }`}
                 />
-
                 <div
                   className={`font-display text-[10px] font-bold ${
                     selected ? "text-[#11402D]" : "text-slate-600"
@@ -712,7 +748,6 @@ function Login() {
                 >
                   {type.label}
                 </div>
-
                 {selected && <Check className="w-3 h-3 mx-auto mt-1 text-[#34D399]" />}
               </button>
             );
@@ -723,10 +758,8 @@ function Login() {
           <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
             Coverage Area
           </label>
-
           <div className="relative">
             <Navigation className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-
             <input
               type="text"
               name="coverageArea"
@@ -742,10 +775,8 @@ function Login() {
           <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
             License / Permit Number
           </label>
-
           <div className="relative">
             <Award className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-
             <input
               type="text"
               name="licenseNumber"
@@ -766,10 +797,8 @@ function Login() {
         <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
           Full Name *
         </label>
-
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
           <User className="w-4 h-4 text-slate-400" />
-
           <input
             type="text"
             name="full_name"
@@ -786,10 +815,8 @@ function Login() {
         <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
           Business / Organization Name *
         </label>
-
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
           <Building2 className="w-4 h-4 text-slate-400" />
-
           <input
             type="text"
             name="business_name"
@@ -806,10 +833,8 @@ function Login() {
         <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
           Business Type *
         </label>
-
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
           <Briefcase className="w-4 h-4 text-slate-400" />
-
           <select
             name="business_type"
             value={signupData.business_type}
@@ -817,7 +842,6 @@ function Login() {
             className="w-full bg-transparent outline-none text-slate-700 text-sm"
           >
             <option value="">Select business type</option>
-
             {currentRole.businessTypes.map((type) => (
               <option key={type} value={type}>
                 {type}
@@ -829,16 +853,35 @@ function Login() {
 
       <div>
         <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+          Country *
+        </label>
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
+          <Globe className="w-4 h-4 text-slate-400" />
+          <select
+            name="country"
+            value={signupData.country}
+            onChange={handleSignupChange}
+            className="w-full bg-transparent outline-none text-slate-700 text-sm"
+          >
+            {countryOptions.map((country) => (
+              <option key={country.code} value={country.code}>
+                {country.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
           Location
         </label>
-
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
           <MapPin className="w-4 h-4 text-slate-400" />
-
           <input
             type="text"
             name="location"
-            placeholder="Enter your location"
+            placeholder="Enter your city or region"
             value={signupData.location}
             onChange={handleSignupChange}
             autoComplete="off"
@@ -860,7 +903,6 @@ function Login() {
   const Step2 = () => (
     <div>
       {renderRoleSpecificFields()}
-
       <div className="flex gap-3 mt-4">
         <button
           type="button"
@@ -869,7 +911,6 @@ function Login() {
         >
           Back
         </button>
-
         <button
           type="button"
           onClick={nextStep}
@@ -887,10 +928,8 @@ function Login() {
         <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
           Email Address *
         </label>
-
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
           <Mail className="w-4 h-4 text-slate-400" />
-
           <input
             type="email"
             name="email"
@@ -907,10 +946,8 @@ function Login() {
         <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
           Phone Number *
         </label>
-
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
           <Phone className="w-4 h-4 text-slate-400" />
-
           <input
             type="tel"
             name="phone"
@@ -927,10 +964,8 @@ function Login() {
         <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
           Password *
         </label>
-
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
           <Lock className="w-4 h-4 text-slate-400" />
-
           <input
             type={showPassword ? "text" : "password"}
             name="password"
@@ -941,17 +976,12 @@ function Login() {
             autoComplete="new-password"
             className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
           />
-
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="text-slate-400 hover:text-slate-600"
           >
-            {showPassword ? (
-              <EyeOff className="w-4 h-4" />
-            ) : (
-              <Eye className="w-4 h-4" />
-            )}
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
       </div>
@@ -960,10 +990,8 @@ function Login() {
         <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
           Confirm Password *
         </label>
-
         <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
           <Lock className="w-4 h-4 text-slate-400" />
-
           <input
             type={showPassword ? "text" : "password"}
             name="confirmPassword"
@@ -971,6 +999,24 @@ function Login() {
             value={signupData.confirmPassword}
             onChange={handleSignupChange}
             autoComplete="new-password"
+            className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+          Referral Code (optional)
+        </label>
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
+          <Users className="w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            name="referralCode"
+            placeholder="Enter referral code if any"
+            value={signupData.referralCode}
+            onChange={handleSignupChange}
+            autoComplete="off"
             className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
           />
         </div>
@@ -984,7 +1030,6 @@ function Login() {
         >
           Back
         </button>
-
         <button
           type="button"
           onClick={nextStep}
@@ -997,6 +1042,49 @@ function Login() {
   );
 
   const Step4 = () => (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          name="termsAccepted"
+          checked={signupData.termsAccepted}
+          onChange={handleSignupChange}
+          className="mt-1 w-4 h-4 rounded border-slate-300 text-[#11402D] focus:ring-[#11402D]"
+        />
+        <div>
+          <label className="font-display text-sm text-slate-700">
+            I agree to the{" "}
+            <a href="/terms" className="text-[#11402D] hover:underline" target="_blank" rel="noopener noreferrer">
+              Terms & Conditions
+            </a>{" "}
+            and{" "}
+            <a href="/privacy" className="text-[#11402D] hover:underline" target="_blank" rel="noopener noreferrer">
+              Privacy Policy
+            </a>
+          </label>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={prevStep}
+          className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-display font-bold text-sm hover:bg-slate-50 transition-all"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={nextStep}
+          className="flex-1 py-3 rounded-xl bg-[#11402D] text-white font-display font-bold text-sm hover:bg-[#0E2A1C] transition-all"
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+
+  const Step5 = () => (
     <div className="space-y-4 text-center">
       <div className="flex justify-center">
         <Mail className="w-16 h-16 text-[#11402D] bg-green-50 p-3 rounded-full" />
@@ -1005,8 +1093,7 @@ function Login() {
       <h3 className="font-display text-xl font-bold">Verify Your Email</h3>
 
       <p className="text-slate-500 text-sm">
-        We will send a 6-digit code to{" "}
-        <strong>{signupData.email}</strong>
+        We will send a 6‑digit code to <strong>{signupData.email}</strong>
       </p>
 
       {emailCodeSent && (
@@ -1104,19 +1191,41 @@ function Login() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-8"
+      className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-8 relative"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
+      {/* ─── Global styles – includes Toastify customisation ─── */}
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-          .font-display {
-            font-family: 'Space Grotesk', sans-serif;
-          }
+          .font-display { font-family: 'Space Grotesk', sans-serif; }
+          .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
 
-          .font-mono-cw {
-            font-family: 'JetBrains Mono', monospace;
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+          .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+          .signup-scroll { max-height: 90vh; overflow-y: auto; scroll-behavior: smooth; }
+
+          /* ── Toastify styling (same as Admin) ── */
+          .Toastify__toast {
+            font-family: 'Inter', sans-serif !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12) !important;
+          }
+          .Toastify__toast--success {
+            background: linear-gradient(135deg, #0E2A1C, #11402D) !important;
+          }
+          .Toastify__toast--error {
+            background: linear-gradient(135deg, #7f1d1d, #991b1b) !important;
+          }
+          .Toastify__toast--info {
+            background: linear-gradient(135deg, #1e3a5f, #1a4a7a) !important;
+          }
+          .Toastify__toast--warning {
+            background: linear-gradient(135deg, #78350f, #92400e) !important;
+          }
+          .Toastify__progress-bar {
+            background: #9CF06B !important;
           }
         `}
       </style>
@@ -1124,8 +1233,10 @@ function Login() {
       <ToastContainer
         position="top-right"
         autoClose={3000}
+        hideProgressBar={false}
         newestOnTop
         closeOnClick
+        rtl={false}
         pauseOnFocusLoss
         draggable
         pauseOnHover
@@ -1133,20 +1244,17 @@ function Login() {
       />
 
       <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100">
+        {/* ─── Left Panel ─────────────────────────────────────── */}
         <div className="hidden lg:flex relative bg-gradient-to-br from-[#0E2A1C] via-[#11402D] to-[#1a5c3e] p-10 text-white flex-col justify-between">
           <div>
             <div className="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm border border-white/20">
               <Recycle className="w-6 h-6" />
-              <span className="font-display font-semibold text-lg">
-                ReVive Energy
-              </span>
+              <span className="font-display font-semibold text-lg">ReVive Energy</span>
             </div>
-
             <div className="mt-12">
               <p className="font-mono-cw text-sm uppercase tracking-[0.25em] text-green-200">
                 {showSignup ? `Join as ${currentRole.label}` : "Welcome Back"}
               </p>
-
               <h1 className="font-display mt-4 text-4xl font-bold leading-tight">
                 {showSignup ? "Create Your Account." : "Transform Waste."}
                 <br />
@@ -1154,7 +1262,6 @@ function Login() {
                   {showSignup ? "Start Making Impact." : "Create Value."}
                 </span>
               </h1>
-
               <p className="mt-5 text-green-200 text-base leading-7 max-w-lg">
                 {showSignup
                   ? `Join ReVive Energy as a ${currentRole.label} and start making a difference.`
@@ -1168,17 +1275,14 @@ function Login() {
               <p className="font-display text-2xl font-bold">1,200+</p>
               <p className="text-sm text-green-200">Active Partners</p>
             </div>
-
             <div className="rounded-2xl bg-white/10 p-4 border border-white/20">
               <p className="font-display text-2xl font-bold">125K+</p>
               <p className="text-sm text-green-200">Tons Processed</p>
             </div>
-
             <div className="rounded-2xl bg-white/10 p-4 border border-white/20">
               <p className="font-display text-2xl font-bold">85K+</p>
               <p className="text-sm text-green-200">MWh Generated</p>
             </div>
-
             <div className="rounded-2xl bg-white/10 p-4 border border-white/20">
               <p className="font-display text-2xl font-bold">24/7</p>
               <p className="text-sm text-green-200">Support</p>
@@ -1187,67 +1291,44 @@ function Login() {
 
           <div className="mt-6 space-y-2.5">
             <div className="flex items-center gap-3 text-sm text-green-200">
-              <Truck className="w-4 h-4" />
-              <span>Free collection for qualified partners</span>
+              <Truck className="w-4 h-4" /><span>Free collection for qualified partners</span>
             </div>
-
             <div className="flex items-center gap-3 text-sm text-green-200">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Verified waste streams & processing</span>
+              <ShieldCheck className="w-4 h-4" /><span>Verified waste streams & processing</span>
             </div>
-
             <div className="flex items-center gap-3 text-sm text-green-200">
-              <Headphones className="w-4 h-4" />
-              <span>24/7 customer support</span>
+              <Headphones className="w-4 h-4" /><span>24/7 customer support</span>
             </div>
-
             <div className="flex items-center gap-3 text-sm text-green-200">
-              <Leaf className="w-4 h-4" />
-              <span>Real-time carbon impact tracking</span>
+              <Leaf className="w-4 h-4" /><span>Real‑time carbon impact tracking</span>
             </div>
           </div>
         </div>
 
-        <div className="p-6 sm:p-10 lg:p-14 flex items-center max-h-[90vh] overflow-y-auto">
+        {/* ─── Right Panel ────────────────────────────────────── */}
+        <div className="p-6 sm:p-10 lg:p-14 flex items-center signup-scroll hide-scrollbar">
           <div className="w-full max-w-md mx-auto">
             <div className="lg:hidden mb-6 text-center">
               <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] flex items-center justify-center text-white shadow-lg">
                 <Recycle className="w-7 h-7" />
               </div>
-
               <h1 className="font-display text-2xl font-bold text-slate-900">
-                Re<span className="text-green-600">V</span>ive{" "}
-                <span className="text-green-600">Energy</span>
+                Re<span className="text-green-600">V</span>ive <span className="text-green-600">Energy</span>
               </h1>
-
-              <p className="font-mono-cw text-xs text-green-600 mt-1 tracking-wider">
-                TRANSFORMING WASTE
-              </p>
+              <p className="font-mono-cw text-xs text-green-600 mt-1 tracking-wider">TRANSFORMING WASTE</p>
             </div>
 
             {!showSignup ? (
               <>
-                <p className="font-mono-cw text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">
-                  Login
-                </p>
-
-                <h2 className="font-display mt-2 text-3xl font-bold text-slate-900">
-                  Welcome back!
-                </h2>
-
-                <p className="mt-2 text-slate-500 leading-6">
-                  Please enter your details to access your account.
-                </p>
+                <p className="font-mono-cw text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">Login</p>
+                <h2 className="font-display mt-2 text-3xl font-bold text-slate-900">Welcome back!</h2>
+                <p className="mt-2 text-slate-500 leading-6">Please enter your details to access your account.</p>
 
                 <form onSubmit={handleLogin} className="mt-6 space-y-4">
                   <div>
-                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
-                      Email Address
-                    </label>
-
+                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">Email Address</label>
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
                       <Mail className="w-5 h-5 text-slate-400" />
-
                       <input
                         type="email"
                         name="email"
@@ -1262,13 +1343,9 @@ function Login() {
                   </div>
 
                   <div>
-                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
-                      Password
-                    </label>
-
+                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
                       <Lock className="w-5 h-5 text-slate-400" />
-
                       <input
                         type={showPassword ? "text" : "password"}
                         name="password"
@@ -1279,17 +1356,12 @@ function Login() {
                         autoComplete="current-password"
                         className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
                       />
-
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="text-slate-400 hover:text-slate-600"
                       >
-                        {showPassword ? (
-                          <EyeOff className="w-5 h-5" />
-                        ) : (
-                          <Eye className="w-5 h-5" />
-                        )}
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
                   </div>
@@ -1320,20 +1392,10 @@ function Login() {
                   </button>
                 </form>
 
-                <div className="mt-4">
-                  <button
-                    onClick={handleGoogleLogin}
-                    className="w-full flex items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-5 py-3 font-display font-medium text-slate-700 hover:bg-slate-50 transition-all"
-                  >
-                    Continue with Google
-                  </button>
-                </div>
+              
 
                 <div className="mt-6 space-y-3">
-                  <p className="font-display text-sm text-slate-600 text-center">
-                    Don't have an account?
-                  </p>
-
+                  <p className="font-display text-sm text-slate-600 text-center">Don't have an account?</p>
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
                     <button
                       onClick={() => openSignup("waste-supplier")}
@@ -1342,7 +1404,6 @@ function Login() {
                       <Landmark className="w-4 h-4 text-[#11402D]" />
                       Join as Waste Supplier
                     </button>
-
                     <button
                       onClick={() => openSignup("energy-producer")}
                       className="inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D]"
@@ -1350,7 +1411,6 @@ function Login() {
                       <Zap className="w-4 h-4 text-[#11402D]" />
                       Join as Energy Producer
                     </button>
-
                     <button
                       onClick={() => openSignup("transport-partner")}
                       className="inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D]"
@@ -1366,40 +1426,30 @@ function Login() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="font-mono-cw text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">
-                      Step {step} of 4
+                      Step {step} of 5
                     </p>
-
                     <h2 className="font-display text-2xl font-bold text-slate-900">
-                      {step === 1
-                        ? "Business Details"
-                        : step === 2
-                        ? "Role Details"
-                        : step === 3
-                        ? "Account Setup"
-                        : "Email Verification"}
+                      {step === 1 ? "Business Details" :
+                       step === 2 ? "Specialization" :
+                       step === 3 ? "Account Setup" :
+                       step === 4 ? "Terms & Conditions" :
+                       "Email Verification"}
                     </h2>
-
                     <p className="text-slate-500 text-sm">
-                      {step === 1
-                        ? "Tell us about your business"
-                        : step === 2
-                        ? "Select your specialty"
-                        : step === 3
-                        ? "Create your credentials"
-                        : "Verify your email address"}
+                      {step === 1 ? "Tell us about your business" :
+                       step === 2 ? "Select your specialty" :
+                       step === 3 ? "Create your credentials" :
+                       step === 4 ? "Review our policies" :
+                       "Verify your email address"}
                     </p>
                   </div>
-
-                  <button
-                    onClick={closeSignup}
-                    className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                  >
+                  <button onClick={closeSignup} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
                     <X className="w-5 h-5 text-slate-500" />
                   </button>
                 </div>
 
                 <div className="flex gap-2 mb-6">
-                  {[1, 2, 3, 4].map((item) => (
+                  {[1,2,3,4,5].map((item) => (
                     <div
                       key={item}
                       className={`h-1 rounded-full flex-1 transition-all ${
@@ -1421,6 +1471,7 @@ function Login() {
                   {step === 2 && Step2()}
                   {step === 3 && Step3()}
                   {step === 4 && Step4()}
+                  {step === 5 && Step5()}
                 </form>
               </>
             )}

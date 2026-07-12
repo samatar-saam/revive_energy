@@ -10,7 +10,6 @@ import {
   Plus,
   Eye,
   AlertCircle,
-  CheckCircle,
   Clock,
   Building2,
   X,
@@ -52,7 +51,17 @@ export default function ProducerMarketplace() {
         throw new Error(data.message || "Failed to load marketplace");
       }
 
-      setListings(Array.isArray(data) ? data : []);
+      const listingsData = Array.isArray(data) ? data : [];
+      // 🔍 Debug – check the amounts from backend
+      console.log("📦 Listings with amounts:", listingsData.map(l => ({
+        id: l.id,
+        waste_type: l.waste_type,
+        waste_value: l.waste_value,
+        transport_fee: l.transport_fee,
+        platform_fee: l.platform_fee,
+        total_amount: l.total_amount,
+      })));
+      setListings(listingsData);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -93,22 +102,12 @@ export default function ProducerMarketplace() {
     return filtered;
   }, [listings, searchQuery, filterStatus, filterLocation]);
 
-  // ─── FIXED AMOUNTS (use backend values) ─────────────────────
-  const getAmounts = (item) => {
-    // Use the fixed values from the backend (they are already calculated)
-    // Fallback to the fixed KES values if missing
-    const wasteAmount = item.waste_value || 1000;
-    const transportFee = item.transport_fee || 500;
-    const platformFee = item.platform_fee || 500;
-    const totalAmount = item.total_amount || 2000;
-
-    return {
-      wasteAmount,
-      transportFee,
-      platformFee,
-      totalAmount,
-    };
-  };
+  const getAmounts = (item) => ({
+    wasteAmount: item.waste_value ?? 0,
+    transportFee: item.transport_fee ?? 0,
+    platformFee: item.platform_fee ?? 0,
+    totalAmount: item.total_amount ?? 0,
+  });
 
   const handleRequest = async (listingId) => {
     setRequesting(listingId);
@@ -161,7 +160,6 @@ export default function ProducerMarketplace() {
       completed: "bg-gray-100 text-gray-700",
       cancelled: "bg-red-100 text-red-700",
     };
-
     return map[status] || "bg-gray-100 text-gray-700";
   };
 
@@ -301,47 +299,69 @@ export default function ProducerMarketplace() {
             return (
               <div
                 key={item.id}
-                className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+                className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <h4 className="truncate text-lg font-bold text-gray-900">
+                    <h4 className="truncate text-base font-bold text-gray-900">
                       {item.waste_type}
                     </h4>
-                    <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-                      <MapPin className="h-3.5 w-3.5" />
+                    <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500">
+                      <MapPin className="h-3 w-3" />
                       {item.location}
                     </p>
                   </div>
 
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${getStatusBadge(item.status)}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${getStatusBadge(item.status)}`}>
                     {item.status || "unknown"}
                   </span>
                 </div>
 
-                <div className="mt-4 space-y-2 text-sm text-gray-700">
-                  <Info icon={Package} label="Quantity" value={`${item.quantity} ${item.unit || "kg"}`} />
-                  <Info icon={Building2} label="Supplier" value={item.supplier_name || "Unknown Supplier"} />
-                  <Info icon={Clock} label="Listed" value={formatDate(item.created_at)} />
-                  <Info icon={CreditCard} label="Total Amount" value={formatCurrency(amounts.totalAmount)} strong />
-                </div>
-
-                <div className="mt-4 rounded-2xl bg-[#F4FBF6] p-3 text-xs text-gray-600">
-                  <div className="flex items-center gap-2 font-semibold text-[#11402D]">
-                    <ShieldCheck className="h-4 w-4" />
-                    Payment protected by escrow
+                <div className="relative mt-2 h-24 w-full overflow-hidden rounded-xl bg-gray-100">
+                  {item.image_url ? (
+                    <img
+                      src={item.image_url}
+                      alt={item.waste_type}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        const parent = e.target.parentElement;
+                        if (parent) {
+                          const placeholder = parent.querySelector('.placeholder-fallback');
+                          if (placeholder) placeholder.style.display = 'flex';
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className={`placeholder-fallback ${item.image_url ? 'hidden' : 'flex'} absolute inset-0 flex-col items-center justify-center text-gray-400`}
+                    style={{ display: item.image_url ? 'none' : 'flex' }}
+                  >
+                    <Package className="h-8 w-8" />
+                    <span className="text-[10px]">No image</span>
                   </div>
-                  <p className="mt-1">
-                    Supplier approval is required before payment. Transport starts after payment confirmation.
-                  </p>
                 </div>
 
-                <div className="mt-4 flex gap-2">
+                <div className="mt-3 space-y-1 text-sm text-gray-700">
+                  <InfoSmall icon={Package} label="Qty" value={`${item.quantity} ${item.unit || "kg"}`} />
+                  <InfoSmall icon={Building2} label="Supplier" value={item.supplier_name || "Unknown"} />
+                  <InfoSmall icon={Clock} label="Listed" value={formatDate(item.created_at)} />
+                  <InfoSmall icon={CreditCard} label="Total" value={formatCurrency(amounts.totalAmount)} strong />
+                </div>
+
+                <div className="mt-3 rounded-xl bg-[#F4FBF6] p-2 text-[10px] text-gray-600">
+                  <div className="flex items-center gap-1.5 font-semibold text-[#11402D]">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    Escrow protected
+                  </div>
+                </div>
+
+                <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => setSelectedListing(item)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3.5 w-3.5" />
                     Details
                   </button>
 
@@ -349,22 +369,22 @@ export default function ProducerMarketplace() {
                     <button
                       onClick={() => handleRequest(item.id)}
                       disabled={requesting === item.id}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#11402D] py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-70"
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#11402D] py-1.5 text-xs font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-70"
                     >
                       {requesting === item.id ? (
                         <>
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                           Sending...
                         </>
                       ) : (
                         <>
-                          <Plus className="h-4 w-4" />
+                          <Plus className="h-3.5 w-3.5" />
                           Request
                         </>
                       )}
                     </button>
                   ) : (
-                    <div className="flex flex-1 items-center justify-center rounded-xl bg-gray-50 py-2 text-sm text-gray-500">
+                    <div className="flex flex-1 items-center justify-center rounded-xl bg-gray-50 py-1.5 text-xs text-gray-500">
                       Not available
                     </div>
                   )}
@@ -392,27 +412,28 @@ export default function ProducerMarketplace() {
 
 function Stat({ label, value, color = "text-gray-900" }) {
   return (
-    <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
+    <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className={`text-xl font-bold ${color}`}>{value}</p>
     </div>
   );
 }
 
-function Info({ icon: Icon, label, value, strong }) {
+function InfoSmall({ icon: Icon, label, value, strong }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 text-gray-500">
-        <Icon className="h-4 w-4" />
-        <span>{label}</span>
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-1.5 text-gray-500">
+        <Icon className="h-3.5 w-3.5" />
+        <span className="text-xs">{label}</span>
       </div>
-      <span className={`truncate text-right ${strong ? "font-bold text-[#11402D]" : "font-medium text-gray-800"}`}>
+      <span className={`truncate text-right text-xs ${strong ? "font-bold text-[#11402D]" : "font-medium text-gray-800"}`}>
         {value}
       </span>
     </div>
   );
 }
 
+// ─── SCROLLABLE MODAL with sticky close button ──────────────────
 function ListingDetailsModal({
   listing,
   amounts,
@@ -423,92 +444,100 @@ function ListingDetailsModal({
   formatDate,
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-      <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
-        <div className="mb-5 flex items-start justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-4">
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col">
+        {/* ─── Sticky header with close button ─────────────────── */}
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-6 py-4 flex items-start justify-between shrink-0">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{listing.waste_type}</h2>
             <p className="mt-1 text-sm text-gray-500">
               Listed on {formatDate(listing.created_at)}
             </p>
           </div>
-
-          <button onClick={onClose} className="rounded-xl p-2 hover:bg-gray-100">
+          <button
+            onClick={onClose}
+            className="rounded-xl p-2 hover:bg-gray-100 transition -mt-1 -mr-1"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* ─── IMAGE ───────────────────────────────────────────────────── */}
-        <div className="mb-4 rounded-2xl overflow-hidden bg-gray-100 h-48 flex items-center justify-center relative">
-          {listing.image_url ? (
-            <img
-              src={listing.image_url}
-              alt={listing.waste_type}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                const parent = e.target.parentElement;
-                if (parent) {
-                  const placeholder = parent.querySelector('.placeholder-fallback');
-                  if (placeholder) placeholder.style.display = 'flex';
-                }
-              }}
-            />
-          ) : null}
-          <div
-            className={`placeholder-fallback ${listing.image_url ? 'hidden' : 'flex'} absolute inset-0 flex-col items-center justify-center text-gray-400`}
-            style={{ display: listing.image_url ? 'none' : 'flex' }}
-          >
-            <Package className="w-16 h-16 mb-2" />
-            <span className="text-sm">No image provided</span>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl bg-gray-50 p-4">
-            <h3 className="mb-3 font-bold text-gray-900">Waste Information</h3>
-            <div className="space-y-2 text-sm">
-              <Row label="Quantity" value={`${listing.quantity} ${listing.unit || "kg"}`} />
-              <Row label="Category" value={listing.category || "General"} />
-              <Row label="Location" value={listing.location || "N/A"} />
-              <Row label="Supplier" value={listing.supplier_name || "Unknown Supplier"} />
+        {/* ─── Scrollable content ─────────────────────────────── */}
+        <div className="overflow-y-auto p-6 space-y-5 flex-1">
+          {/* Image */}
+          <div className="relative h-40 w-full overflow-hidden rounded-2xl bg-gray-100">
+            {listing.image_url ? (
+              <img
+                src={listing.image_url}
+                alt={listing.waste_type}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  const parent = e.target.parentElement;
+                  if (parent) {
+                    const placeholder = parent.querySelector('.placeholder-fallback');
+                    if (placeholder) placeholder.style.display = 'flex';
+                  }
+                }}
+              />
+            ) : null}
+            <div
+              className={`placeholder-fallback ${listing.image_url ? 'hidden' : 'flex'} absolute inset-0 flex-col items-center justify-center text-gray-400`}
+              style={{ display: listing.image_url ? 'none' : 'flex' }}
+            >
+              <Package className="h-12 w-12" />
+              <span className="text-sm">No image provided</span>
             </div>
           </div>
 
-          <div className="rounded-2xl bg-[#F4FBF6] p-4">
-            <h3 className="mb-3 font-bold text-gray-900">Estimated Payment</h3>
-            <div className="space-y-2 text-sm">
-              <Row label="Waste Amount" value={formatCurrency(amounts.wasteAmount)} />
-              <Row label="Transport Fee" value={formatCurrency(amounts.transportFee)} />
-              <Row label="Platform Fee" value={formatCurrency(amounts.platformFee)} />
-              <div className="border-t border-green-100 pt-2">
-                <Row label="Total Amount" value={formatCurrency(amounts.totalAmount)} strong />
+          {/* Info grids */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl bg-gray-50 p-4">
+              <h3 className="mb-3 font-bold text-gray-900">Waste Information</h3>
+              <div className="space-y-2 text-sm">
+                <Row label="Quantity" value={`${listing.quantity} ${listing.unit || "kg"}`} />
+                <Row label="Category" value={listing.category || "General"} />
+                <Row label="Location" value={listing.location || "N/A"} />
+                <Row label="Supplier" value={listing.supplier_name || "Unknown Supplier"} />
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-[#F4FBF6] p-4">
+              <h3 className="mb-3 font-bold text-gray-900">Estimated Payment</h3>
+              <div className="space-y-2 text-sm">
+                <Row label="Waste Amount" value={formatCurrency(amounts.wasteAmount)} />
+                <Row label="Transport Fee" value={formatCurrency(amounts.transportFee)} />
+                <Row label="Platform Fee" value={formatCurrency(amounts.platformFee)} />
+                <div className="border-t border-green-100 pt-2">
+                  <Row label="Total Amount" value={formatCurrency(amounts.totalAmount)} strong />
+                </div>
               </div>
             </div>
           </div>
+
+          {listing.description && (
+            <div className="rounded-2xl border border-gray-100 p-4">
+              <h3 className="mb-2 font-bold text-gray-900">Description</h3>
+              <p className="text-sm text-gray-600">{listing.description}</p>
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
+            <div className="flex items-center gap-2 font-bold">
+              <Truck className="h-4 w-4" />
+              Workflow
+            </div>
+            <p className="mt-1">
+              Request waste first. After the supplier approves it, you will pay through M-Pesa from My Requests.
+            </p>
+          </div>
         </div>
 
-        {listing.description && (
-          <div className="mt-4 rounded-2xl border border-gray-100 p-4">
-            <h3 className="mb-2 font-bold text-gray-900">Description</h3>
-            <p className="text-sm text-gray-600">{listing.description}</p>
-          </div>
-        )}
-
-        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
-          <div className="flex items-center gap-2 font-bold">
-            <Truck className="h-4 w-4" />
-            Workflow
-          </div>
-          <p className="mt-1">
-            Request waste first. After the supplier approves it, you will pay through M-Pesa from My Requests.
-          </p>
-        </div>
-
-        <div className="mt-5 flex gap-3">
+        {/* ─── Sticky footer with actions ──────────────────────── */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl border border-gray-200 py-3 font-bold text-gray-700 hover:bg-gray-50"
+            className="flex-1 rounded-xl border border-gray-200 py-3 font-bold text-gray-700 hover:bg-gray-50 transition"
           >
             Close
           </button>
@@ -517,7 +546,7 @@ function ListingDetailsModal({
             <button
               onClick={onRequest}
               disabled={requesting === listing.id}
-              className="flex-1 rounded-xl bg-[#11402D] py-3 font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-70"
+              className="flex-1 rounded-xl bg-[#11402D] py-3 font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-70 transition"
             >
               {requesting === listing.id ? "Sending..." : "Request Waste"}
             </button>
