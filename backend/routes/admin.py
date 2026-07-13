@@ -781,6 +781,7 @@ def release_payment(payment_id):
     Release a payment from escrow.
     Credits both supplier and transporter (if present).
     If transporter_amount is missing, uses transport_fee and looks up transporter from TransportJob.
+    Also updates the associated TransportJob status to "completed".
     """
     try:
         payment = db.session.get(Payment, payment_id)
@@ -855,6 +856,18 @@ def release_payment(payment_id):
                 payment.transporter_id = transporter_id
                 payment.transporter_amount = transporter_amount
 
+        # ─── NEW: Update transport job status to "completed" ────
+        if payment.transport_job_id:
+            transport_job = db.session.get(TransportJob, payment.transport_job_id)
+            if transport_job:
+                transport_job.status = "completed"
+                transport_job.updated_at = datetime.utcnow()
+                # Also update the job's listing status if applicable
+                if transport_job.listing_id:
+                    listing = db.session.get(WasteListing, transport_job.listing_id)
+                    if listing:
+                        listing.status = "completed"
+
         # ─── Update payment status ────────────────────────────────
         payment.escrow_status = "released"
         payment.status = "released"
@@ -870,13 +883,13 @@ def release_payment(payment_id):
         log_audit(
             user_id=admin_id,
             event='payment_released',
-            description=f'Admin {admin_user.full_name} released payment #{payment.id} (transporter credited: {transporter_amount})',
+            description=f'Admin {admin_user.full_name} released payment #{payment.id} (transporter credited: {transporter_amount}, job completed)',
             status='success',
             admin_id=admin_id
         )
 
         return jsonify({
-            "message": "Payment released successfully – wallets credited.",
+            "message": "Payment released successfully – wallets credited and delivery marked as completed.",
             "payment": payment.to_dict(),
         }), 200
 

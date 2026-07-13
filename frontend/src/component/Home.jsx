@@ -21,12 +21,26 @@ import {
   Clock,
   Mail,
   Phone,
-  MessageCircle,
+  MessageSquare,
   Calculator,
   Plus,
   X,
+ 
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+
+// ─── Custom WhatsApp SVG Icon ──────────────────────────────────
+const WhatsAppIcon = ({ className, color = "#25D366" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill={color}
+    className={className}
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.229-1.392-.191-1.887-.423-.5-1.01-.77-1.357-.918z"/>
+    <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.537 3.66 1.468 5.15L2.09 21.91l4.76-1.378A9.94 9.94 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.69 0-3.25-.525-4.535-1.422l-.325-.196-2.83.82.84-2.788-.207-.34A8.044 8.044 0 0 1 4 12c0-4.411 3.589-8 8-8s8 3.589 8 8-3.589 8-8 8z"/>
+  </svg>
+);
 
 export default function ReViveEnergyHomepage() {
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
@@ -111,32 +125,35 @@ export default function ReViveEnergyHomepage() {
     { icon: "🪵", label: "Biomass Waste" },
   ];
 
+  // ─── QUICK ACTIONS ────────────────────────────────────────────
   const quickActions = [
     { 
       icon: Mail, 
       label: "Email", 
       color: "#34D399",
-      onClick: () => window.location.href = "mailto:info@revive-energy.com"
+      onClick: () => window.location.href = "mailto:samatar578@gmail.com"
     },
     { 
       icon: Phone, 
       label: "Call Us", 
       color: "#60A5FA",
-      onClick: () => window.location.href = "tel:+254700000000"
+      onClick: () => window.location.href = "tel:+254727568271"
     },
     { 
-      icon: MessageCircle, 
+      icon: MessageSquare,
       label: "Live Chat", 
-      color: "#F59E0B",
+      color: "#3B82F6",
       onClick: () => alert("💬 Live chat coming soon! For now, please email us.")
     },
     { 
-      icon: Calculator, 
-      label: "Impact Calculator", 
-      color: "#818CF8",
-      onClick: () => alert("📊 Impact Calculator will be available in the next update.")
+      icon: WhatsAppIcon,
+      label: "WhatsApp", 
+      color: "#25D366",
+      onClick: () => window.open("https://wa.me/254727568271", "_blank")
     },
   ];
+
+  // ─── SOCIAL MEDIA LINKS ──────────────────────────────────────
 
   // Smooth scroll helper
   const scrollToSection = (id) => {
@@ -277,7 +294,6 @@ export default function ReViveEnergyHomepage() {
                 
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/50 via-transparent to-transparent" />
                 
-                {/* Quick Actions - Vertical Stack, Larger Icons */}
                 <AnimatePresence>
                   {isQuickActionsOpen && (
                     <motion.div
@@ -306,7 +322,6 @@ export default function ReViveEnergyHomepage() {
                   )}
                 </AnimatePresence>
 
-                {/* Plus / X Button - Bottom Right */}
                 <button
                   onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
                   className={`absolute bottom-3 right-3 w-10 h-10 rounded-full bg-[#11402D] flex items-center justify-center shadow-lg hover:bg-[#0E2A1C] transition-all duration-300 z-10 ${
@@ -353,7 +368,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* MARQUEE SECTION */}
+      {/* MARQUEE SECTION – no cards, no dots */}
       <section className="bg-[#F6F8F4] py-12 sm:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
           <div className="text-center mb-10">
@@ -369,21 +384,15 @@ export default function ReViveEnergyHomepage() {
             <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-[#F6F8F4] to-transparent z-10 pointer-events-none" />
             <div className="absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-[#F6F8F4] to-transparent z-10 pointer-events-none" />
 
-            <div className="marquee-track flex items-center gap-6">
+            {/* ─── Updated marquee – no cards, no dots ─────────── */}
+            <div className="marquee-track flex items-center gap-12">
               {[...marqueeItems, ...marqueeItems].map((item, index) => (
-                <React.Fragment key={index}>
-                  <div className="flex-shrink-0 bg-white rounded-2xl p-6 w-48 sm:w-56 shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#11402D]/5">
-                    <div className="text-5xl sm:text-6xl text-center mb-3">
-                      {item.icon}
-                    </div>
-                    <p className="font-display font-semibold text-sm sm:text-base text-[#0E2A1C] text-center">
-                      {item.label}
-                    </p>
-                  </div>
-                  {index < marqueeItems.length * 2 - 1 && (
-                    <div className="flex-shrink-0 w-2 h-2 rounded-full bg-[#11402D]/30" />
-                  )}
-                </React.Fragment>
+                <div key={index} className="flex-shrink-0 flex items-center gap-3 text-[#0E2A1C]">
+                  <span className="text-5xl sm:text-6xl">{item.icon}</span>
+                  <span className="font-display font-semibold text-base sm:text-lg whitespace-nowrap">
+                    {item.label}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
@@ -815,12 +824,10 @@ export default function ReViveEnergyHomepage() {
                 <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
                   <Recycle className="w-5 h-5 text-[#9CF06B]" />
                 </div>
-
                 <span className="font-display text-xl font-semibold">
                   ReVive Energy
                 </span>
               </div>
-
               <p className="text-white/50 text-sm leading-relaxed max-w-sm">
                 Designing and operating waste-to-energy infrastructure that
                 turns disposal problems into clean energy opportunities.
@@ -834,7 +841,6 @@ export default function ReViveEnergyHomepage() {
             ].map(([title, links], index) => (
               <div key={index}>
                 <h3 className="font-display font-semibold mb-4">{title}</h3>
-
                 <ul className="space-y-2.5 text-sm text-white/50">
                   {links.map((link, i) => (
                     <li key={i}>
@@ -846,18 +852,16 @@ export default function ReViveEnergyHomepage() {
                 </ul>
               </div>
             ))}
+
+            {/* Social Media */}
+           
           </div>
 
           <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
             <span>© 2026 ReVive Energy. All rights reserved.</span>
-
             <div className="flex flex-wrap justify-center gap-5">
-              <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                Privacy Policy
-              </a>
-              <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                Terms of Service
-              </a>
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">Privacy Policy</a>
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">Terms of Service</a>
             </div>
           </div>
         </div>

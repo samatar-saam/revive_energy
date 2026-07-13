@@ -781,33 +781,30 @@ function DetailModal({
                 <h3 className="font-display font-semibold text-gray-900 mb-4">Escrow & Payment</h3>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
+                    {/* ─── UPDATED: dynamic amounts from backend ─── */}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Waste Cost</span>
-                      <span className="font-medium">{formatCurrency(delivery.waste_amount || 10)}</span>
+                      <span className="font-medium">{formatCurrency(delivery.waste_amount ?? 0)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Transport Fee</span>
-                      <span className="font-medium">{formatCurrency(delivery.transport_fee || 10)}</span>
+                      <span className="font-medium">{formatCurrency(delivery.transport_fee ?? 0)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Platform Fee</span>
-                      <span className="font-medium">{formatCurrency(delivery.platform_fee || 10)}</span>
+                      <span className="font-medium">{formatCurrency(delivery.platform_fee ?? 0)}</span>
                     </div>
                     <div className="flex justify-between text-sm font-bold border-t border-gray-200 pt-2">
                       <span>Total Paid</span>
-                      <span>{formatCurrency(delivery.total_amount || 30)}</span>
+                      <span>{formatCurrency(delivery.total_amount ?? 0)}</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-start justify-center border-l border-gray-200 pl-6">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="h-5 w-5 text-[#11402D]" />
-                      <span className="font-display font-semibold">
-                        Money Held in Escrow
-                      </span>
+                      <span className="font-display font-semibold">Money Held in Escrow</span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Waiting for delivery confirmation
-                    </p>
+                    <p className="text-sm text-gray-500 mt-1">Waiting for delivery confirmation</p>
                   </div>
                 </div>
               </div>

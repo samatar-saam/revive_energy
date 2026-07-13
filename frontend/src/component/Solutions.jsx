@@ -435,9 +435,9 @@ export default function EnergyProductsPage() {
                 From Waste To
                 <span className="relative inline-block mx-3">
                   <span className="relative z-10 text-[#11402D]">Valuable</span>
-                  <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 300 10" preserveAspectRatio="none">
+                  {/* <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 300 10" preserveAspectRatio="none">
                     <path d="M2 6C60 2 240 2 298 6" stroke="#9CF06B" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  </svg>
+                  </svg> */}
                 </span>
                 Resources
               </h1>

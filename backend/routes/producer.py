@@ -36,7 +36,7 @@ def iso(dt):
     return dt.isoformat() if dt else None
 
 
-# ─── NEW: helper to fetch a setting from the database ──────────
+# ─── helper to fetch a setting from the database ──────────
 def get_setting(key, default=10.0):
     """
     Fetch a setting value from AdminSetting and convert to float.
@@ -389,7 +389,7 @@ def cancel_request(request_id):
         return jsonify({"message": "Internal server error"}), 500
 
 
-# ─── INCOMING DELIVERIES ────────────────────────────────────
+# ─── INCOMING DELIVERIES (UPDATED) ──────────────────────────
 @producer_bp.route("/producer/incoming-deliveries", methods=["GET"])
 @jwt_required()
 @role_required("producer", "energy-producer")
@@ -404,10 +404,12 @@ def get_incoming_deliveries():
         )
 
         result = []
-
         for j in deliveries:
-            supplier_name = get_user_name(getattr(j, "supplier_id", None), "Unknown Supplier")
-            transporter_name = get_user_name(getattr(j, "transporter_id", None), "Not assigned")
+            supplier = db.session.get(User, j.supplier_id) if j.supplier_id else None
+            transporter = db.session.get(User, j.transporter_id) if j.transporter_id else None
+
+            # ─── Get dynamic pricing from admin settings ──────────
+            amounts = calculate_amounts(None)   # listing not needed
 
             result.append({
                 "id": j.id,
@@ -418,11 +420,18 @@ def get_incoming_deliveries():
                 "delivery_location": getattr(j, "delivery_location", ""),
                 "status": j.status,
                 "supplier_id": getattr(j, "supplier_id", None),
-                "supplier_name": supplier_name,
+                "supplier_name": supplier.full_name if supplier else "Unknown Supplier",
+                "supplier_phone": supplier.phone if supplier else None,
                 "transporter_id": getattr(j, "transporter_id", None),
-                "transporter_name": transporter_name,
+                "transporter_name": transporter.full_name if transporter else "Not assigned",
+                "transporter_phone": transporter.phone if transporter else None,
                 "transport_fee": getattr(j, "transport_fee", 0),
+                # ─── NEW: pricing fields ──────────────────────────
+                "waste_amount": amounts["waste_value"],
+                "platform_fee": amounts["platform_fee"],
+                "total_amount": amounts["total_amount"],
                 "created_at": iso(j.created_at),
+                "updated_at": iso(getattr(j, "updated_at", None)),
             })
 
         return jsonify(result), 200
@@ -432,7 +441,7 @@ def get_incoming_deliveries():
         return jsonify({"message": "Internal server error"}), 500
 
 
-# ─── CONFIRM DELIVERY (new) ─────────────────────────────────
+# ─── CONFIRM DELIVERY ──────────────────────────────────────────
 @producer_bp.route('/producer/deliveries/<int:job_id>/confirm', methods=['PATCH'])
 @jwt_required()
 @role_required("producer", "energy-producer")
@@ -447,14 +456,9 @@ def confirm_delivery(job_id):
         if job.status != 'delivered':
             return jsonify({'message': 'Only delivered jobs can be confirmed'}), 400
 
-        # Update status to "awaiting_confirmation" – admin will release payment
         job.status = 'awaiting_confirmation'
         db.session.commit()
 
-        # Optionally notify admin that payment is ready to release
-        # (You can create a notification for admins here)
-
-        # Return updated job with all fields (using existing helper)
         return jsonify({
             'message': 'Delivery confirmed. Admin will release payment shortly.',
             'job': {
