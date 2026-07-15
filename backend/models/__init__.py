@@ -31,6 +31,9 @@ from .dispute import Dispute
 from .audit_log import AuditLog
 from .transport_location import TransportLocation   # <-- NEW
 
+# 👇 ADD THIS LINE
+from .partnership_application import PartnershipApplication   # <-- NEW
+
 __all__ = [
     "User",
     "UserDevice",
@@ -60,5 +63,6 @@ __all__ = [
     "WithdrawalRequest",
     "Dispute",
     "AuditLog",
-    "TransportLocation",   # <-- NEW
+    "TransportLocation",
+    "PartnershipApplication",   # <-- ADD THIS
 ]

@@ -28,9 +28,9 @@ from models import (
     Notification,
     Conversation,
     Message,
-    Wallet,                 # <-- ADDED
-    WalletTransaction,      # <-- ADDED
-    WithdrawalRequest,      # <-- ADDED
+    Wallet,
+    WalletTransaction,
+    WithdrawalRequest,
 )
 
 from routes.auth import auth_bp
@@ -43,15 +43,15 @@ from routes.payments import payments_bp
 from routes.invoices import invoices_bp
 from routes.messages import messages_bp
 from routes.admin import admin_bp
-from routes.wallet import wallet_bp          # <-- ADDED
-from routes.contact import contact_bp        # 👈 NEW: import contact blueprint
-from routes.tracking import tracking_bp      # 👈 NEW: import tracking blueprint
+from routes.wallet import wallet_bp
+from routes.contact import contact_bp
+from routes.tracking import tracking_bp
+# ─── NEW: import the disputes blueprint ──────────────────────
+from routes.disputes import disputes_bp
 
 from services.mpesa import MpesaService
 
-
 mpesa = MpesaService()
-
 
 def create_app():
     app = Flask(__name__)
@@ -76,10 +76,11 @@ def create_app():
     app.register_blueprint(invoices_bp, url_prefix="/api")
     app.register_blueprint(messages_bp, url_prefix="/api")
     app.register_blueprint(admin_bp)                  # admin blueprint
-    app.register_blueprint(wallet_bp)                 # <-- ADDED wallet blueprint
-    app.register_blueprint(contact_bp)                # 👈 NEW: register contact blueprint
-    # ✅ FIXED: Do NOT override the blueprint's own url_prefix ('/api/tracking')
-    app.register_blueprint(tracking_bp)               # now serves /api/tracking/...
+    app.register_blueprint(wallet_bp)
+    app.register_blueprint(contact_bp)
+    app.register_blueprint(tracking_bp)               # /api/tracking/...
+    # ─── NEW: register disputes blueprint ──────────────────────
+    app.register_blueprint(disputes_bp)               # url_prefix is '/api/disputes'
 
     # ─── Helper: generate QR code ────────────────────────────────
     def generate_qr_code(payment):

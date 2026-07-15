@@ -1,4 +1,4 @@
-// src/App.js
+// src/App.jsx
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
@@ -40,15 +40,17 @@ import Analytics from "./admin/pages/Analytics";
 import AdminImpactReports from "./admin/pages/AdminImpactReports";
 import CarbonCredits from "./admin/pages/CarbonCredits";
 import Reviews from "./admin/pages/Reviews";
-import Support from "./admin/pages/Support";                  // Admin support
+import Support from "./admin/pages/Support";
 import AdminMessages from "./admin/pages/Messages";
 import Settings from "./admin/pages/Settings";
 import AdminWithdrawals from "./admin/pages/Withdrawals";
 import AdminWallet from "./admin/pages/Wallet";
-import UserDashboard from "./users/layout/UserDashboard";
 import Disputes from "./admin/pages/Disputes";
 import PricingSettings from "./admin/pages/PricingSettings";
 import AuditLogs from "./admin/pages/AuditLogs";
+import AdminPartnerships from "./admin/pages/AdminPartnerships";
+
+import UserDashboard from "./users/layout/UserDashboard";
 
 // Supplier pages
 import SupplierDashboardContent from "./users/pages/supplier/SupplierDashboardContent";
@@ -68,7 +70,7 @@ import TransportDashboardContent from "./users/pages/transporter/TransportDashbo
 import AvailableJobs from "./users/pages/transporter/AvailableJobs";
 import AcceptedJobs from "./users/pages/transporter/AcceptedJobs";
 import ActiveDeliveries from "./users/pages/transporter/ActiveDeliveries";
-import RouteTracking from "./users/pages/transporter/RouteTracking"; // ✅ Can be used by all roles
+import RouteTracking from "./users/pages/transporter/RouteTracking";
 import Earnings from "./users/pages/transporter/Earnings";
 
 // Shared pages
@@ -77,9 +79,12 @@ import Notifications from "./users/pages/shared/Notifications";
 import ProfileSettings from "./users/pages/shared/ProfileSettings";
 import PaymentInvoices from "./users/pages/shared/PaymentInvoices";
 import InvoicePaymentDetails from "./users/pages/shared/InvoicePaymentDetails";
-import UserSupport from "./users/pages/shared/Support"; 
+import UserSupport from "./users/pages/shared/Support";
 import Wallet from "./users/pages/shared/Wallet";
 import Withdrawals from "./users/pages/shared/Withdrawals";
+
+// ✅ FIXED: Import from shared folder, not supplier
+import UserDisputes from "./users/pages/shared/UserDisputes";
 
 function DashboardIndex() {
   const [role, setRole] = useState("supplier");
@@ -188,8 +193,10 @@ function App() {
           <Route path="disputes" element={<Disputes />} />
           <Route path="pricing" element={<PricingSettings />} />
           <Route path="audit-logs" element={<AuditLogs />} />
+          <Route path="partnerships" element={<AdminPartnerships />} />
         </Route>
 
+        {/* ─── User Dashboard Routes ───────────────────────────── */}
         <Route path="/dashboard" element={<UserDashboard />}>
           <Route index element={<DashboardIndex />} />
 
@@ -208,7 +215,6 @@ function App() {
           <Route path="jobs" element={<AvailableJobs />} />
           <Route path="accepted-jobs" element={<AcceptedJobs />} />
           <Route path="deliveries" element={<ActiveDeliveries />} />
-          {/* ✅ Route Tracking is now available for all roles */}
           <Route path="routes" element={<RouteTracking />} />
           <Route path="earnings" element={<Earnings />} />
 
@@ -222,6 +228,9 @@ function App() {
           <Route path="support" element={<UserSupport />} />
           <Route path="wallet" element={<Wallet />} />
           <Route path="withdrawals" element={<Withdrawals />} />
+
+          {/* ✅ NEW: Disputes route */}
+          <Route path="disputes" element={<UserDisputes />} />
         </Route>
       </Routes>
     </BrowserRouter>

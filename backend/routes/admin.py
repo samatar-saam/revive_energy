@@ -1894,35 +1894,6 @@ def complete_withdrawal(withdrawal_id):
 
 
 # ─── DISPUTES ─────────────────────────────────────────────────────
-
-@admin_bp.route('/disputes/stats', methods=['GET'])
-@jwt_required()
-@role_required('admin')
-def get_dispute_stats():
-    try:
-        total = Dispute.query.count()
-        open_ = Dispute.query.filter_by(status='open').count()
-        under_investigation = Dispute.query.filter_by(status='under_investigation').count()
-        awaiting_response = Dispute.query.filter_by(status='awaiting_response').count()
-        resolved = Dispute.query.filter_by(status='resolved').count()
-        closed = Dispute.query.filter_by(status='closed').count()
-        refunded = Dispute.query.filter_by(status='refunded').count()
-        frozen_escrow = Dispute.query.filter_by(escrow_status='frozen').count()
-
-        return jsonify({
-            'total': total,
-            'open': open_,
-            'under_investigation': under_investigation,
-            'awaiting_response': awaiting_response,
-            'resolved': resolved,
-            'closed': closed,
-            'refunded': refunded,
-            'frozen_escrow': frozen_escrow,
-        }), 200
-    except Exception as e:
-        return jsonify({'message': str(e)}), 500
-
-
 @admin_bp.route('/disputes', methods=['GET'])
 @jwt_required()
 @role_required('admin')
@@ -1936,9 +1907,15 @@ def get_disputes():
         query = Dispute.query
         if search:
             term = f"%{search}%"
-            producer_ids = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
-            supplier_ids = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
-            transporter_ids = db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))
+            producer_ids = db.session.query(User.id).filter(
+                User.full_name.ilike(term) | User.email.ilike(term)
+            )
+            supplier_ids = db.session.query(User.id).filter(
+                User.full_name.ilike(term) | User.email.ilike(term)
+            )
+            transporter_ids = db.session.query(User.id).filter(
+                User.full_name.ilike(term) | User.email.ilike(term)
+            )
             query = query.filter(
                 or_(
                     cast(Dispute.id, String).ilike(term),
@@ -1956,21 +1933,47 @@ def get_disputes():
 
         result = []
         for d in disputes:
-            payment = db.session.get(Payment, d.payment_id)
+            # Get the associated payment
+            payment = db.session.get(Payment, d.payment_id) if d.payment_id else None
+            # Get the waste type from the listing if available
+            waste_type = None
+            if payment and payment.listing_id:
+                listing = db.session.get(WasteListing, payment.listing_id)
+                if listing:
+                    waste_type = listing.waste_type
+
             producer = db.session.get(User, d.producer_id)
             supplier = db.session.get(User, d.supplier_id)
             transporter = db.session.get(User, d.transporter_id) if d.transporter_id else None
+
+            # Parse timeline and evidence if they are JSON strings
+            timeline = []
+            evidence = []
+            try:
+                if d.timeline:
+                    timeline = json.loads(d.timeline)
+            except (json.JSONDecodeError, TypeError):
+                timeline = []
+            try:
+                if d.evidence:
+                    evidence = json.loads(d.evidence)
+            except (json.JSONDecodeError, TypeError):
+                evidence = []
+
             result.append({
                 'id': d.id,
                 'payment_id': d.payment_id,
                 'producer_name': producer.full_name if producer else None,
                 'supplier_name': supplier.full_name if supplier else None,
                 'transporter_name': transporter.full_name if transporter else None,
-                'waste_type': payment.waste_type if payment else None,
+                'waste_type': waste_type,
                 'reason': d.reason,
                 'status': d.status,
                 'escrow_status': d.escrow_status,
+                'amount': float(d.amount) if d.amount is not None else 0.0,
                 'created_at': d.created_at.isoformat() if d.created_at else None,
+                'timeline': timeline,
+                'evidence': evidence,
             })
 
         return jsonify({
@@ -1983,178 +1986,5 @@ def get_disputes():
             }
         }), 200
     except Exception as e:
-        return jsonify({'message': str(e)}), 500
-
-
-@admin_bp.route('/disputes/<int:dispute_id>/action', methods=['POST'])
-@jwt_required()
-@role_required('admin')
-def dispute_action(dispute_id):
-    try:
-        dispute = db.session.get(Dispute, dispute_id)
-        if not dispute:
-            return jsonify({'message': 'Dispute not found'}), 404
-
-        data = request.get_json() or {}
-        action = data.get('action')
-        if not action:
-            return jsonify({'message': 'Action is required'}), 400
-
-        admin_id = int(get_jwt_identity())
-        admin_user = db.session.get(User, admin_id)
-        if not admin_user or admin_user.role != 'admin':
-            return jsonify({'message': 'Admin only'}), 403
-
-        status_map = {
-            'request_more_info': 'awaiting_response',
-            'freeze_escrow': 'under_investigation',
-            'release_escrow': 'open',
-            'refund_producer': 'refunded',
-            'reject': 'closed',
-            'resolve': 'resolved',
-            'close': 'closed',
-        }
-
-        escrow_map = {
-            'freeze_escrow': 'frozen',
-            'release_escrow': 'released',
-            'refund_producer': 'refunded',
-            'resolve': 'released',
-        }
-
-        if action in status_map:
-            dispute.status = status_map[action]
-
-        if action in escrow_map:
-            dispute.escrow_status = escrow_map[action]
-            if action == 'refund_producer':
-                payment = db.session.get(Payment, dispute.payment_id)
-                if payment:
-                    payment.status = 'refunded'
-                    payment.escrow_status = 'refunded'
-
-        timeline = json.loads(dispute.timeline) if dispute.timeline else []
-        timeline.append({
-            'description': f'Admin {admin_user.full_name} performed "{action}" on dispute #{dispute.id}',
-            'timestamp': datetime.utcnow().isoformat()
-        })
-        dispute.timeline = json.dumps(timeline)
-        dispute.updated_at = datetime.utcnow()
-
-        db.session.commit()
-
-        log_audit(
-            user_id=admin_id,
-            event='dispute_action',
-            description=f'Admin {admin_user.full_name} performed {action} on dispute #{dispute.id}',
-            status='success',
-            admin_id=admin_id
-        )
-
-        return jsonify({'message': f'Action "{action}" completed successfully'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'message': str(e)}), 500
-
-
-# ─── SETTINGS HISTORY ────────────────────────────────────────────
-
-@admin_bp.route('/settings/history', methods=['GET'])
-@jwt_required()
-@role_required('admin')
-def get_settings_history():
-    try:
-        logs = AuditLog.query.filter(
-            AuditLog.event == 'settings_updated'
-        ).order_by(AuditLog.created_at.desc()).limit(50).all()
-
-        result = []
-        for log in logs:
-            prev = json.loads(log.previous_values) if log.previous_values else {}
-            new = json.loads(log.new_values) if log.new_values else {}
-            result.append({
-                'user_name': log.user.full_name if log.user else 'System',
-                'field': 'Multiple' if len(prev) > 1 else list(prev.keys())[0] if prev else 'N/A',
-                'old_value': ', '.join([f'{k}: {v}' for k, v in prev.items()]),
-                'new_value': ', '.join([f'{k}: {v}' for k, v in new.items()]),
-                'created_at': log.created_at.isoformat() if log.created_at else None,
-            })
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({'message': str(e)}), 500
-
-
-# ─── AUDIT LOGS ───────────────────────────────────────────────────
-
-@admin_bp.route('/audit-logs/stats', methods=['GET'])
-@jwt_required()
-@role_required('admin')
-def get_audit_stats():
-    try:
-        total = AuditLog.query.count()
-        login_events = AuditLog.query.filter(AuditLog.event.like('%login%')).count()
-        payment_actions = AuditLog.query.filter(AuditLog.event.like('payment%')).count()
-        user_actions = AuditLog.query.filter(AuditLog.event.like('user%')).count()
-        admin_actions = AuditLog.query.filter(AuditLog.event.like('admin%')).count()
-        security_events = AuditLog.query.filter(
-            AuditLog.event.in_(['failed_login', 'unauthorized_access', 'suspicious_activity'])
-        ).count()
-
-        return jsonify({
-            'total': total,
-            'login_events': login_events,
-            'payment_actions': payment_actions,
-            'user_actions': user_actions,
-            'admin_actions': admin_actions,
-            'security_events': security_events,
-        }), 200
-    except Exception as e:
-        return jsonify({'message': str(e)}), 500
-
-
-@admin_bp.route('/audit-logs', methods=['GET'])
-@jwt_required()
-@role_required('admin')
-def get_audit_logs():
-    try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 20, type=int)
-        search = request.args.get('search', '')
-        event_type = request.args.get('event_type')
-        date_from = request.args.get('date_from')
-        date_to = request.args.get('date_to')
-
-        query = AuditLog.query
-
-        if search:
-            term = f"%{search}%"
-            query = query.filter(
-                or_(
-                    AuditLog.description.ilike(term),
-                    AuditLog.ip_address.ilike(term),
-                    AuditLog.user_id.in_(db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))),
-                )
-            )
-
-        if event_type and event_type != 'all':
-            query = query.filter(AuditLog.event == event_type)
-
-        if date_from:
-            query = query.filter(AuditLog.created_at >= datetime.fromisoformat(date_from))
-        if date_to:
-            query = query.filter(AuditLog.created_at <= datetime.fromisoformat(date_to))
-
-        query = query.order_by(AuditLog.created_at.desc())
-        logs, total = paginate_query(query, page, per_page)
-
-        return jsonify({
-            'data': [log.to_dict() for log in logs],
-            'pagination': {
-                'page': page,
-                'per_page': per_page,
-                'total': total,
-                'pages': (total + per_page - 1) // per_page
-            }
-        }), 200
-    except Exception as e:
+        print(f"❌ Error in admin get_disputes: {e}")
         return jsonify({'message': str(e)}), 500

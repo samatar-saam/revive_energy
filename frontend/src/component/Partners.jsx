@@ -1,434 +1,473 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
-  Building2,
-  Hotel,
-  Factory,
-  ShoppingBag,
-  Hospital,
-  School,
-  Landmark,
-  Recycle,
-  Zap,
+  Handshake,
   Leaf,
+  Shield,
   Users,
-  Award,
-  Star,
+  Mail,
+  Phone,
+  Building2,
   MapPin,
   CheckCircle,
-  TrendingUp,
+  Award,
   Globe,
-  Handshake,
-  Truck,
-  Package,
-  Phone,
-  Mail,
-  Calendar,
-  ChevronRight,
-  Heart
+  Send,
 } from "lucide-react";
 
+// ─── Import local hero image ──────────────────────────────────
+import heroImage from "../assets/hero.png";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export default function PartnersPage() {
-  const [activeTab, setActiveTab] = useState("all");
+  const [formData, setFormData] = useState({
+    organizationName: "",
+    contactName: "",
+    email: "",
+    phone: "",
+    organizationType: "",
+    wasteTypes: [],
+    message: "",
+    agreeTerms: false,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  const partnerCategories = [
-    { id: "all", name: "All Partners" },
-    { id: "waste-producers", name: "Waste Producers" },
-    { id: "recyclers", name: "Recyclers & Processors" },
-    { id: "energy", name: "Energy Companies" },
-    { id: "logistics", name: "Logistics Partners" },
+  const organizationTypes = [
+    "Waste Producer (Hotel, Restaurant, Farm, Market)",
+    "Recycling / Processing Company",
+    "Energy Producer (Biogas, Waste-to-Energy)",
+    "Logistics / Transport Company",
+    "Government / County Agency",
+    "NGO / Non-Profit",
+    "Research / Academic Institution",
+    "Investor / Funder",
+    "Other",
   ];
 
-  const partners = [
-    {
-      id: 1,
-      name: "Nairobi Serena Hotel",
-      category: "waste-producers",
-      type: "Hotel",
-      description: "Premium hotel chain diverting food waste to biogas production.",
-      image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400",
-      logo: "🏨",
-      location: "Nairobi, Kenya",
-      since: "2021",
-      wasteType: "Food Waste",
-      impact: "2,400 tons diverted",
-      verified: true,
-      rating: 4.9
-    },
-    {
-      id: 2,
-      name: "Kenya Power",
-      category: "energy",
-      type: "Energy Company",
-      description: "National utility company purchasing renewable energy from waste.",
-      image: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=400",
-      logo: "⚡",
-      location: "Nairobi, Kenya",
-      since: "2020",
-      wasteType: "Multiple Streams",
-      impact: "45 MW capacity",
-      verified: true,
-      rating: 4.8
-    },
-    {
-      id: 3,
-      name: "Green Valley Farms",
-      category: "waste-producers",
-      type: "Farm",
-      description: "Agricultural waste supplier for biogas and fertilizer production.",
-      image: "https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=400",
-      logo: "🌾",
-      location: "Nakuru, Kenya",
-      since: "2022",
-      wasteType: "Crop Residue",
-      impact: "8,500 tons processed",
-      verified: true,
-      rating: 4.7
-    },
-    {
-      id: 4,
-      name: "Eco Recycling Ltd",
-      category: "recyclers",
-      type: "Recycler",
-      description: "Plastic recycling facility processing PET and HDPE waste.",
-      image: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=400",
-      logo: "♻️",
-      location: "Mombasa, Kenya",
-      since: "2021",
-      wasteType: "Plastic",
-      impact: "5,200 tons recycled",
-      verified: true,
-      rating: 4.9
-    },
-    {
-      id: 5,
-      name: "City Market",
-      category: "waste-producers",
-      type: "Market",
-      description: "Major fresh produce market supplying organic waste.",
-      image: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400",
-      logo: "🛒",
-      location: "Nairobi, Kenya",
-      since: "2020",
-      wasteType: "Organic Waste",
-      impact: "3,600 tons diverted",
-      verified: true,
-      rating: 4.6
-    },
-    {
-      id: 6,
-      name: "Kibera Biogas Plant",
-      category: "energy",
-      type: "Biogas Producer",
-      description: "Community biogas facility processing urban organic waste.",
-      image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=400",
-      logo: "🔥",
-      location: "Nairobi, Kenya",
-      since: "2019",
-      wasteType: "Organic Waste",
-      impact: "2.4 MW generated",
-      verified: true,
-      rating: 4.8
-    },
-    {
-      id: 7,
-      name: "Thika Textile Mills",
-      category: "waste-producers",
-      type: "Factory",
-      description: "Textile manufacturer with industrial waste recovery program.",
-      image: "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?w=400",
-      logo: "🏭",
-      location: "Thika, Kenya",
-      since: "2022",
-      wasteType: "Textile Waste",
-      impact: "1,800 tons recycled",
-      verified: true,
-      rating: 4.5
-    },
-    {
-      id: 8,
-      name: "Kisumu Waste Solutions",
-      category: "recyclers",
-      type: "Waste Management",
-      description: "Integrated waste management and recycling facility.",
-      image: "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=400",
-      logo: "🗑️",
-      location: "Kisumu, Kenya",
-      since: "2021",
-      wasteType: "Mixed Waste",
-      impact: "12,000 tons processed",
-      verified: true,
-      rating: 4.7
+  const wasteTypeOptions = [
+    "Food Waste",
+    "Agricultural Waste",
+    "Plastic Waste",
+    "Paper & Cardboard",
+    "Organic Waste",
+    "Industrial Waste",
+    "E-Waste",
+    "Textile Waste",
+    "Construction Waste",
+  ];
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleWasteTypeToggle = (type) => {
+    setFormData((prev) => ({
+      ...prev,
+      wasteTypes: prev.wasteTypes.includes(type)
+        ? prev.wasteTypes.filter((t) => t !== type)
+        : [...prev.wasteTypes, type],
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/contact/partnership`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Submission failed");
+      }
+
+      setSubmitSuccess(true);
+      setFormData({
+        organizationName: "",
+        contactName: "",
+        email: "",
+        phone: "",
+        organizationType: "",
+        wasteTypes: [],
+        message: "",
+        agreeTerms: false,
+      });
+      setTimeout(() => setSubmitSuccess(false), 5000);
+    } catch (error) {
+      console.error("Partnership form error:", error);
+      alert(error.message || "There was an error submitting your request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-  ];
-
-  const filteredPartners = activeTab === "all" 
-    ? partners 
-    : partners.filter(p => p.category === activeTab);
-
-  const stats = [
-    { value: "1,200+", label: "Active Partners", icon: Users, color: "green" },
-    { value: "47", label: "Counties Served", icon: MapPin, color: "blue" },
-    { value: "125K+", label: "Tons Processed", icon: Package, color: "emerald" },
-    { value: "98%", label: "Partner Satisfaction", icon: Star, color: "yellow" },
-  ];
-
-  const benefits = [
-    {
-      icon: TrendingUp,
-      title: "Revenue Growth",
-      description: "Turn waste disposal costs into new revenue streams."
-    },
-    {
-      icon: Leaf,
-      title: "Environmental Impact",
-      description: "Reduce carbon footprint and achieve sustainability goals."
-    },
-    {
-      icon: Users,
-      title: "Network Access",
-      description: "Connect with vetted buyers and sellers across the ecosystem."
-    },
-    {
-      icon: Award,
-      title: "Certification",
-      description: "Receive verified impact certificates and ESG reporting."
-    }
-  ];
+  };
 
   return (
-    <div className="min-h-screen bg-[#F6F8F4] font-['Inter'] overflow-x-hidden">
+    <div className="min-h-screen bg-[#F6F8F4] font-['Inter'] flex flex-col">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
         .font-display { font-family: 'Space Grotesk', sans-serif; }
         .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
       `}</style>
 
-      {/* HERO SECTION - NO BACKGROUND */}
-      <section className="relative py-16 lg:py-24">
+      {/* ─── HERO SECTION ─── MOVED HIGHER ────────────────────── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#0E2A1C] via-[#11402D] to-[#0E2A1C] pt-0 lg:pt-0 pb-6 lg:pb-10">
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 bg-green-100 px-4 py-2 rounded-full mb-6">
-              <Handshake className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-semibold text-green-700 font-mono-cw">OUR NETWORK</span>
-            </div>
-            <h1 className="font-display text-4xl lg:text-5xl xl:text-6xl font-bold text-[#0E2A1C] mb-4 leading-tight">
-              Join the Circular Economy
-              <br />
-              <span className="text-[#11402D]">Partner Ecosystem</span>
-            </h1>
-            <p className="text-lg text-gray-600 max-w-2xl leading-relaxed">
-              Connect with 1,200+ verified partners across Kenya — from waste producers
-              to recyclers and energy companies. Turn waste into value together.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <button className="px-7 py-3.5 rounded-full bg-[#11402D] text-white font-semibold hover:bg-[#0E2A1C] transition flex items-center gap-2">
-                Become a Partner <ArrowRight className="w-4 h-4" />
-              </button>
-              <button className="px-7 py-3.5 rounded-full border border-gray-300 text-gray-700 font-semibold hover:border-green-600 hover:text-green-600 transition">
-                View Partner Directory
-              </button>
-            </div>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10 mb-6">
+                <Handshake className="w-4 h-4 text-[#9CF06B]" />
+                <span className="text-sm font-semibold text-white font-mono-cw">PARTNER WITH US</span>
+              </div>
+
+              <h1 className="font-display text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight mb-4">
+                Turn Waste into <br />
+                <span className="text-[#9CF06B]">Shared Value</span>
+              </h1>
+
+              <p className="text-lg text-white/70 max-w-xl leading-relaxed mb-8">
+                Join Kenya's leading circular economy platform. Connect with verified
+                partners across the waste-to-energy value chain — from producers to
+                recyclers, energy companies, and logistics providers.
+              </p>
+
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={() => document.getElementById("partner-form").scrollIntoView({ behavior: "smooth" })}
+                  className="px-7 py-3.5 rounded-full bg-[#9CF06B] text-[#0E2A1C] font-semibold hover:bg-[#86D45E] transition flex items-center gap-2 shadow-lg"
+                >
+                  Apply Now <ArrowRight className="w-4 h-4" />
+                </button>
+                <button className="px-7 py-3.5 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition">
+                  Learn More
+                </button>
+              </div>
+
+              <div className="mt-10 flex flex-wrap gap-6">
+                <div className="flex items-center gap-2 text-white/80">
+                  <CheckCircle className="w-5 h-5 text-[#9CF06B]" />
+                  <span className="text-sm">Verified partners</span>
+                </div>
+                <div className="flex items-center gap-2 text-white/80">
+                  <Shield className="w-5 h-5 text-[#9CF06B]" />
+                  <span className="text-sm">Secure escrow payments</span>
+                </div>
+                <div className="flex items-center gap-2 text-white/80">
+                  <Leaf className="w-5 h-5 text-[#9CF06B]" />
+                  <span className="text-sm">Impact reporting</span>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Right Image with Blob Shape */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, x: 50 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="hidden lg:flex relative justify-center"
+            >
+              <div className="relative">
+                <div className="absolute -inset-4 rounded-full bg-[#9CF06B]/20 blur-3xl" />
+                <div className="relative rounded-[40%_60%_55%_45%/45%_40%_60%_55%] overflow-hidden shadow-2xl border-4 border-white/20">
+                  <img
+                    src={heroImage}
+                    alt="Partnership illustration"
+                    className="h-[400px] lg:h-[450px] w-full object-cover"
+                  />
+                </div>
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 pb-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-          {stats.map((stat, idx) => {
-            const Icon = stat.icon;
-            return (
-              <div key={idx} className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
-                <div className={`w-10 h-10 rounded-xl bg-${stat.color}-100 flex items-center justify-center mx-auto mb-3`}>
-                  <Icon className={`w-5 h-5 text-${stat.color}-600`} />
-                </div>
-                <div className="font-display text-2xl font-bold text-[#0E2A1C]">{stat.value}</div>
-                <div className="text-sm text-gray-500">{stat.label}</div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Partner Categories Tabs */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 py-12">
-        <div className="flex flex-wrap gap-3 mb-8 border-b border-gray-200 pb-4">
-          {partnerCategories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveTab(cat.id)}
-              className={`px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${
-                activeTab === cat.id
-                  ? "bg-[#11402D] text-white shadow-md"
-                  : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Partners Grid */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 py-8">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPartners.map((partner) => (
-            <div
-              key={partner.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all duration-300 group"
-            >
-              <div className="relative h-48 overflow-hidden">
-                <img
-                  src={partner.image}
-                  alt={partner.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-3 left-3">
-                  <div className="text-2xl">{partner.logo}</div>
-                </div>
-                {partner.verified && (
-                  <div className="absolute top-3 right-3 bg-green-600 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                    <CheckCircle className="w-3 h-3" /> Verified
-                  </div>
-                )}
-              </div>
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-display font-semibold text-lg text-[#0E2A1C]">{partner.name}</h3>
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium">{partner.rating}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                  <MapPin className="w-3 h-3" />
-                  <span>{partner.location}</span>
-                  <span className="text-gray-300">•</span>
-                  <span>Partner since {partner.since}</span>
-                </div>
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">{partner.description}</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{partner.type}</span>
-                  <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full">{partner.wasteType}</span>
-                </div>
-                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-green-600">{partner.impact}</span>
-                  <button className="text-green-600 text-sm font-semibold flex items-center gap-1 group-hover:gap-2 transition-all">
-                    Connect <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Benefits Section */}
-      <section className="bg-white py-20 mt-12">
-        <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 bg-green-100 px-4 py-2 rounded-full mb-4">
-              <Award className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-semibold text-green-700">WHY PARTNER WITH US</span>
-            </div>
-            <h2 className="font-display text-3xl lg:text-4xl font-bold text-[#0E2A1C] mb-4">
-              Benefits of Joining ReVive Energy
+      {/* ─── PARTNERSHIP FORM ────────────────────────────────────── */}
+      <section id="partner-form" className="max-w-4xl mx-auto px-6 lg:px-10 py-16 lg:py-24 flex-1">
+        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 lg:p-12">
+          <div className="text-center mb-8">
+            <h2 className="font-display text-3xl lg:text-4xl font-bold text-[#0E2A1C] mb-3">
+              Partner With Us
             </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Become part of Kenya's leading circular economy network
+            <p className="text-gray-600 max-w-md mx-auto">
+              Complete the form below and our partnerships team will reach out within 2 business days.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {benefits.map((benefit, idx) => {
-              const Icon = benefit.icon;
-              return (
-                <div key={idx} className="bg-[#F6F8F4] rounded-2xl p-6 text-center hover:shadow-md transition">
-                  <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-6 h-6 text-green-600" />
-                  </div>
-                  <h3 className="font-semibold text-lg text-[#0E2A1C] mb-2">{benefit.title}</h3>
-                  <p className="text-sm text-gray-500">{benefit.description}</p>
+          {submitSuccess ? (
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
+              <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-3" />
+              <h3 className="font-display text-xl font-bold text-green-800">Application Received!</h3>
+              <p className="text-green-600 mt-2">
+                Thank you for your interest. We'll review your application and get back to you shortly.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-[#0E2A1C] mb-1.5">
+                    Organization Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="organizationName"
+                    value={formData.organizationName}
+                    onChange={handleChange}
+                    required
+                    placeholder="e.g. Green Valley Farms"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500 transition"
+                  />
                 </div>
-              );
-            })}
+                <div>
+                  <label className="block text-sm font-semibold text-[#0E2A1C] mb-1.5">
+                    Contact Person <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="contactName"
+                    value={formData.contactName}
+                    onChange={handleChange}
+                    required
+                    placeholder="Full name"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-[#0E2A1C] mb-1.5">
+                    Email Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                    placeholder="you@organization.com"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#0E2A1C] mb-1.5">
+                    Phone Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                    placeholder="+254 712 345 678"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0E2A1C] mb-1.5">
+                  Organization Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="organizationType"
+                  value={formData.organizationType}
+                  onChange={handleChange}
+                  required
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500 transition bg-white"
+                >
+                  <option value="">Select your organization type</option>
+                  {organizationTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0E2A1C] mb-2">
+                  Waste Types (Select all that apply)
+                </label>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {wasteTypeOptions.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handleWasteTypeToggle(type)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition border ${
+                        formData.wasteTypes.includes(type)
+                          ? "bg-[#11402D] text-white border-[#11402D]"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-[#11402D] hover:text-[#11402D]"
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0E2A1C] mb-1.5">
+                  Message / Additional Details
+                </label>
+                <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleChange}
+                  rows={4}
+                  placeholder="Tell us about your organization, your goals, and how you'd like to partner with us."
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-green-500 transition resize-y"
+                />
+              </div>
+
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  name="agreeTerms"
+                  checked={formData.agreeTerms}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-[#11402D] focus:ring-green-500"
+                />
+                <label className="text-sm text-gray-600">
+                  I agree to the{" "}
+                  <a href="/terms" className="text-[#11402D] hover:underline" target="_blank">
+                    Terms & Conditions
+                  </a>{" "}
+                  and{" "}
+                  <a href="/privacy" className="text-[#11402D] hover:underline" target="_blank">
+                    Privacy Policy
+                  </a>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3.5 rounded-xl bg-[#11402D] text-white font-bold hover:bg-[#0E2A1C] transition disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <Handshake className="w-5 h-5" />
+                    Submit Partnership Application
+                  </>
+                )}
+              </button>
+
+              <p className="text-center text-xs text-gray-400 mt-4">
+                We'll get back to you within 2 business days. Your information is secure and will not be shared.
+              </p>
+            </form>
+          )}
+        </div>
+      </section>
+
+      {/* ─── TRUST INDICATORS ────────────────────────────────────── */}
+      <section className="max-w-4xl mx-auto px-6 lg:px-10 pb-16">
+        <div className="bg-[#F4FBF6] rounded-2xl p-6 flex flex-wrap items-center justify-center gap-8 text-sm text-gray-600">
+          <div className="flex items-center gap-2">
+            <Shield className="w-4 h-4 text-[#11402D]" />
+            <span>100% secure</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#11402D]" />
+            <span>1,200+ partners</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-[#11402D]" />
+            <span>Fast response</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Award className="w-4 h-4 text-[#11402D]" />
+            <span>Verified impact</span>
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-20">
+      {/* ─── FOOTER ────────────────────────────────────────────────── */}
+      <footer className="bg-[#0E2A1C] text-white pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-6 lg:px-10">
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-[#0E2A1C] rounded-3xl p-8 text-white">
-              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-6">
-                <Quote className="w-6 h-6 text-[#9CF06B]" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 pb-12 border-b border-white/10">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
+                  <Leaf className="w-5 h-5 text-[#9CF06B]" />
+                </div>
+                <span className="font-display text-xl font-semibold">ReVive Energy</span>
               </div>
-              <p className="text-lg leading-relaxed mb-6">
-                "Partnering with ReVive Energy transformed our waste management. We've reduced landfill costs by 60% and created a new revenue stream from our food waste."
+              <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+                Turning waste into clean energy and value for communities across Kenya.
               </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="font-bold">JD</span>
-                </div>
-                <div>
-                  <p className="font-semibold">John Doe</p>
-                  <p className="text-sm text-white/50">Facility Manager, Nairobi Serena Hotel</p>
-                </div>
-              </div>
             </div>
-            <div className="bg-[#11402D] rounded-3xl p-8 text-white">
-              <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mb-6">
-                <Quote className="w-6 h-6 text-[#9CF06B]" />
-              </div>
-              <p className="text-lg leading-relaxed mb-6">
-                "The platform gave us access to consistent, high-quality organic waste feedstock for our biogas plant. It's been a game-changer for our operations."
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="font-bold">SM</span>
-                </div>
-                <div>
-                  <p className="font-semibold">Sarah Mwangi</p>
-                  <p className="text-sm text-white/50">Operations Director, Kibera Biogas Plant</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* CTA Section */}
-      <section className="max-w-7xl mx-auto px-6 lg:px-10 py-20">
-        <div className="rounded-3xl bg-[#0E2A1C] px-8 sm:px-16 py-14 lg:py-20 text-center">
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white max-w-2xl mx-auto leading-tight">
-            Ready to Join the Network?
-          </h2>
-          <p className="mt-5 text-white/70 text-lg max-w-lg mx-auto">
-            Become part of Kenya's leading circular economy platform and turn waste into value.
-          </p>
-          <div className="mt-9 flex flex-wrap justify-center gap-4">
-            <button className="px-8 py-3.5 rounded-full bg-white text-[#0E2A1C] font-semibold hover:bg-gray-100 transition flex items-center gap-2">
-              Become a Partner <ArrowRight className="w-4 h-4" />
-            </button>
-            <button className="px-8 py-3.5 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition">
-              Contact Partnerships
-            </button>
+            {/* Quick Links */}
+            <div>
+              <h3 className="font-display font-semibold mb-4">Quick Links</h3>
+              <ul className="space-y-2.5 text-sm text-white/50">
+                <li><a href="/dashboard" className="hover:text-[#9CF06B] transition-colors">Dashboard</a></li>
+                <li><a href="/marketplace" className="hover:text-[#9CF06B] transition-colors">Marketplace</a></li>
+                <li><a href="/partners" className="hover:text-[#9CF06B] transition-colors">Partners</a></li>
+                <li><a href="/support" className="hover:text-[#9CF06B] transition-colors">Support</a></li>
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h3 className="font-display font-semibold mb-4">Contact</h3>
+              <ul className="space-y-2.5 text-sm text-white/50">
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-[#9CF06B]" />
+                  <a href="mailto:partnerships@revive-energy.com" className="hover:text-[#9CF06B] transition-colors">
+                    partnerships@revive-energy.com
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-[#9CF06B]" />
+                  <a href="tel:+254700000000" className="hover:text-[#9CF06B] transition-colors">
+                    +254 700 000 000
+                  </a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#9CF06B]" />
+                  <span>Nairobi, Kenya</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
+            <span>© 2026 ReVive Energy. All rights reserved.</span>
+            <div className="flex flex-wrap justify-center gap-5">
+              <a href="/privacy" className="hover:text-[#9CF06B] transition-colors">Privacy Policy</a>
+              <a href="/terms" className="hover:text-[#9CF06B] transition-colors">Terms of Service</a>
+            </div>
           </div>
         </div>
-      </section>
+      </footer>
     </div>
-  );
-}
-
-// Quote icon component
-function Quote(props) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 2 0 .5 1 0 2-2 2 0 4 0 6z" />
-      <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1.5 0 .5 1 0 2-2 2 0 4 0 6z" />
-    </svg>
   );
 }

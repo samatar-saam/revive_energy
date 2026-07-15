@@ -15,7 +15,12 @@ import {
   Truck,
   MapPin,
   ThumbsUp,
+  Phone,
+  Building2,
+  Navigation,
+  X,
 } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -25,9 +30,13 @@ const CollectionRequests = () => {
   const [pickupApprovals, setPickupApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [processing, setProcessing] = useState(null); // track which request is being processed
+  const [processing, setProcessing] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+
+  // ─── Modal state ──────────────────────────────────────────────
+  const [showTransporterModal, setShowTransporterModal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState(null);
 
   useEffect(() => {
     fetchAllData();
@@ -62,7 +71,6 @@ const CollectionRequests = () => {
       // Filter only jobs with status 'accepted'
       const acceptedJobs = jobData.filter(job => job.status === 'accepted');
       setPickupApprovals(acceptedJobs);
-
     } catch (err) {
       console.error('Fetch error:', err);
       setError(err.message);
@@ -113,24 +121,29 @@ const CollectionRequests = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || `Failed to ${action} request`);
 
+      toast.success(`Request ${action}d successfully!`);
       await fetchAllData();
-      alert(`Request ${action}d successfully!`);
     } catch (err) {
       console.error('Action error:', err);
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setProcessing(null);
     }
   };
 
-  // ─── Approve Pickup for Transport Job ──────────────────────────
-  const handleApprovePickup = async (jobId) => {
-    if (!confirm('Approve this pickup? The transporter will be notified.')) return;
+  // ─── Open modal with transporter details ──────────────────────
+  const openTransporterModal = (job) => {
+    setSelectedJob(job);
+    setShowTransporterModal(true);
+  };
 
-    setProcessing(jobId);
+  // ─── Confirm pickup approval ──────────────────────────────────
+  const confirmApprovePickup = async () => {
+    if (!selectedJob) return;
+    setProcessing(selectedJob.id);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/supplier/transport-jobs/${jobId}/approve-pickup`, {
+      const response = await fetch(`${API_URL}/supplier/transport-jobs/${selectedJob.id}/approve-pickup`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -142,10 +155,12 @@ const CollectionRequests = () => {
       if (!response.ok) throw new Error(data.message || 'Failed to approve pickup');
 
       toast.success('Pickup approved! Transporter can now pick up.');
+      setShowTransporterModal(false);
+      setSelectedJob(null);
       await fetchAllData();
     } catch (err) {
       console.error('Approve pickup error:', err);
-      alert(err.message);
+      toast.error(err.message);
     } finally {
       setProcessing(null);
     }
@@ -258,7 +273,7 @@ const CollectionRequests = () => {
                   </span>
                 </div>
                 <button
-                  onClick={() => handleApprovePickup(job.id)}
+                  onClick={() => openTransporterModal(job)}
                   disabled={processing === job.id}
                   className="mt-3 flex items-center gap-1.5 bg-[#11402D] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#0E2A1C] transition disabled:opacity-50"
                 >
@@ -387,6 +402,93 @@ const CollectionRequests = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Transporter Details Modal ────────────────────────────── */}
+      {showTransporterModal && selectedJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="font-display text-xl font-bold text-gray-900">Transporter Details</h3>
+              <button
+                onClick={() => setShowTransporterModal(false)}
+                className="rounded-xl p-2 hover:bg-gray-100 transition"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold">Waste Type</p>
+                <p className="font-medium text-gray-900">{selectedJob.waste_type}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold">Quantity</p>
+                <p className="font-medium text-gray-900">{selectedJob.quantity} {selectedJob.unit || 'kg'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold">Pickup Location</p>
+                <p className="font-medium text-gray-900">{selectedJob.pickup_location || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold">Delivery Location</p>
+                <p className="font-medium text-gray-900">{selectedJob.delivery_location || '—'}</p>
+              </div>
+
+              <hr className="border-gray-200" />
+
+              <div>
+                <p className="text-xs text-gray-400 uppercase font-semibold">Transporter</p>
+                <div className="mt-2 space-y-2 bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#11402D]/10 flex items-center justify-center">
+                      <Truck className="w-5 h-5 text-[#11402D]" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{selectedJob.transporter_name || 'Not assigned'}</p>
+                      <p className="text-xs text-gray-500">Transporter ID: {selectedJob.transporter_id || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <span className="text-xs text-gray-400">Phone</span>
+                      <p className="font-medium text-gray-800">{selectedJob.transporter_phone || '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-400">Vehicle Type</span>
+                      <p className="font-medium text-gray-800">{selectedJob.vehicle_type || '—'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-xs text-gray-400">Vehicle Number</span>
+                      <p className="font-medium text-gray-800">{selectedJob.vehicle_number || '—'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-xs text-gray-400">Coverage Area</span>
+                      <p className="font-medium text-gray-800">{selectedJob.coverage_area || '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowTransporterModal(false)}
+                className="flex-1 rounded-xl border border-gray-200 py-2.5 font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmApprovePickup}
+                disabled={processing === selectedJob.id}
+                className="flex-1 rounded-xl bg-[#11402D] py-2.5 font-bold text-white hover:bg-[#0E2A1C] transition disabled:opacity-70"
+              >
+                {processing === selectedJob.id ? 'Processing...' : 'Approve Pickup'}
+              </button>
+            </div>
           </div>
         </div>
       )}

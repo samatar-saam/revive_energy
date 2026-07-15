@@ -24,6 +24,7 @@ import {
   User,
   LifeBuoy,
   Wallet,
+  Scale,                    // <-- ADDED
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -95,6 +96,8 @@ export default function UserDashboard() {
       { name: "Notifications", path: "/dashboard/notifications", icon: Bell },
       { name: "Messages", path: "/dashboard/messages", icon: MessageCircle },
       { name: "Support", path: "/dashboard/support", icon: LifeBuoy },
+      // ─── NEW: Disputes ──────────────────────────────────────────
+      { name: "Disputes", path: "/dashboard/disputes", icon: Scale },
       { name: "Route Tracking", path: "/dashboard/routes", icon: MapPin },
     ];
 
@@ -165,6 +168,7 @@ export default function UserDashboard() {
     if (path.includes("/messages")) return "Messages";
     if (path.includes("/notifications")) return "Notifications";
     if (path.includes("/support")) return "Support";
+    if (path.includes("/disputes")) return "Disputes";      // <-- ADDED
     if (path.includes("/wallet")) return "Wallet";
     if (path.includes("/withdrawals")) return "Withdrawals";
     if (path.includes("/profile")) return "Profile";

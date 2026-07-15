@@ -36,7 +36,8 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Wallet,          // <-- ADDED
+  Wallet,
+  Handshake,    // <-- ADDED
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -83,14 +84,15 @@ export default function AdminDashboard() {
     { name: "Waste Collections", path: "/admin/collections", icon: ClipboardList },
     { name: "Users", path: "/admin/users", icon: Users },
     { name: "Companies", path: "/admin/companies", icon: Building2 },
+    // ─── NEW: Partnerships ──────────────────────────────────────
+    { name: "Partnerships", path: "/admin/partnerships", icon: Handshake },
+    // ─── CONTINUE ──────────────────────────────────────────────
     { name: "Payments", path: "/admin/payments", icon: CreditCard },
-    // ─── NEW ITEMS ────────────────────────────────────────────
     { name: "Wallet", path: "/admin/wallet", icon: Wallet },
     { name: "Withdrawals", path: "/admin/withdrawals", icon: DollarSign },
     { name: "Disputes", path: "/admin/disputes", icon: AlertCircle },
     { name: "Pricing", path: "/admin/pricing", icon: DollarSign },
     { name: "Audit Logs", path: "/admin/audit-logs", icon: FileText },
-    // ─── CONTINUE ─────────────────────────────────────────────
     { name: "Analytics", path: "/admin/analytics", icon: BarChart3 },
     { name: "Impact Reports", path: "/admin/impact-reports", icon: Leaf },
     { name: "Carbon Credits", path: "/admin/carbon-credits", icon: Award },

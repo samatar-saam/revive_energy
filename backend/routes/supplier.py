@@ -422,8 +422,18 @@ def get_supplier_collections():
         supplier_id=user_id
     ).order_by(TransportJob.created_at.desc()).all()
 
-    return jsonify([
-        {
+    result = []
+    for job in jobs:
+        transporter = job.transporter if job.transporter_id else None
+
+        # ─── Extract transporter details ──────────────────────────
+        transporter_name = transporter.full_name if transporter else None
+        transporter_phone = transporter.phone if transporter else None
+        vehicle_type = transporter.vehicle_types if transporter else None
+        vehicle_number = transporter.license_number if transporter else None
+        coverage_area = transporter.coverage_area if transporter else None
+
+        result.append({
             "id": job.id,
             "waste_type": job.waste_type,
             "quantity": job.quantity,
@@ -431,12 +441,16 @@ def get_supplier_collections():
             "pickup_location": job.pickup_location,
             "delivery_location": job.delivery_location,
             "status": job.status,
-            "transporter_name": job.transporter.full_name if job.transporter else None,
             "transporter_id": job.transporter_id,
+            "transporter_name": transporter_name,
+            "transporter_phone": transporter_phone,
+            "vehicle_type": vehicle_type,
+            "vehicle_number": vehicle_number,
+            "coverage_area": coverage_area,
             "created_at": job.created_at.isoformat() if job.created_at else None,
-        }
-        for job in jobs
-    ]), 200
+        })
+
+    return jsonify(result), 200
 
 
 # ─── NEW: Approve Pickup for Transport Job ──────────────────────

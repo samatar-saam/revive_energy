@@ -221,9 +221,11 @@ def mark_picked_up(job_id):
     if job.transporter_id != current_user_id:
         return jsonify({"message": "You are not assigned to this job"}), 403
 
-    # ─── Allow both accepted and approved_for_pickup ──────────────
-    if job.status not in ["accepted", "approved_for_pickup"]:
-        return jsonify({"message": "Job must be accepted or approved for pickup"}), 400
+    # ─── FIX: Only allow if supplier has approved the pickup ──────
+    if job.status != "approved_for_pickup":
+        return jsonify({
+            "message": "Pickup has not been approved by the supplier yet. Please wait for approval."
+        }), 400
 
     job.status = "picked_up"
 

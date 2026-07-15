@@ -2,6 +2,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  MapContainer,
+  Marker,
+  Popup,
+  Polyline,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
+import L from "leaflet";
+import {
   Truck,
   MapPin,
   Package,
@@ -29,6 +38,153 @@ import {
 import { toast } from "react-toastify";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+// ─── Leaflet icon fix ──────────────────────────────────────────
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+const transporterIcon = new L.DivIcon({
+  className: "",
+  html: `
+    <div style="
+      width:42px;
+      height:42px;
+      border-radius:50%;
+      background:#11402D;
+      color:white;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:4px solid white;
+      box-shadow:0 5px 15px rgba(0,0,0,.25);
+      font-size:20px;
+    ">
+      🚚
+    </div>
+  `,
+  iconSize: [42, 42],
+  iconAnchor: [21, 21],
+});
+
+const pickupIcon = new L.DivIcon({
+  className: "",
+  html: `
+    <div style="
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      background:#f59e0b;
+      color:white;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:3px solid white;
+      box-shadow:0 4px 12px rgba(0,0,0,.2);
+      font-size:15px;
+    ">
+      P
+    </div>
+  `,
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+});
+
+const destinationIcon = new L.DivIcon({
+  className: "",
+  html: `
+    <div style="
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      background:#2563eb;
+      color:white;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:3px solid white;
+      box-shadow:0 4px 12px rgba(0,0,0,.2);
+      font-size:15px;
+    ">
+      D
+    </div>
+  `,
+  iconSize: [34, 34],
+  iconAnchor: [17, 17],
+});
+
+// ─── Helpers ──────────────────────────────────────────────────
+function formatDate(isoString) {
+  if (!isoString) return "N/A";
+  return new Date(isoString).toLocaleDateString("en-KE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatCurrency(amount) {
+  return `KSh ${Number(amount || 0).toLocaleString("en-KE")}`;
+}
+
+function getStatusBadge(status) {
+  const map = {
+    open: "bg-yellow-100 text-yellow-700",
+    accepted: "bg-blue-100 text-blue-700",
+    picked_up: "bg-purple-100 text-purple-700",
+    in_transit: "bg-indigo-100 text-indigo-700",
+    delivered: "bg-green-100 text-green-700",
+    awaiting_confirmation: "bg-orange-100 text-orange-700",
+    completed: "bg-gray-100 text-gray-700",
+    cancelled: "bg-red-100 text-red-700",
+  };
+  return map[status] || "bg-gray-100 text-gray-700";
+}
+
+function getStatusLabel(status) {
+  const map = {
+    open: "Awaiting Pickup",
+    accepted: "Assigned",
+    picked_up: "Picked Up",
+    in_transit: "In Transit",
+    delivered: "Delivered",
+    awaiting_confirmation: "Awaiting Confirmation",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
+  return map[status] || status;
+}
+
+function RecenterMap({ currentLocation, pickup, delivery }) {
+  const map = useMap();
+  useEffect(() => {
+    const points = [];
+    if (currentLocation) {
+      points.push([currentLocation.latitude, currentLocation.longitude]);
+    }
+    if (pickup?.latitude != null && pickup?.longitude != null) {
+      points.push([pickup.latitude, pickup.longitude]);
+    }
+    if (delivery?.latitude != null && delivery?.longitude != null) {
+      points.push([delivery.latitude, delivery.longitude]);
+    }
+    if (points.length === 1) {
+      map.setView(points[0], 14);
+    } else if (points.length > 1) {
+      map.fitBounds(points, { padding: [40, 40] });
+    }
+  }, [map, currentLocation, pickup, delivery]);
+  return null;
+}
 
 export default function IncomingDeliveries() {
   const navigate = useNavigate();
@@ -137,13 +293,11 @@ export default function IncomingDeliveries() {
     navigate(`/dashboard/messages?transporter=${transporterId}&job=${deliveryId}`);
   };
 
-  // ─── CONFIRM DELIVERY ──────────────────────────────────────────
   const handleConfirmDelivery = async (deliveryId) => {
     setActionLoading(true);
     try {
       const token = getToken();
       
-      // Try the primary endpoint
       let res = await fetch(`${API_URL}/producer/deliveries/${deliveryId}/confirm`, {
         method: "PATCH",
         headers: {
@@ -152,7 +306,6 @@ export default function IncomingDeliveries() {
         },
       });
 
-      // If that fails, try the alternative endpoint
       if (!res.ok && res.status === 404) {
         res = await fetch(`${API_URL}/tracking/jobs/${deliveryId}/confirm`, {
           method: "PATCH",
@@ -180,14 +333,12 @@ export default function IncomingDeliveries() {
     }
   };
 
-  // ─── REPORT ISSUE ─────────────────────────────────────────────
   const handleReportIssue = (deliveryId) => {
     navigate(`/dashboard/support?type=delivery&id=${deliveryId}&reason=delivery_issue`);
     toast.info("Opening support ticket for this delivery...");
     closeModal();
   };
 
-  // ─── DOWNLOAD RECEIPT ─────────────────────────────────────────
   const handleDownloadReceipt = async (deliveryId) => {
     setActionLoading(true);
     try {
@@ -197,7 +348,6 @@ export default function IncomingDeliveries() {
       });
 
       if (!res.ok) {
-        // Try alternative endpoint
         const altRes = await fetch(`${API_URL}/payments/receipt/${deliveryId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -225,7 +375,6 @@ export default function IncomingDeliveries() {
     }
   };
 
-  // ─── RATE SUPPLIER ────────────────────────────────────────────
   const handleRateSupplier = async (deliveryId, supplierId, rating) => {
     if (!supplierId) {
       toast.error("Unable to identify supplier for rating.");
@@ -252,7 +401,6 @@ export default function IncomingDeliveries() {
       const data = await res.json().catch(() => ({}));
       
       if (!res.ok) {
-        // Try alternative endpoint
         const altRes = await fetch(`${API_URL}/supplier/${supplierId}/rate`, {
           method: "POST",
           headers: {
@@ -303,7 +451,6 @@ export default function IncomingDeliveries() {
                 Track every paid waste shipment from pickup until delivery.
               </p>
             </div>
-
             <button
               onClick={fetchDeliveries}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
@@ -317,24 +464,9 @@ export default function IncomingDeliveries() {
         {/* ─── Stats ───────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Total Deliveries" value={stats.total} icon={Package} />
-          <Stat
-            label="In Transit"
-            value={stats.inTransit}
-            icon={Navigation}
-            color="text-indigo-600"
-          />
-          <Stat
-            label="Awaiting Pickup"
-            value={stats.awaitingPickup}
-            icon={Clock}
-            color="text-yellow-600"
-          />
-          <Stat
-            label="Delivered"
-            value={stats.delivered}
-            icon={CheckCircle}
-            color="text-green-600"
-          />
+          <Stat label="In Transit" value={stats.inTransit} icon={Navigation} color="text-indigo-600" />
+          <Stat label="Awaiting Pickup" value={stats.awaitingPickup} icon={Clock} color="text-yellow-600" />
+          <Stat label="Delivered" value={stats.delivered} icon={CheckCircle} color="text-green-600" />
         </div>
 
         {/* ─── Search & Filter ──────────────────────────────────── */}
@@ -368,7 +500,6 @@ export default function IncomingDeliveries() {
           </div>
         </div>
 
-        {/* ─── Error ───────────────────────────────────────────── */}
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
             <div className="flex items-center gap-2">
@@ -378,7 +509,6 @@ export default function IncomingDeliveries() {
           </div>
         )}
 
-        {/* ─── Empty State ──────────────────────────────────────── */}
         {!error && filteredDeliveries.length === 0 && (
           <div className="rounded-3xl border border-gray-200 bg-white p-12 text-center shadow-sm">
             <Truck className="mx-auto h-16 w-16 text-[#11402D]" />
@@ -447,7 +577,7 @@ export default function IncomingDeliveries() {
         <DetailModal
           delivery={selectedDelivery}
           onClose={closeModal}
-          onTrackLive={handleTrackLive}
+          onTrackLive={handleTrackLive}   // kept for other buttons? Actually we'll not use it in the modal.
           onContact={handleContact}
           onChat={handleChat}
           onConfirmDelivery={handleConfirmDelivery}
@@ -460,8 +590,6 @@ export default function IncomingDeliveries() {
     </div>
   );
 }
-
-// ─── Subcomponents ─────────────────────────────────────────────
 
 function Stat({ label, value, icon: Icon, color = "text-gray-900" }) {
   return (
@@ -477,57 +605,11 @@ function Stat({ label, value, icon: Icon, color = "text-gray-900" }) {
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────
-
-function formatDate(isoString) {
-  if (!isoString) return "N/A";
-  return new Date(isoString).toLocaleDateString("en-KE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatCurrency(amount) {
-  return `KSh ${Number(amount || 0).toLocaleString("en-KE")}`;
-}
-
-function getStatusBadge(status) {
-  const map = {
-    open: "bg-yellow-100 text-yellow-700",
-    accepted: "bg-blue-100 text-blue-700",
-    picked_up: "bg-purple-100 text-purple-700",
-    in_transit: "bg-indigo-100 text-indigo-700",
-    delivered: "bg-green-100 text-green-700",
-    awaiting_confirmation: "bg-orange-100 text-orange-700",
-    completed: "bg-gray-100 text-gray-700",
-    cancelled: "bg-red-100 text-red-700",
-  };
-  return map[status] || "bg-gray-100 text-gray-700";
-}
-
-function getStatusLabel(status) {
-  const map = {
-    open: "Awaiting Pickup",
-    accepted: "Assigned",
-    picked_up: "Picked Up",
-    in_transit: "In Transit",
-    delivered: "Delivered",
-    awaiting_confirmation: "Awaiting Confirmation",
-    completed: "Completed",
-    cancelled: "Cancelled",
-  };
-  return map[status] || status;
-}
-
-// ─── Detail Modal Component ────────────────────────────────────
+// ─── Detail Modal with Map ────────────────────────────────────
 
 function DetailModal({
   delivery,
   onClose,
-  onTrackLive,
   onContact,
   onChat,
   onConfirmDelivery,
@@ -540,6 +622,40 @@ function DetailModal({
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+
+  // ─── Map state ──────────────────────────────────────────────
+  const [locationData, setLocationData] = useState(null);
+  const [mapLoading, setMapLoading] = useState(false);
+
+  // ─── Fetch location data when modal opens ──────────────────
+  useEffect(() => {
+    if (delivery?.id) {
+      fetchLocationData();
+    }
+  }, [delivery]);
+
+  const fetchLocationData = async () => {
+    setMapLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await fetch(`${API_URL}/tracking/jobs/${delivery.id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setLocationData(data);
+        toast.info("Location data refreshed");
+      } else {
+        toast.warning("Could not fetch location data");
+      }
+    } catch (err) {
+      console.error("Failed to fetch location data:", err);
+      toast.error("Error loading location data");
+    } finally {
+      setMapLoading(false);
+    }
+  };
 
   const handleRateSubmit = async (value) => {
     if (submitting || actionLoading) return;
@@ -554,31 +670,25 @@ function DetailModal({
     }
   };
 
-  const MapPlaceholder = () => (
-    <div className="relative w-full h-48 bg-gray-200 rounded-xl overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-center text-gray-500 bg-gradient-to-br from-gray-100 to-gray-200">
-        <MapPin className="h-8 w-8 text-gray-400 mr-2" />
-        <span className="font-display text-sm">Live GPS Map</span>
-      </div>
-      <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 text-xs shadow-md">
-        <span className="font-mono-cw text-[#11402D]">📍 Tracking live</span>
-      </div>
-      <div className="absolute top-2 right-2 bg-white/90 backdrop-blur rounded-lg px-3 py-1.5 text-xs shadow-md flex items-center gap-1">
-        <span className="font-mono-cw text-[#11402D]">Live</span>
-      </div>
-    </div>
-  );
+  // ─── Map data ───────────────────────────────────────────────
+  const currentPosition =
+    locationData?.current_location?.latitude != null &&
+    locationData?.current_location?.longitude != null
+      ? [locationData.current_location.latitude, locationData.current_location.longitude]
+      : null;
 
-  const steps = [
-    { key: "open", label: "Awaiting Pickup" },
-    { key: "accepted", label: "Assigned" },
-    { key: "picked_up", label: "Picked Up" },
-    { key: "in_transit", label: "In Transit" },
-    { key: "delivered", label: "Delivered" },
-    { key: "awaiting_confirmation", label: "Awaiting Confirmation" },
-    { key: "completed", label: "Completed" },
-  ];
-  const currentIndex = steps.findIndex((s) => s.key === delivery.status);
+  const pickupPosition =
+    delivery.pickup_latitude != null && delivery.pickup_longitude != null
+      ? [delivery.pickup_latitude, delivery.pickup_longitude]
+      : null;
+
+  const deliveryPosition =
+    delivery.delivery_latitude != null && delivery.delivery_longitude != null
+      ? [delivery.delivery_latitude, delivery.delivery_longitude]
+      : null;
+
+  const mapCenter =
+    currentPosition || pickupPosition || deliveryPosition || [-1.286389, 36.817223];
 
   // ─── Call Supplier Handler ────────────────────────────────────
   const handleCallSupplier = () => {
@@ -591,7 +701,6 @@ function DetailModal({
     window.location.href = `tel:${cleanPhone}`;
   };
 
-  // ─── Call Transporter Handler ─────────────────────────────────
   const handleCallTransporter = () => {
     const phone = delivery.transporter_phone || delivery.transporter?.phone;
     if (!phone) {
@@ -601,6 +710,17 @@ function DetailModal({
     const cleanPhone = phone.replace(/\s/g, "").replace(/^0/, "254");
     window.location.href = `tel:${cleanPhone}`;
   };
+
+  const steps = [
+    { key: "open", label: "Awaiting Pickup" },
+    { key: "accepted", label: "Assigned" },
+    { key: "picked_up", label: "Picked Up" },
+    { key: "in_transit", label: "In Transit" },
+    { key: "delivered", label: "Delivered" },
+    { key: "awaiting_confirmation", label: "Awaiting Confirmation" },
+    { key: "completed", label: "Completed" },
+  ];
+  const currentIndex = steps.findIndex((s) => s.key === delivery.status);
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/50 backdrop-blur-sm">
@@ -666,34 +786,92 @@ function DetailModal({
                       <Truck className="h-5 w-5 text-[#11402D]" />
                       <h3 className="font-display font-semibold text-[#0E2A1C]">Live Tracking</h3>
                     </div>
+                    {/* ─── Changed: Refresh button instead of navigate ─── */}
                     <button
-                      onClick={() => onTrackLive(delivery.id)}
-                      className="bg-[#11402D] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#0E2A1C] transition flex items-center gap-1"
+                      onClick={fetchLocationData}
+                      disabled={mapLoading}
+                      className="bg-[#11402D] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#0E2A1C] transition flex items-center gap-1 disabled:opacity-50"
                     >
-                      <Navigation className="h-3.5 w-3.5" />
-                      Track Live
+                      {mapLoading ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="h-3.5 w-3.5" />
+                          Refresh Location
+                        </>
+                      )}
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Transporter</p>
-                      <p className="font-medium">{delivery.transporter_name || "Not assigned"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Status</p>
-                      <p className="font-medium">{getStatusLabel(delivery.status)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Pickup</p>
-                      <p className="font-medium">{delivery.pickup_location || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Delivery</p>
-                      <p className="font-medium">{delivery.delivery_location || "—"}</p>
-                    </div>
+
+                  {/* ─── Map ────────────────────────────────────── */}
+                  <div className="mt-3 h-64 rounded-xl overflow-hidden border border-gray-200">
+                    {mapLoading ? (
+                      <div className="flex items-center justify-center h-full bg-gray-100">
+                        <div className="text-center">
+                          <div className="w-8 h-8 border-4 border-[#11402D] border-t-[#9CF06B] rounded-full animate-spin mx-auto" />
+                          <p className="mt-2 text-xs text-gray-500">Loading map...</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <MapContainer center={mapCenter} zoom={13} scrollWheelZoom className="h-full w-full">
+                        <TileLayer
+                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        />
+                        <RecenterMap
+                          currentLocation={locationData?.current_location}
+                          pickup={delivery.pickup_location}
+                          delivery={delivery.delivery_location}
+                        />
+                        {pickupPosition && (
+                          <Marker position={pickupPosition} icon={pickupIcon}>
+                            <Popup>
+                              <strong>Pickup Location</strong>
+                              <br />
+                              {delivery.pickup_location?.name || "Pickup"}
+                            </Popup>
+                          </Marker>
+                        )}
+                        {deliveryPosition && (
+                          <Marker position={deliveryPosition} icon={destinationIcon}>
+                            <Popup>
+                              <strong>Delivery Location</strong>
+                              <br />
+                              {delivery.delivery_location?.name || "Delivery"}
+                            </Popup>
+                          </Marker>
+                        )}
+                        {currentPosition && (
+                          <Marker position={currentPosition} icon={transporterIcon}>
+                            <Popup>
+                              <strong>{delivery.transporter_name || "Transporter"}</strong>
+                              <br />
+                              Vehicle is currently here
+                            </Popup>
+                          </Marker>
+                        )}
+                      </MapContainer>
+                    )}
                   </div>
-                  <div className="mt-3">
-                    <MapPlaceholder />
+
+                  <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-4">
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 inline-block bg-[#11402D] rounded-full" /> Transporter
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 inline-block bg-yellow-500 rounded-full" /> Pickup
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-3 h-3 inline-block bg-blue-500 rounded-full" /> Delivery
+                      </span>
+                    </div>
+                    <span>
+                      Updated {locationData?.current_location?.updated_at ? formatDate(locationData.current_location.updated_at) : "N/A"}
+                    </span>
                   </div>
                 </div>
 
@@ -781,7 +959,6 @@ function DetailModal({
                 <h3 className="font-display font-semibold text-gray-900 mb-4">Escrow & Payment</h3>
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    {/* ─── UPDATED: dynamic amounts from backend ─── */}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500">Waste Cost</span>
                       <span className="font-medium">{formatCurrency(delivery.waste_amount ?? 0)}</span>
@@ -823,22 +1000,22 @@ function DetailModal({
                   Call Supplier
                 </button>
                 <button
-                  onClick={() => onTrackLive(delivery.id)}
+                  onClick={fetchLocationData}
                   className="border border-[#11402D] text-[#11402D] px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#11402D] hover:text-white transition flex items-center gap-2"
                 >
                   <Navigation className="h-4 w-4" />
-                  Track Live
+                  Refresh Location
                 </button>
               </>
             )}
             {["accepted", "picked_up", "in_transit"].includes(delivery.status) && (
               <>
                 <button
-                  onClick={() => onTrackLive(delivery.id)}
+                  onClick={fetchLocationData}
                   className="bg-[#11402D] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#0E2A1C] transition flex items-center gap-2"
                 >
                   <Navigation className="h-4 w-4" />
-                  Track Live
+                  Refresh Location
                 </button>
                 <button
                   onClick={() => onChat(delivery.id, delivery.transporter_id)}
@@ -910,7 +1087,6 @@ function DetailModal({
                     </>
                   )}
                 </button>
-                {/* Rating */}
                 <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-1.5">
                   <span className="text-sm text-gray-500">Rate:</span>
                   {[1, 2, 3, 4, 5].map((star) => (
