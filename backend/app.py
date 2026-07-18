@@ -46,8 +46,10 @@ from routes.admin import admin_bp
 from routes.wallet import wallet_bp
 from routes.contact import contact_bp
 from routes.tracking import tracking_bp
-# ─── NEW: import the disputes blueprint ──────────────────────
 from routes.disputes import disputes_bp
+
+# ─── NEW: Platform Wallet ──────────────────────────────────────
+from routes.platform_wallet import platform_wallet_bp
 
 from services.mpesa import MpesaService
 
@@ -79,8 +81,9 @@ def create_app():
     app.register_blueprint(wallet_bp)
     app.register_blueprint(contact_bp)
     app.register_blueprint(tracking_bp)               # /api/tracking/...
-    # ─── NEW: register disputes blueprint ──────────────────────
-    app.register_blueprint(disputes_bp)               # url_prefix is '/api/disputes'
+    app.register_blueprint(disputes_bp)               # /api/disputes
+    # ─── NEW: Platform Wallet ──────────────────────────────────
+    app.register_blueprint(platform_wallet_bp)        # /api/platform-wallet
 
     # ─── Helper: generate QR code ────────────────────────────────
     def generate_qr_code(payment):

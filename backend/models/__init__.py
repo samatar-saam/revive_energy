@@ -29,10 +29,17 @@ from .wallet import Wallet, WalletTransaction
 from .withdrawal import WithdrawalRequest
 from .dispute import Dispute
 from .audit_log import AuditLog
-from .transport_location import TransportLocation   # <-- NEW
+from .transport_location import TransportLocation
 
-# 👇 ADD THIS LINE
-from .partnership_application import PartnershipApplication   # <-- NEW
+from .partnership_application import PartnershipApplication
+
+# ─── Platform Wallet ────────────────────────────────────────────
+from .platform_wallet import PlatformWallet
+from .platform_transaction import PlatformTransaction
+from .platform_withdrawal import PlatformWithdrawal   # <-- NEW
+
+# ─── Password Reset OTP ────────────────────────────────────────
+from .password_reset_otp import PasswordResetOTP   # <-- NEW
 
 __all__ = [
     "User",
@@ -64,5 +71,9 @@ __all__ = [
     "Dispute",
     "AuditLog",
     "TransportLocation",
-    "PartnershipApplication",   # <-- ADD THIS
+    "PartnershipApplication",
+    "PlatformWallet",
+    "PlatformTransaction",
+    "PlatformWithdrawal",
+    "PasswordResetOTP",   # <-- NEW
 ]

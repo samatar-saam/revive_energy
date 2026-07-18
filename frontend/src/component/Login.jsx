@@ -1,5 +1,6 @@
+// src/component/Login.jsx
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -39,6 +40,9 @@ import {
   Globe,
   Users,
 } from "lucide-react";
+
+// ─── Import the Forgot Password Modal (same folder) ─────────
+import ForgotPasswordModal from "./ForgotPasswordModal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -88,6 +92,9 @@ function Login() {
   const [emailTimer, setEmailTimer] = useState(0);
   const [resendEmailDisabled, setResendEmailDisabled] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // ─── Forgot Password Modal ────────────────────────────────
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const roleOptions = [
     {
@@ -1194,7 +1201,6 @@ function Login() {
       className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-8 relative"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
-      {/* ─── Global styles – includes Toastify customisation ─── */}
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -1206,7 +1212,7 @@ function Login() {
           .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
           .signup-scroll { max-height: 90vh; overflow-y: auto; scroll-behavior: smooth; }
 
-          /* ── Toastify styling (same as Admin) ── */
+          /* ── Toastify styling ── */
           .Toastify__toast {
             font-family: 'Inter', sans-serif !important;
             border-radius: 12px !important;
@@ -1364,6 +1370,16 @@ function Login() {
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
+                    {/* ─── Forgot password link ──────────────── */}
+                    <div className="mt-2 text-right">
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-sm text-green-600 hover:text-green-700 font-medium"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
                   </div>
 
                   {loginError && (
@@ -1391,8 +1407,6 @@ function Login() {
                     )}
                   </button>
                 </form>
-
-              
 
                 <div className="mt-6 space-y-3">
                   <p className="font-display text-sm text-slate-600 text-center">Don't have an account?</p>
@@ -1478,6 +1492,13 @@ function Login() {
           </div>
         </div>
       </div>
+
+      {/* ─── Forgot Password Modal ───────────────────────────── */}
+      <ForgotPasswordModal
+        isOpen={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        prefilledEmail={loginData.email}
+      />
     </div>
   );
 }

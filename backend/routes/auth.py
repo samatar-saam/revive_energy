@@ -1,8 +1,10 @@
+# routes/auth.py
 from flask import Blueprint, request, jsonify, current_app, redirect, session
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from flask_mail import Message
 from database import db
-from models import User, EmailVerification, PhoneVerification
+from models import User, EmailVerification, PhoneVerification, PasswordResetOTP
 from services.email_service import send_verification_email
 from datetime import datetime, timedelta
 import random
@@ -11,6 +13,7 @@ import secrets
 import os
 import json
 import urllib.parse
+import re
 from requests_oauthlib import OAuth2Session
 
 
@@ -73,7 +76,7 @@ def register_start():
     db.session.add(email_verification)
     db.session.commit()
 
-    # ─── Send verification email using KDIP-style template ────
+    # ─── Send verification email ────────────────────────────────
     try:
         send_verification_email(email, full_name, code)
         current_app.logger.info(f"Verification email sent to {email}")
@@ -457,6 +460,250 @@ def get_profile():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ─── FORGOT PASSWORD ──────────────────────────────────────────
+@auth_bp.route("/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    """
+    Step 1: Send OTP to the user's email.
+    """
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+
+    if not email:
+        return jsonify({"message": "Email is required"}), 400
+
+    # Check if user exists (but don't reveal existence to avoid enumeration)
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        # Still return success to prevent user enumeration
+        return jsonify({"message": "If an account exists, a reset link has been sent."}), 200
+
+    # Delete any existing OTPs for this email (optional cleanup)
+    PasswordResetOTP.query.filter_by(email=email, used=False).delete()
+    db.session.commit()
+
+    # Generate a 6-digit OTP
+    otp = ''.join(random.choices(string.digits, k=6))
+
+    # Set expiry (10 minutes)
+    expires_at = datetime.utcnow() + timedelta(
+        minutes=current_app.config.get("VERIFICATION_CODE_EXPIRY_MINUTES", 10)
+    )
+
+    # Save OTP
+    otp_record = PasswordResetOTP(
+        email=email,
+        otp=otp,
+        expires_at=expires_at,
+        used=False
+    )
+    db.session.add(otp_record)
+    db.session.commit()
+
+    # Send email
+    try:
+        msg = Message(
+            subject='Password Reset OTP - ReVive Energy',
+            recipients=[email],
+            body=f"""Hi,
+
+You requested a password reset for your ReVive Energy account.
+
+Your 6-digit OTP is: {otp}
+
+This code is valid for 10 minutes.
+
+If you did not request this, please ignore this email.
+
+ReVive Energy Team
+"""
+        )
+        current_app.extensions['mail'].send(msg)
+        current_app.logger.info(f"Password reset OTP sent to {email}")
+    except Exception as e:
+        current_app.logger.error(f"Email sending failed: {e}")
+        # Don't expose error to user
+        pass
+
+    return jsonify({"message": "If an account exists, a reset link has been sent."}), 200
+
+
+@auth_bp.route("/auth/verify-otp", methods=["POST"])
+def verify_otp():
+    """
+    Step 2: Verify the OTP entered by the user.
+    """
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    otp = data.get("otp", "").strip()
+
+    if not email or not otp:
+        return jsonify({"message": "Email and OTP are required"}), 400
+
+    # Delete expired OTPs before checking
+    PasswordResetOTP.delete_expired()
+
+    record = PasswordResetOTP.query.filter_by(email=email, otp=otp, used=False).first()
+    if not record:
+        return jsonify({"message": "Invalid or expired OTP"}), 400
+
+    # Check if locked
+    if record.is_locked():
+        return jsonify({"message": "Too many attempts. Please wait 30 minutes."}), 400
+
+    if record.is_expired():
+        return jsonify({"message": "OTP has expired. Please request a new one."}), 400
+
+    # OTP is valid – but we don't mark as used yet (we'll do that after password reset)
+    return jsonify({"message": "OTP verified successfully"}), 200
+
+
+@auth_bp.route("/auth/reset-password", methods=["POST"])
+def reset_password():
+    """
+    Step 3: Set new password using verified OTP.
+    """
+    # ─── DEBUG: Log everything ─────────────────────────────────────
+    current_app.logger.info("=" * 50)
+    current_app.logger.info("🔐 RESET PASSWORD REQUEST RECEIVED")
+    current_app.logger.info(f"📋 Headers: {dict(request.headers)}")
+    
+    raw_data = request.get_data(as_text=True)
+    current_app.logger.info(f"📦 Raw data: {raw_data}")
+    
+    try:
+        data = request.get_json() or {}
+    except Exception as e:
+        current_app.logger.error(f"❌ JSON parse error: {e}")
+        return jsonify({"message": "Invalid JSON payload"}), 400
+    
+    current_app.logger.info(f"📄 Parsed JSON: {data}")
+    
+    email = data.get("email", "").strip().lower()
+    otp = data.get("otp", "").strip()
+    new_password = data.get("new_password", "")
+    
+    current_app.logger.info(f"📧 Email: '{email}'")
+    current_app.logger.info(f"🔑 OTP: '{otp}' (length: {len(otp)})")
+    current_app.logger.info(f"🔒 Password: '{new_password}' (length: {len(new_password)})")
+    current_app.logger.info("=" * 50)
+
+    # ─── Validate required fields ──────────────────────────────────
+    if not email:
+        current_app.logger.error("❌ Email missing")
+        return jsonify({"message": "Email is required"}), 400
+    
+    if not otp:
+        current_app.logger.error("❌ OTP missing")
+        return jsonify({"message": "OTP is required"}), 400
+    
+    if not new_password:
+        current_app.logger.error("❌ New password missing")
+        return jsonify({"message": "New password is required"}), 400
+
+    # ─── Validate password ──────────────────────────────────────────
+    if len(new_password) < 6:
+        current_app.logger.error(f"❌ Password too short: {len(new_password)}")
+        return jsonify({"message": "Password must be at least 6 characters"}), 400
+        
+    if not re.match(r'^[A-Za-z0-9]+$', new_password):
+        current_app.logger.error(f"❌ Password has invalid characters: {new_password}")
+        return jsonify({"message": "Password must contain only letters and numbers"}), 400
+
+    current_app.logger.info("✅ Password validation passed")
+
+    # ─── Delete expired OTPs ────────────────────────────────────────
+    PasswordResetOTP.delete_expired()
+
+    # ─── Verify OTP ──────────────────────────────────────────────────
+    record = PasswordResetOTP.query.filter_by(email=email, otp=otp, used=False).first()
+    if not record:
+        current_app.logger.error(f"❌ OTP not found for email: {email}, otp: {otp}")
+        return jsonify({"message": "Invalid OTP"}), 400
+
+    if record.is_locked():
+        current_app.logger.error(f"❌ OTP is locked for email: {email}")
+        return jsonify({"message": "Too many attempts. Please wait 30 minutes."}), 400
+
+    if record.is_expired():
+        current_app.logger.error(f"❌ OTP expired for email: {email}")
+        return jsonify({"message": "OTP has expired. Please request a new one."}), 400
+
+    # ─── Get user ────────────────────────────────────────────────────
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        current_app.logger.error(f"❌ User not found for email: {email}")
+        return jsonify({"message": "User not found"}), 404
+
+    # ─── Update password ────────────────────────────────────────────
+    try:
+        user.set_password(new_password)
+        record.used = True
+        db.session.commit()
+        current_app.logger.info(f"✅ Password reset successful for {email}")
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"❌ Database error: {e}")
+        return jsonify({"message": "Internal server error"}), 500
+
+    return jsonify({"message": "Password changed successfully"}), 200
+
+
+@auth_bp.route("/auth/resend-otp", methods=["POST"])
+def resend_otp():
+    """
+    Resend a new OTP for password reset.
+    """
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+
+    if not email:
+        return jsonify({"message": "Email is required"}), 400
+
+    # Delete expired OTPs
+    PasswordResetOTP.delete_expired()
+
+    # Find any existing OTP for this email and delete them (we'll create a new one)
+    PasswordResetOTP.query.filter_by(email=email).delete()
+    db.session.commit()
+
+    # Generate new OTP
+    otp = ''.join(random.choices(string.digits, k=6))
+    expires_at = datetime.utcnow() + timedelta(
+        minutes=current_app.config.get("VERIFICATION_CODE_EXPIRY_MINUTES", 10)
+    )
+    record = PasswordResetOTP(
+        email=email,
+        otp=otp,
+        expires_at=expires_at,
+        used=False
+    )
+    db.session.add(record)
+    db.session.commit()
+
+    # Send email
+    try:
+        msg = Message(
+            subject='Password Reset OTP - ReVive Energy',
+            recipients=[email],
+            body=f"""Hi,
+
+Your new OTP for password reset is: {otp}
+
+This code is valid for 10 minutes.
+
+ReVive Energy Team
+"""
+        )
+        current_app.extensions['mail'].send(msg)
+        current_app.logger.info(f"Resent OTP to {email}")
+    except Exception as e:
+        current_app.logger.error(f"Email sending failed: {e}")
+        return jsonify({"message": "Failed to send OTP. Please try again."}), 500
+
+    return jsonify({"message": "OTP resent successfully"}), 200
 
 
 # ─── SEED ADMIN ─────────────────────────────────────────────────

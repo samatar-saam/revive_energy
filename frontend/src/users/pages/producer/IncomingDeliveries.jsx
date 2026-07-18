@@ -298,24 +298,13 @@ export default function IncomingDeliveries() {
     try {
       const token = getToken();
       
-      let res = await fetch(`${API_URL}/producer/deliveries/${deliveryId}/confirm`, {
+      const res = await fetch(`${API_URL}/producer/deliveries/${deliveryId}/confirm`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
-
-      if (!res.ok && res.status === 404) {
-        res = await fetch(`${API_URL}/tracking/jobs/${deliveryId}/confirm`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ status: "awaiting_confirmation" }),
-        });
-      }
 
       const data = await res.json().catch(() => ({}));
       
@@ -339,6 +328,7 @@ export default function IncomingDeliveries() {
     closeModal();
   };
 
+  // ─── ★★★ UPDATED: DOWNLOAD RECEIPT (FIXED) ★★★ ──────────────
   const handleDownloadReceipt = async (deliveryId) => {
     setActionLoading(true);
     try {
@@ -348,26 +338,64 @@ export default function IncomingDeliveries() {
       });
 
       if (!res.ok) {
-        const altRes = await fetch(`${API_URL}/payments/receipt/${deliveryId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!altRes.ok) {
-          throw new Error("Failed to generate receipt");
-        }
-        const data = await altRes.json();
-        toast.success("Receipt ready!");
-        console.log("Receipt data:", data);
-        return;
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Failed to generate receipt");
       }
 
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `receipt-${deliveryId}.pdf`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-      toast.success("Receipt downloaded!");
+      const data = await res.json();
+      // The backend returns { message, receipt: {...}, job: {...}, payment: {...} }
+      const receipt = data.receipt || data; // fallback
+
+      const receiptHtml = `
+        <html>
+          <head>
+            <title>Receipt #${receipt.receipt_number || 'N/A'}</title>
+            <style>
+              body { font-family: 'Inter', sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #f8fafc; }
+              .receipt { background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+              .header { text-align: center; border-bottom: 2px solid #11402D; padding-bottom: 20px; margin-bottom: 20px; }
+              .header h1 { font-size: 24px; color: #0E2A1C; margin: 0; }
+              .header p { color: #5A7060; margin: 4px 0 0; }
+              .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+              .row:last-child { border-bottom: none; }
+              .label { color: #5A7060; font-weight: 500; }
+              .value { font-weight: 600; color: #0E2A1C; }
+              .total { margin-top: 16px; padding-top: 16px; border-top: 2px solid #11402D; font-size: 18px; }
+              .total .value { font-size: 20px; color: #11402D; }
+            </style>
+          </head>
+          <body>
+            <div class="receipt">
+              <div class="header">
+                <h1>🧾 ReVive Energy</h1>
+                <p>Receipt #${receipt.receipt_number || 'N/A'}</p>
+                <p style="font-size: 12px; color: #999;">${receipt.date ? new Date(receipt.date).toLocaleString() : 'N/A'}</p>
+              </div>
+              <div class="row"><span class="label">Waste Type</span><span class="value">${receipt.waste_type || 'N/A'}</span></div>
+              <div class="row"><span class="label">Quantity</span><span class="value">${receipt.quantity || 0} ${receipt.unit || 'kg'}</span></div>
+              <div class="row"><span class="label">Producer</span><span class="value">${receipt.producer_name || 'Unknown'}</span></div>
+              <div class="row"><span class="label">Supplier</span><span class="value">${receipt.supplier_name || 'Unknown'}</span></div>
+              <div class="row"><span class="label">Transporter</span><span class="value">${receipt.transporter_name || 'Unknown'}</span></div>
+              <div class="row"><span class="label">Waste Amount</span><span class="value">${formatCurrency(receipt.waste_amount || 0)}</span></div>
+              <div class="row"><span class="label">Transport Fee</span><span class="value">${formatCurrency(receipt.transport_fee || 0)}</span></div>
+              <div class="row"><span class="label">Platform Fee</span><span class="value">${formatCurrency(receipt.platform_fee || 0)}</span></div>
+              <div class="row total"><span class="label">Total Paid</span><span class="value">${formatCurrency(receipt.total_paid || 0)}</span></div>
+              <div style="text-align: center; margin-top: 24px; font-size: 12px; color: #999;">
+                Thank you for using ReVive Energy
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      const newWindow = window.open('', '_blank', 'width=600,height=800');
+      if (newWindow) {
+        newWindow.document.write(receiptHtml);
+        newWindow.document.close();
+        toast.success("Receipt generated!");
+      } else {
+        toast.info("Please allow popups to view the receipt.");
+      }
     } catch (err) {
       toast.error(err.message || "Could not download receipt");
     } finally {
@@ -375,6 +403,7 @@ export default function IncomingDeliveries() {
     }
   };
 
+  // ─── RATE SUPPLIER (kept as before) ──────────────────────────
   const handleRateSupplier = async (deliveryId, supplierId, rating) => {
     if (!supplierId) {
       toast.error("Unable to identify supplier for rating.");
@@ -384,15 +413,13 @@ export default function IncomingDeliveries() {
     setActionLoading(true);
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/ratings`, {
+      const res = await fetch(`${API_URL}/producer/deliveries/${deliveryId}/rate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          supplier_id: supplierId,
-          delivery_id: deliveryId,
           rating: rating,
           review: `Rating ${rating} stars for delivery #${deliveryId}`,
         }),
@@ -401,22 +428,14 @@ export default function IncomingDeliveries() {
       const data = await res.json().catch(() => ({}));
       
       if (!res.ok) {
-        const altRes = await fetch(`${API_URL}/supplier/${supplierId}/rate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ rating, delivery_id: deliveryId }),
-        });
-        if (!altRes.ok) {
-          throw new Error(data.message || "Failed to submit rating");
-        }
+        throw new Error(data.message || "Failed to submit rating");
       }
 
       toast.success(`⭐ ${rating} star rating submitted!`);
+      return true;
     } catch (err) {
       toast.error(err.message || "Failed to submit rating");
+      return false;
     } finally {
       setActionLoading(false);
     }
@@ -577,7 +596,7 @@ export default function IncomingDeliveries() {
         <DetailModal
           delivery={selectedDelivery}
           onClose={closeModal}
-          onTrackLive={handleTrackLive}   // kept for other buttons? Actually we'll not use it in the modal.
+          onTrackLive={handleTrackLive}
           onContact={handleContact}
           onChat={handleChat}
           onConfirmDelivery={handleConfirmDelivery}
@@ -605,11 +624,12 @@ function Stat({ label, value, icon: Icon, color = "text-gray-900" }) {
   );
 }
 
-// ─── Detail Modal with Map ────────────────────────────────────
+// ─── Detail Modal ─────────────────────────────────────────────
 
 function DetailModal({
   delivery,
   onClose,
+  onTrackLive,
   onContact,
   onChat,
   onConfirmDelivery,
@@ -627,7 +647,7 @@ function DetailModal({
   const [locationData, setLocationData] = useState(null);
   const [mapLoading, setMapLoading] = useState(false);
 
-  // ─── Fetch location data when modal opens ──────────────────
+  // ─── Fetch location data ──────────────────────────────────
   useEffect(() => {
     if (delivery?.id) {
       fetchLocationData();
@@ -690,7 +710,7 @@ function DetailModal({
   const mapCenter =
     currentPosition || pickupPosition || deliveryPosition || [-1.286389, 36.817223];
 
-  // ─── Call Supplier Handler ────────────────────────────────────
+  // ─── Call handlers ──────────────────────────────────────────
   const handleCallSupplier = () => {
     const phone = delivery.supplier_phone || delivery.supplier?.phone;
     if (!phone) {
@@ -786,7 +806,6 @@ function DetailModal({
                       <Truck className="h-5 w-5 text-[#11402D]" />
                       <h3 className="font-display font-semibold text-[#0E2A1C]">Live Tracking</h3>
                     </div>
-                    {/* ─── Changed: Refresh button instead of navigate ─── */}
                     <button
                       onClick={fetchLocationData}
                       disabled={mapLoading}
@@ -806,7 +825,7 @@ function DetailModal({
                     </button>
                   </div>
 
-                  {/* ─── Map ────────────────────────────────────── */}
+                  {/* Map */}
                   <div className="mt-3 h-64 rounded-xl overflow-hidden border border-gray-200">
                     {mapLoading ? (
                       <div className="flex items-center justify-center h-full bg-gray-100">

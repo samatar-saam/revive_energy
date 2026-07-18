@@ -49,6 +49,9 @@ import Disputes from "./admin/pages/Disputes";
 import PricingSettings from "./admin/pages/PricingSettings";
 import AuditLogs from "./admin/pages/AuditLogs";
 import AdminPartnerships from "./admin/pages/AdminPartnerships";
+import PlatformTransaction from "./admin/pages/PlatformTransaction";
+import PlatformWithdrawals from "./admin/pages/PlatformWithdrawals";
+import PlatformWallet from "./admin/pages/PlatformWallet";
 
 import UserDashboard from "./users/layout/UserDashboard";
 
@@ -83,7 +86,6 @@ import UserSupport from "./users/pages/shared/Support";
 import Wallet from "./users/pages/shared/Wallet";
 import Withdrawals from "./users/pages/shared/Withdrawals";
 
-// ✅ FIXED: Import from shared folder, not supplier
 import UserDisputes from "./users/pages/shared/UserDisputes";
 
 function DashboardIndex() {
@@ -194,6 +196,9 @@ function App() {
           <Route path="pricing" element={<PricingSettings />} />
           <Route path="audit-logs" element={<AuditLogs />} />
           <Route path="partnerships" element={<AdminPartnerships />} />
+          <Route path="platform-transactions" element={<PlatformTransaction />} />
+          <Route path="platform-withdrawals" element={<PlatformWithdrawals />} />
+          <Route path="platform-wallet" element={<PlatformWallet />} />
         </Route>
 
         {/* ─── User Dashboard Routes ───────────────────────────── */}
@@ -228,8 +233,6 @@ function App() {
           <Route path="support" element={<UserSupport />} />
           <Route path="wallet" element={<Wallet />} />
           <Route path="withdrawals" element={<Withdrawals />} />
-
-          {/* ✅ NEW: Disputes route */}
           <Route path="disputes" element={<UserDisputes />} />
         </Route>
       </Routes>

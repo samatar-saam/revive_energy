@@ -73,6 +73,17 @@ class Config:
     )
     VERIFICATION_CODE_LENGTH = 6
 
+    # ─── Password Reset OTP Settings ────────────────────────────
+    OTP_RESEND_COOLDOWN_SECONDS = int(
+        os.environ.get("OTP_RESEND_COOLDOWN_SECONDS", 60)
+    )
+    OTP_MAX_ATTEMPTS = int(
+        os.environ.get("OTP_MAX_ATTEMPTS", 5)
+    )
+    OTP_LOCK_DURATION_MINUTES = int(
+        os.environ.get("OTP_LOCK_DURATION_MINUTES", 30)
+    )
+
     # ========== ACCOUNT DEFAULTS ==========
     ACCOUNT_STATUS_DEFAULT = "pending"
     VERIFICATION_STATUS_DEFAULT = "pending"

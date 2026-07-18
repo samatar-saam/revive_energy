@@ -24,11 +24,49 @@ from models import (
     WithdrawalRequest,
     Dispute,
     AuditLog,
+    PlatformWallet,
+    PlatformTransaction,
 )
 from database import db
 from utils.decorators import role_required
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
+
+
+# ─── HELPER: fetch admin setting ──────────────────────────────
+def get_setting(key, default=10.0):
+    """
+    Fetch a setting value from AdminSetting and convert to float.
+    If the setting doesn't exist, returns the default.
+    """
+    setting = AdminSetting.query.filter_by(key=key).first()
+    if setting and setting.value is not None:
+        try:
+            return float(setting.value)
+        except (ValueError, TypeError):
+            return default
+    return default
+
+
+def calculate_amounts(listing=None):
+    """
+    Return pricing amounts read from admin settings.
+    Keys: waste_price, platform_fee, transport_fee.
+    Default: 10.00 each.
+    """
+    waste_value = get_setting('waste_price', 10.00)
+    platform_fee = get_setting('platform_fee', 10.00)
+    transport_fee = get_setting('transport_fee', 10.00)
+    total_amount = waste_value + platform_fee + transport_fee
+
+    return {
+        "waste_value": waste_value,
+        "transport_fee": transport_fee,
+        "platform_fee": platform_fee,
+        "total_amount": total_amount,
+        "price_per_unit": 0.0,
+        "transport_rate_per_unit": 0.0,
+    }
 
 
 # ─── HELPER: paginate ────────────────────────────────────────────
@@ -619,7 +657,7 @@ def get_all_payments():
         date_to = request.args.get('date_to')
         sort_field = request.args.get('sort_field', 'created_at')
         sort_order = request.args.get('sort_order', 'desc')
-        ready = request.args.get('ready')  # NEW: 'true' or 'false'
+        ready = request.args.get('ready')
 
         query = Payment.query
 
@@ -651,7 +689,6 @@ def get_all_payments():
         if escrow_status and escrow_status != 'all':
             query = query.filter(Payment.escrow_status == escrow_status)
 
-        # ─── NEW: Filter by "Ready to Release" ──────────────────
         if ready is not None:
             if ready.lower() == 'true':
                 query = query.filter(
@@ -773,15 +810,16 @@ def get_payment_activity():
         return jsonify([]), 200
 
 
+# ─── ★★★★★ UPDATED: RELEASE PAYMENT (FIXES THE RECEIPT ISSUE) ★★★★★ ──
 @admin_bp.route('/payments/<int:payment_id>/release', methods=['POST'])
 @jwt_required()
 @role_required('admin')
 def release_payment(payment_id):
     """
     Release a payment from escrow.
-    Credits both supplier and transporter (if present).
-    If transporter_amount is missing, uses transport_fee and looks up transporter from TransportJob.
-    Also updates the associated TransportJob status to "completed".
+    FIRST: Ensures all financial breakdowns (waste, transport, platform fees)
+           are filled in to prevent "KSh 0" or "undefined" on the receipt.
+    THEN: Credits supplier, transporter, and platform wallet.
     """
     try:
         payment = db.session.get(Payment, payment_id)
@@ -794,27 +832,75 @@ def release_payment(payment_id):
         if payment.status not in ["paid", "completed"]:
             return jsonify({"message": "Only paid payments can be released"}), 400
 
-        # ─── Ensure we have transporter details ─────────────────────
+        # ─── ★ NEW: Fetch related records to fill missing breakdowns ──
+        transport_job = None
+        if payment.transport_job_id:
+            transport_job = db.session.get(TransportJob, payment.transport_job_id)
+        elif payment.request_id:
+            req = db.session.get(WasteRequest, payment.request_id)
+            if req and req.transport_job_id:
+                transport_job = db.session.get(TransportJob, req.transport_job_id)
+
+        listing = None
+        if transport_job and transport_job.listing_id:
+            listing = db.session.get(WasteListing, transport_job.listing_id)
+        elif payment.listing_id:
+            listing = db.session.get(WasteListing, payment.listing_id)
+
+        # Get admin default pricing
+        amounts = calculate_amounts(listing)
+
+        # ─── ★ NEW: Fill missing fields BEFORE releasing ──────────────
+        # 1. Waste Amount
+        if not payment.waste_amount or payment.waste_amount <= 0:
+            if listing and hasattr(listing, 'waste_value') and listing.waste_value:
+                payment.waste_amount = listing.waste_value
+            else:
+                payment.waste_amount = amounts.get("waste_value", 0.0)
+
+        # 2. Transport Fee
+        if not payment.transport_fee or payment.transport_fee <= 0:
+            if transport_job and transport_job.transport_fee:
+                payment.transport_fee = transport_job.transport_fee
+            else:
+                payment.transport_fee = amounts.get("transport_fee", 0.0)
+
+        # 3. Platform Fee
+        if not payment.platform_fee or payment.platform_fee <= 0:
+            payment.platform_fee = amounts.get("platform_fee", 0.0)
+
+        # 4. Ensure total amount is the sum of parts
+        if not payment.amount or payment.amount <= 0:
+            payment.amount = payment.waste_amount + payment.transport_fee + payment.platform_fee
+
+        # 5. Supplier amount (defaults to waste amount)
+        if not payment.supplier_amount or payment.supplier_amount <= 0:
+            payment.supplier_amount = payment.waste_amount or 0.0
+
+        # 6. Transporter amount (defaults to transport fee)
+        if not payment.transporter_amount or payment.transporter_amount <= 0:
+            payment.transporter_amount = payment.transport_fee or 0.0
+
+        # ─── End of breakdown fix ──────────────────────────────────────
+
+        # ─── Ensure transporter details ────────────────────────────
         transporter_id = payment.transporter_id
         transporter_amount = payment.transporter_amount or 0
 
-        # If transporter_id is missing, try to fetch from TransportJob
         if not transporter_id and payment.transport_job_id:
             transport_job = db.session.get(TransportJob, payment.transport_job_id)
             if transport_job and transport_job.transporter_id:
                 transporter_id = transport_job.transporter_id
-                payment.transporter_id = transporter_id  # Save for future
+                payment.transporter_id = transporter_id
 
-        # If transporter_amount is 0, try to use transport_fee
         if transporter_amount <= 0 and payment.transport_fee:
             transporter_amount = payment.transport_fee
-            payment.transporter_amount = transporter_amount  # Save for future
+            payment.transporter_amount = transporter_amount
 
-        # Also ensure supplier_amount is set
         if not payment.supplier_amount:
             payment.supplier_amount = payment.waste_amount or 0
 
-        # ─── Credit supplier wallet ──────────────────────────────
+        # ─── Credit supplier wallet ──────────────────────────────────
         supplier = User.query.get(payment.supplier_id)
         if supplier:
             supplier_wallet = Wallet.query.filter_by(user_id=supplier.id).first()
@@ -834,7 +920,7 @@ def release_payment(payment_id):
                 )
                 db.session.add(tx_supplier)
 
-        # ─── Credit transporter wallet (if applicable) ────────────
+        # ─── Credit transporter wallet (if applicable) ──────────────
         if transporter_id and transporter_amount > 0:
             transporter = User.query.get(transporter_id)
             if transporter:
@@ -856,19 +942,35 @@ def release_payment(payment_id):
                 payment.transporter_id = transporter_id
                 payment.transporter_amount = transporter_amount
 
-        # ─── NEW: Update transport job status to "completed" ────
+        # ─── Credit platform wallet with platform fee ──────────────
+        platform_fee = payment.platform_fee or 0
+        if platform_fee > 0:
+            platform_wallet = PlatformWallet.query.first()
+            if not platform_wallet:
+                platform_wallet = PlatformWallet(balance=0.0)
+                db.session.add(platform_wallet)
+            platform_wallet.balance += platform_fee
+
+            platform_tx = PlatformTransaction(
+                amount=platform_fee,
+                type='credit',
+                description=f'Platform fee from payment #{payment.id}',
+                payment_id=payment.id
+            )
+            db.session.add(platform_tx)
+
+        # ─── Update transport job status ────────────────────────────
         if payment.transport_job_id:
             transport_job = db.session.get(TransportJob, payment.transport_job_id)
             if transport_job:
                 transport_job.status = "completed"
                 transport_job.updated_at = datetime.utcnow()
-                # Also update the job's listing status if applicable
                 if transport_job.listing_id:
                     listing = db.session.get(WasteListing, transport_job.listing_id)
                     if listing:
                         listing.status = "completed"
 
-        # ─── Update payment status ────────────────────────────────
+        # ─── Update payment status ──────────────────────────────────
         payment.escrow_status = "released"
         payment.status = "released"
         payment.payment_status = "released"
@@ -877,24 +979,25 @@ def release_payment(payment_id):
 
         db.session.commit()
 
-        # ─── Log the action ────────────────────────────────────────
+        # ─── Log audit ──────────────────────────────────────────────
         admin_id = int(get_jwt_identity())
         admin_user = db.session.get(User, admin_id)
         log_audit(
             user_id=admin_id,
             event='payment_released',
-            description=f'Admin {admin_user.full_name} released payment #{payment.id} (transporter credited: {transporter_amount}, job completed)',
+            description=f'Admin {admin_user.full_name} released payment #{payment.id} (waste: {payment.waste_amount}, transport: {transporter_amount}, platform: {platform_fee})',
             status='success',
             admin_id=admin_id
         )
 
         return jsonify({
-            "message": "Payment released successfully – wallets credited and delivery marked as completed.",
+            "message": "Payment released successfully – wallets and platform wallet credited.",
             "payment": payment.to_dict(),
         }), 200
 
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error in release_payment: {e}")
         return jsonify({"message": str(e)}), 500
 
 
@@ -1894,6 +1997,7 @@ def complete_withdrawal(withdrawal_id):
 
 
 # ─── DISPUTES ─────────────────────────────────────────────────────
+
 @admin_bp.route('/disputes', methods=['GET'])
 @jwt_required()
 @role_required('admin')
@@ -1933,9 +2037,7 @@ def get_disputes():
 
         result = []
         for d in disputes:
-            # Get the associated payment
             payment = db.session.get(Payment, d.payment_id) if d.payment_id else None
-            # Get the waste type from the listing if available
             waste_type = None
             if payment and payment.listing_id:
                 listing = db.session.get(WasteListing, payment.listing_id)
@@ -1946,7 +2048,6 @@ def get_disputes():
             supplier = db.session.get(User, d.supplier_id)
             transporter = db.session.get(User, d.transporter_id) if d.transporter_id else None
 
-            # Parse timeline and evidence if they are JSON strings
             timeline = []
             evidence = []
             try:
@@ -1987,4 +2088,204 @@ def get_disputes():
         }), 200
     except Exception as e:
         print(f"❌ Error in admin get_disputes: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/disputes/<int:dispute_id>/action', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def dispute_action(dispute_id):
+    try:
+        dispute = db.session.get(Dispute, dispute_id)
+        if not dispute:
+            return jsonify({'message': 'Dispute not found'}), 404
+
+        data = request.get_json() or {}
+        action = data.get('action')
+        if not action:
+            return jsonify({'message': 'Action is required'}), 400
+
+        admin_id = int(get_jwt_identity())
+        admin_user = db.session.get(User, admin_id)
+        if not admin_user or admin_user.role != 'admin':
+            return jsonify({'message': 'Admin only'}), 403
+
+        status_map = {
+            'request_more_info': 'awaiting_response',
+            'freeze_escrow': 'under_investigation',
+            'release_escrow': 'open',
+            'refund_producer': 'refunded',
+            'reject': 'closed',
+            'resolve': 'resolved',
+            'close': 'closed',
+        }
+
+        escrow_map = {
+            'freeze_escrow': 'frozen',
+            'release_escrow': 'released',
+            'refund_producer': 'refunded',
+            'resolve': 'released',
+        }
+
+        if action in status_map:
+            dispute.status = status_map[action]
+
+        if action in escrow_map:
+            dispute.escrow_status = escrow_map[action]
+            if action == 'refund_producer':
+                payment = db.session.get(Payment, dispute.payment_id)
+                if payment:
+                    payment.status = 'refunded'
+                    payment.escrow_status = 'refunded'
+
+        timeline = json.loads(dispute.timeline) if dispute.timeline else []
+        timeline.append({
+            'description': f'Admin {admin_user.full_name} performed "{action}" on dispute #{dispute.id}',
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        dispute.timeline = json.dumps(timeline)
+        dispute.updated_at = datetime.utcnow()
+
+        db.session.commit()
+
+        log_audit(
+            user_id=admin_id,
+            event='dispute_action',
+            description=f'Admin {admin_user.full_name} performed {action} on dispute #{dispute.id}',
+            status='success',
+            admin_id=admin_id
+        )
+
+        return jsonify({'message': f'Action "{action}" completed successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── SETTINGS HISTORY ────────────────────────────────────────────
+
+@admin_bp.route('/settings/history', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_settings_history():
+    try:
+        logs = AuditLog.query.filter(
+            AuditLog.event == 'settings_updated'
+        ).order_by(AuditLog.created_at.desc()).limit(50).all()
+
+        result = []
+        for log in logs:
+            prev = json.loads(log.previous_values) if log.previous_values else {}
+            new = json.loads(log.new_values) if log.new_values else {}
+            result.append({
+                'user_name': log.user.full_name if log.user else 'System',
+                'field': 'Multiple' if len(prev) > 1 else list(prev.keys())[0] if prev else 'N/A',
+                'old_value': ', '.join([f'{k}: {v}' for k, v in prev.items()]),
+                'new_value': ', '.join([f'{k}: {v}' for k, v in new.items()]),
+                'created_at': log.created_at.isoformat() if log.created_at else None,
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── AUDIT LOGS ───────────────────────────────────────────────────
+
+@admin_bp.route('/audit-logs/stats', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_audit_stats():
+    try:
+        total = AuditLog.query.count()
+        login_events = AuditLog.query.filter(AuditLog.event.like('%login%')).count()
+        payment_actions = AuditLog.query.filter(AuditLog.event.like('payment%')).count()
+        user_actions = AuditLog.query.filter(AuditLog.event.like('user%')).count()
+        admin_actions = AuditLog.query.filter(AuditLog.event.like('admin%')).count()
+        security_events = AuditLog.query.filter(
+            AuditLog.event.in_(['failed_login', 'unauthorized_access', 'suspicious_activity'])
+        ).count()
+
+        return jsonify({
+            'total': total,
+            'login_events': login_events,
+            'payment_actions': payment_actions,
+            'user_actions': user_actions,
+            'admin_actions': admin_actions,
+            'security_events': security_events,
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/audit-logs', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_audit_logs():
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        search = request.args.get('search', '')
+        event_type = request.args.get('event_type')
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+
+        query = AuditLog.query
+
+        if search:
+            term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    AuditLog.description.ilike(term),
+                    AuditLog.ip_address.ilike(term),
+                    AuditLog.user_id.in_(db.session.query(User.id).filter(User.full_name.ilike(term) | User.email.ilike(term))),
+                )
+            )
+
+        if event_type and event_type != 'all':
+            query = query.filter(AuditLog.event == event_type)
+
+        if date_from:
+            query = query.filter(AuditLog.created_at >= datetime.fromisoformat(date_from))
+        if date_to:
+            query = query.filter(AuditLog.created_at <= datetime.fromisoformat(date_to))
+
+        query = query.order_by(AuditLog.created_at.desc())
+        logs, total = paginate_query(query, page, per_page)
+
+        return jsonify({
+            'data': [log.to_dict() for log in logs],
+            'pagination': {
+                'page': page,
+                'per_page': per_page,
+                'total': total,
+                'pages': (total + per_page - 1) // per_page
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── PLATFORM WALLET STATS ──────────────────────────────────────────
+
+@admin_bp.route('/platform-wallet', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_platform_wallet():
+    try:
+        wallet = PlatformWallet.query.first()
+        if not wallet:
+            wallet = PlatformWallet(balance=0.0)
+            db.session.add(wallet)
+            db.session.commit()
+
+        total_fees = db.session.query(func.sum(PlatformTransaction.amount)).filter(
+            PlatformTransaction.type == 'credit'
+        ).scalar() or 0
+
+        return jsonify({
+            'balance': wallet.balance,
+            'total_fees_earned': total_fees,
+            'currency': 'KES'
+        }), 200
+    except Exception as e:
         return jsonify({'message': str(e)}), 500

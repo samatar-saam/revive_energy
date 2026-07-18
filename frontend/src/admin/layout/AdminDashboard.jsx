@@ -100,6 +100,9 @@ export default function AdminDashboard() {
     { name: "Support", path: "/admin/support", icon: LifeBuoy },
     { name: "Messages", path: "/admin/messages", icon: Mail },
     { name: "Settings", path: "/admin/settings", icon: Settings },
+    { name: "Platform Wallet", path: "/admin/platform-wallet", icon: Wallet },
+{ name: "Platform Transactions", path: "/admin/platform-transactions", icon: TrendingUp },
+{ name: "Platform Withdrawals", path: "/admin/platform-withdrawals", icon: DollarSign },
   ];
 
   // ✅ FIXED: Clear ALL auth-related keys and navigate to admin login
