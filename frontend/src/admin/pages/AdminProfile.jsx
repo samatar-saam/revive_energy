@@ -1,4 +1,3 @@
-// src/users/pages/shared/ProfileSettings.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -7,7 +6,7 @@ import {
   Package, Truck, Zap, Calendar, Award, Edit3,
   Camera, X, Upload, Shield, Trash2,
   Eye, EyeOff, Check, Video,
-  FlipHorizontal, ArrowLeft,
+  FlipHorizontal, ArrowLeft,Globe,
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -293,9 +292,9 @@ function AvatarSection({ name, avatar, tempAvatar, isChanged, onFileChange, onCa
 }
 
 /* ═══════════════════════════════════════════════════════════
-   MAIN COMPONENT
+   MAIN ADMIN PROFILE COMPONENT
 ═══════════════════════════════════════════════════════════ */
-export default function ProfileSettings() {
+export default function AdminProfile() {
   const [loading,     setLoading]     = useState(true);
   const [saving,      setSaving]      = useState(false);
   const [savingPwd,   setSavingPwd]   = useState(false);
@@ -304,8 +303,9 @@ export default function ProfileSettings() {
   const formRef = useRef(null);
 
   const [profile, setProfile] = useState({
-    full_name:'', business_name:'', business_type:'', email:'',
-    phone:'', role:'', role_raw:'', location:'', waste_types:'', created_at:'', avatar:'',
+    full_name:'', business_name:'', email:'',
+    phone:'', role:'', location:'', created_at:'', avatar:'',
+    timezone:'Africa/Nairobi', bio:'',
   });
   const [origProfile, setOrigProfile] = useState({});
   const [tempAvatar,  setTempAvatar]  = useState(null);
@@ -331,21 +331,46 @@ export default function ProfileSettings() {
       try {
         const token = localStorage.getItem('token');
         if (!token) throw new Error('Not authenticated');
-        const r = await fetch(`${API_URL}/user`, { headers:{ Authorization:`Bearer ${token}` } });
+        const r = await fetch(`${API_URL}/admin/profile`, {
+          headers:{ Authorization:`Bearer ${token}` }
+        });
         const d = await r.json();
-        if (!r.ok) throw new Error(d.message || 'Failed');
+        if (!r.ok) throw new Error(d.message || 'Failed to load admin profile');
         const saved = localStorage.getItem('profile_avatar');
         const p = {
-          full_name: d.full_name||'', business_name: d.business_name||'',
-          business_type: d.business_type||'', email: d.email||'',
-          phone: d.phone||'', role: raw(d.role).label || d.role,
-          role_raw: d.role, location: d.location||'',
-          waste_types: d.waste_types||'', created_at: d.created_at,
+          full_name: d.full_name||'',
+          business_name: d.business_name||'',
+          email: d.email||'',
+          phone: d.phone||'',
+          role: d.role||'admin',
+          location: d.location||'',
+          created_at: d.join_date || d.created_at,
           avatar: saved||'',
+          timezone: d.timezone||'Africa/Nairobi',
+          bio: d.bio||'',
         };
-        setProfile(p); setOrigProfile(p);
-      } catch (e) { addToast('error', e.message); }
-      finally { setLoading(false); }
+        setProfile(p);
+        setOrigProfile(p);
+      } catch (e) {
+        addToast('error', e.message);
+        // Fallback mock data if endpoint fails
+        const mock = {
+          full_name: 'Admin User',
+          business_name: 'ReVive Energy',
+          email: 'admin@revive.energy',
+          phone: '+254 700 000 000',
+          role: 'admin',
+          location: 'Nairobi, Kenya',
+          created_at: new Date().toISOString(),
+          avatar: '',
+          timezone: 'Africa/Nairobi',
+          bio: 'Platform Administrator',
+        };
+        setProfile(mock);
+        setOrigProfile(mock);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -366,7 +391,7 @@ export default function ProfileSettings() {
 
   /* ── Handlers ── */
   const isChanged = () => {
-    const keys = ['full_name','phone','business_name','business_type','location','waste_types'];
+    const keys = ['full_name','phone','business_name','location','bio','timezone'];
     return keys.some(k => profile[k] !== origProfile[k]) || avatarChanged;
   };
 
@@ -404,52 +429,69 @@ export default function ProfileSettings() {
     try {
       const token = localStorage.getItem('token');
       const body = {
-        full_name:profile.full_name, phone:profile.phone,
-        business_name:profile.business_name, business_type:profile.business_type,
-        location:profile.location, waste_types:profile.waste_types,
+        full_name: profile.full_name,
+        phone: profile.phone,
+        business_name: profile.business_name,
+        location: profile.location,
+        bio: profile.bio,
+        timezone: profile.timezone,
       };
-      const r = await fetch(`${API_URL}/user`, {
-        method:'PUT', headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+      const r = await fetch(`${API_URL}/admin/profile`, {
+        method:'PUT',
+        headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
         body: JSON.stringify(body),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.message);
+      if (!r.ok) throw new Error(d.message || 'Update failed');
       if (avatarChanged) {
         if (tempAvatar) localStorage.setItem('profile_avatar', tempAvatar);
-        else            localStorage.removeItem('profile_avatar');
+        else localStorage.removeItem('profile_avatar');
         setProfile(p => ({ ...p, avatar: tempAvatar||'' }));
       }
-      localStorage.setItem('user', JSON.stringify({ ...JSON.parse(localStorage.getItem('user')||'{}'), ...body }));
       setOrigProfile({ ...profile });
       setTempAvatar(null); setAvatarChanged(false);
       addToast('success','Profile updated');
-    } catch (e) { addToast('error', e.message); }
-    finally { setSaving(false); }
+    } catch (e) {
+      addToast('error', e.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSavePassword = async e => {
     e.preventDefault();
     if (passwords.next !== passwords.confirm) return addToast('error','Passwords do not match');
-    if (passwords.next.length < 6)            return addToast('error','Password must be at least 6 characters');
+    if (passwords.next.length < 6) return addToast('error','Password must be at least 6 characters');
     setSavingPwd(true);
     try {
       const token = localStorage.getItem('token');
-      const r = await fetch(`${API_URL}/user/password`, {
-        method:'PUT', headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
-        body: JSON.stringify({ current_password: passwords.current, new_password: passwords.next }),
+      const r = await fetch(`${API_URL}/admin/change-password`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body: JSON.stringify({
+          current_password: passwords.current,
+          new_password: passwords.next,
+        }),
       });
       const d = await r.json();
-      if (!r.ok) throw new Error(d.message);
+      if (!r.ok) throw new Error(d.message || 'Password change failed');
       setPasswords({ current:'', next:'', confirm:'' });
       addToast('success','Password updated');
-    } catch(e) { addToast('error', e.message); }
-    finally { setSavingPwd(false); }
+    } catch (e) {
+      addToast('error', e.message);
+    } finally {
+      setSavingPwd(false);
+    }
   };
 
-  const handleReset = () => { setProfile({ ...origProfile }); setTempAvatar(null); setAvatarChanged(false); };
+  const handleReset = () => {
+    setProfile({ ...origProfile });
+    setTempAvatar(null);
+    setAvatarChanged(false);
+  };
 
-  const meta = raw(profile.role_raw);
-  const RoleIcon = meta.Icon || User;
+  const meta = raw(profile.role || 'admin');
+  const RoleIcon = meta.Icon || Award;
 
   const TABS = [
     { id:'profile',  label:'Profile',  Icon:User  },
@@ -517,12 +559,12 @@ export default function ProfileSettings() {
             <div className="flex-1 text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2 mb-3">
                 <div className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/30 font-mono-cw">
-                  {profile.role || 'User'}
+                  {profile.role || 'Admin'}
                 </div>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#9CF06B] animate-pulse"/>
               </div>
               <h1 className="font-display text-4xl sm:text-5xl text-white leading-tight mb-2">
-                {profile.full_name || 'Your Name'}
+                {profile.full_name || 'Admin'}
               </h1>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-1.5 text-sm text-white/40 mt-3">
                 <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5"/>{profile.email || '—'}</span>
@@ -544,7 +586,7 @@ export default function ProfileSettings() {
               { label:'Member Since', val:fmt(profile.created_at), Icon:Calendar },
               { label:'Business',     val:profile.business_name||'—', Icon:Building2 },
               { label:'Role',         val:profile.role||'—',           Icon:Briefcase },
-              { label:'Waste Types',  val:profile.waste_types||'—',    Icon:Package },
+              { label:'Location',     val:profile.location||'—',       Icon:MapPin },
             ].map((s,i) => (
               <div key={i} className={`px-5 py-4 flex items-center gap-3 ${i < 3 ? 'border-r border-white/6' : ''}`}>
                 <div className="w-8 h-8 rounded-xl bg-white/6 flex items-center justify-center flex-shrink-0">
@@ -624,21 +666,38 @@ export default function ProfileSettings() {
                             value={profile.location} onChange={handleField} placeholder="City, County"/>
                         </div>
                       </Field>
-                      <Field label="Business Type">
+                      <Field label="Timezone">
                         <div className="relative">
-                          <Briefcase className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A8BBB3]"/>
-                          <input className={fc + " pl-10"} type="text" name="business_type"
-                            value={profile.business_type} onChange={handleField} placeholder="e.g. Hotel, Farm"/>
+                          <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A8BBB3]"/>
+                          <select
+                            name="timezone"
+                            value={profile.timezone}
+                            onChange={handleField}
+                            className={fc + " pl-10 appearance-none"}
+                          >
+                            <option value="Africa/Nairobi">Africa/Nairobi (UTC+3)</option>
+                            <option value="Africa/Lagos">Africa/Lagos (UTC+1)</option>
+                            <option value="Africa/Johannesburg">Africa/Johannesburg (UTC+2)</option>
+                            <option value="UTC">UTC</option>
+                            <option value="America/New_York">America/New_York (UTC-5)</option>
+                            <option value="Europe/London">Europe/London (UTC+0)</option>
+                          </select>
                         </div>
                       </Field>
-                      <Field label="Waste Types" className="sm:col-span-2">
-                        <div className="relative">
-                          <Package className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#A8BBB3]"/>
-                          <input className={fc + " pl-10"} type="text" name="waste_types"
-                            value={profile.waste_types} onChange={handleField}
-                            placeholder="e.g. Organic, Plastic, Paper"/>
-                        </div>
-                      </Field>
+                      <div className="sm:col-span-2">
+                        <Field label="Bio">
+                          <div className="relative">
+                            <textarea
+                              name="bio"
+                              rows={3}
+                              value={profile.bio}
+                              onChange={handleField}
+                              placeholder="Tell us a little about yourself…"
+                              className={fc + " resize-none"}
+                            />
+                          </div>
+                        </Field>
+                      </div>
                     </div>
                   </div>
 

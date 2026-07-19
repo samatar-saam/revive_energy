@@ -38,6 +38,7 @@ const ReViveNavbar = () => {
     { name: "Partners", href: "/partners", hasDropdown: false },
     { name: "Resources", href: "/resources", hasDropdown: false },
     { name: "About", href: "/about", hasDropdown: false },
+    { name: "FAQ", href: "/faq", hasDropdown: false },   // ✅ Added FAQ before Contact
     { name: "Contact", href: "/contact", hasDropdown: false },
   ];
 

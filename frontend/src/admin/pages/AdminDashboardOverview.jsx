@@ -21,6 +21,11 @@ import {
   Settings,
   Shield,
   Zap,
+  Calendar,
+  UserPlus,
+  List,
+  CheckSquare,
+  Activity,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -56,6 +61,12 @@ export default function AdminDashboardOverview() {
       totalWaste: 0,
       activeJobs: 0,
     },
+    snapshot: {
+      newUsersToday: 0,
+      newListingsToday: 0,
+      pendingPayments: 0,
+      completedDeliveriesToday: 0,
+    },
     revenueTrend: [],
     wasteByCategory: [],
     transportTrend: [],
@@ -78,7 +89,6 @@ export default function AdminDashboardOverview() {
     }
 
     try {
-      // ─── Use ADMIN endpoints ──────────────────────────────
       const [
         usersRes,
         listingsRes,
@@ -91,32 +101,35 @@ export default function AdminDashboardOverview() {
         fetch(`${API_URL}/admin/collections?per_page=100`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
-      // Check for auth errors
       if (usersRes.status === 401 || usersRes.status === 403) {
         throw new Error('Session expired. Please login again.');
       }
 
-      // ─── Parse responses ──────────────────────────────────
       const usersData = usersRes.ok ? await usersRes.json() : { data: [] };
       const listingsData = listingsRes.ok ? await listingsRes.json() : [];
       const paymentsData = paymentsRes.ok ? await paymentsRes.json() : { data: [] };
       const collectionsData = collectionsRes.ok ? await collectionsRes.json() : { data: [] };
 
-      // Extract arrays (admin endpoints often return { data: [...] })
       const users = usersData.data || usersData || [];
       const listings = listingsData.data || listingsData || [];
       const payments = paymentsData.data || paymentsData || [];
       const collections = collectionsData.data || collectionsData || [];
 
-      // ─── Stats ──────────────────────────────────────────────
+      // Stats
       const totalUsers = users.length;
       const totalListings = listings.length;
       const totalPayments = payments.length;
       const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-      const totalWaste = listings.reduce((sum, l) => sum + (l.quantity || 0), 0);
       const activeJobs = collections.filter(c => c.status !== 'completed' && c.status !== 'cancelled').length;
 
-      // ─── Waste by category ──────────────────────────────────
+      // Snapshot (today)
+      const today = new Date().toISOString().split('T')[0];
+      const newUsersToday = users.filter(u => u.created_at && u.created_at.startsWith(today)).length;
+      const newListingsToday = listings.filter(l => l.created_at && l.created_at.startsWith(today)).length;
+      const pendingPayments = payments.filter(p => p.status === 'pending').length;
+      const completedDeliveriesToday = collections.filter(c => c.status === 'completed' && c.updated_at && c.updated_at.startsWith(today)).length;
+
+      // Waste by category
       const categoryMap = {};
       listings.forEach(l => {
         const cat = l.type || l.category || 'other';
@@ -126,11 +139,9 @@ export default function AdminDashboardOverview() {
         name: name.charAt(0).toUpperCase() + name.slice(1),
         value,
       }));
-      if (wasteByCategory.length === 0) {
-        wasteByCategory = [{ name: 'No Data', value: 1 }];
-      }
+      if (wasteByCategory.length === 0) wasteByCategory = [{ name: 'No Data', value: 1 }];
 
-      // ─── Revenue trend (last 7 days) ──────────────────────
+      // Revenue trend (7d)
       const now = new Date();
       const days = Array.from({ length: 7 }, (_, i) => {
         const d = new Date(now);
@@ -144,7 +155,7 @@ export default function AdminDashboardOverview() {
         return { day: new Date(day).toLocaleDateString('en-US', { weekday: 'short' }), revenue: dailyTotal };
       });
 
-      // ─── Collection trend (instead of transport) ──────────
+      // Transport trend (collections)
       const transportTrend = days.map(day => {
         const dayCollections = collections.filter(c => c.created_at && c.created_at.startsWith(day));
         return {
@@ -154,7 +165,7 @@ export default function AdminDashboardOverview() {
         };
       });
 
-      // ─── Recent payments ────────────────────────────────────
+      // Recent payments
       const recentPayments = payments.slice(0, 5).map(p => ({
         id: p.id,
         receipt: p.mpesa_receipt || p.receipt_number || `#${p.id}`,
@@ -163,7 +174,7 @@ export default function AdminDashboardOverview() {
         date: p.created_at,
       }));
 
-      // ─── Recent listings ────────────────────────────────────
+      // Recent listings
       const recentListings = listings.slice(0, 5).map(l => ({
         id: l.id,
         supplier: l.supplier_name || 'Unknown',
@@ -172,7 +183,7 @@ export default function AdminDashboardOverview() {
         date: l.created_at,
       }));
 
-      // ─── Notifications (mock – replace with real endpoint) ──
+      // Notifications (mock)
       const notifications = [
         { id: 1, title: 'Payment Received', message: 'KES 15,000 from Producer #12', time: '2 min ago', type: 'success' },
         { id: 2, title: 'Transport Assigned', message: 'Job #45 assigned to Transporter #8', time: '15 min ago', type: 'info' },
@@ -186,8 +197,14 @@ export default function AdminDashboardOverview() {
           totalListings,
           totalPayments,
           totalRevenue,
-          totalWaste,
+          totalWaste: listings.reduce((sum, l) => sum + (l.quantity || 0), 0),
           activeJobs,
+        },
+        snapshot: {
+          newUsersToday,
+          newListingsToday,
+          pendingPayments,
+          completedDeliveriesToday,
         },
         revenueTrend,
         wasteByCategory,
@@ -217,7 +234,6 @@ export default function AdminDashboardOverview() {
     { label: 'Settings', icon: Settings, path: '/admin/settings', color: 'bg-gray-50 text-gray-600 hover:bg-gray-100' },
   ];
 
-  // ─── Loading / Error states ────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -247,7 +263,7 @@ export default function AdminDashboardOverview() {
     );
   }
 
-  const { stats, revenueTrend, wasteByCategory, transportTrend, recentPayments, recentListings, notifications } = data;
+  const { stats, snapshot, revenueTrend, wasteByCategory, transportTrend, recentPayments, recentListings, notifications } = data;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
@@ -258,45 +274,60 @@ export default function AdminDashboardOverview() {
       `}</style>
 
       <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+
         {/* ─── Header ────────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl lg:text-3xl font-bold text-[#0E2A1C]">
-              Good Morning, Admin 👋
+            <h1 className="font-display text-2xl lg:text-3xl font-bold text-[#0E2A1C] flex items-center gap-2">
+              Good Morning, Admin 👋🏻
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse ml-2" />
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              Here’s what’s happening on your platform today.
+              Here’s your real-time platform overview for today.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={fetchDashboardData}
-              className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition"
+              className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm"
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4 text-gray-500" />
             </button>
-            <button className="relative p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition">
+            <button className="relative p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm">
               <Bell className="w-4 h-4 text-gray-500" />
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500" />
             </button>
-            <button className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition">
+            <button className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition shadow-sm">
               <Mail className="w-4 h-4 text-gray-500" />
             </button>
-            <button className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-4 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] transition">
+            <button className="hidden sm:inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-4 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] transition shadow-sm">
               <Download className="w-4 h-4" />
               Export
             </button>
           </div>
         </div>
 
-        {/* ─── Stats (5 cards) ───────────────────────────────────── */}
+        {/* ─── 5 Stat Cards ──────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard icon={Users} label="Users" value={stats.totalUsers} color="blue" />
           <StatCard icon={Package} label="Listings" value={stats.totalListings} color="green" />
           <StatCard icon={CreditCard} label="Payments" value={stats.totalPayments} color="purple" />
           <StatCard icon={DollarSign} label="Revenue" value={`KES ${(stats.totalRevenue / 1000).toFixed(0)}K`} color="gold" />
           <StatCard icon={Truck} label="Active Jobs" value={stats.activeJobs} color="indigo" />
+        </div>
+
+        {/* ─── Today’s Snapshot ────────────────────────────────── */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <h3 className="font-display font-semibold text-gray-900 flex items-center gap-2 text-sm">
+            <Calendar className="w-4 h-4 text-[#11402D]" /> Today’s Snapshot
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+            <SnapshotItem icon={UserPlus} label="New Users" value={snapshot.newUsersToday} color="blue" />
+            <SnapshotItem icon={List} label="New Listings" value={snapshot.newListingsToday} color="green" />
+            <SnapshotItem icon={Clock} label="Pending Payments" value={snapshot.pendingPayments} color="yellow" />
+            <SnapshotItem icon={CheckSquare} label="Deliveries Completed" value={snapshot.completedDeliveriesToday} color="emerald" />
+          </div>
         </div>
 
         {/* ─── Charts Row ────────────────────────────────────────── */}
@@ -332,10 +363,10 @@ export default function AdminDashboardOverview() {
           </div>
         </div>
 
-        {/* ─── Transport Chart ───────────────────────────────────── */}
+        {/* ─── Transport Activity ───────────────────────────────── */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Truck className="w-5 h-5 text-[#11402D]" /> Transport Activity (7d)
+            <Truck className="w-5 h-5 text-[#11402D]" /> Collection Activity (7d)
           </h3>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={transportTrend}>
@@ -372,7 +403,7 @@ export default function AdminDashboardOverview() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-gray-900">KES {p.amount.toLocaleString()}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === 'paid' || p.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                       {p.status}
                     </span>
                   </div>
@@ -415,7 +446,7 @@ export default function AdminDashboardOverview() {
             </div>
           </div>
 
-          {/* Quick Actions */}
+          {/* Quick Actions + System Status */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <h4 className="font-display font-semibold text-gray-900 mb-3">⚡ Quick Actions</h4>
             <div className="grid grid-cols-2 gap-2">
@@ -434,12 +465,19 @@ export default function AdminDashboardOverview() {
               })}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
               <div className="bg-[#11402D]/5 rounded-xl p-3 flex items-center gap-3">
                 <Shield className="w-5 h-5 text-[#11402D]" />
                 <div>
                   <p className="text-sm font-semibold text-[#0E2A1C]">All systems operational</p>
                   <p className="text-xs text-gray-500">100% uptime over last 24h</p>
+                </div>
+              </div>
+              <div className="bg-blue-50/50 rounded-xl p-3 flex items-center gap-3">
+                <Activity className="w-5 h-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">Live data updated</p>
+                  <p className="text-xs text-blue-600">Last fetch: just now</p>
                 </div>
               </div>
             </div>
@@ -479,7 +517,7 @@ export default function AdminDashboardOverview() {
   );
 }
 
-// ─── Stat Card Component ──────────────────────────────────────────
+// ─── Stat Card ──────────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, color }) {
   const colorMap = {
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
@@ -491,7 +529,7 @@ function StatCard({ icon: Icon, label, value, color }) {
   const style = colorMap[color] || colorMap.blue;
 
   return (
-    <div className={`bg-white rounded-2xl p-4 shadow-sm border ${style}`}>
+    <div className={`bg-white rounded-2xl p-4 shadow-sm border ${style} transition hover:shadow-md`}>
       <div className="flex items-center justify-between">
         <div className={`w-9 h-9 rounded-xl bg-white flex items-center justify-center`}>
           <Icon className={`w-4 h-4 ${style.split(' ')[1]}`} />
@@ -499,6 +537,29 @@ function StatCard({ icon: Icon, label, value, color }) {
       </div>
       <p className="mt-2 font-display text-xl font-bold text-gray-900">{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
+    </div>
+  );
+}
+
+// ─── Snapshot Item ─────────────────────────────────────────────
+function SnapshotItem({ icon: Icon, label, value, color }) {
+  const colorMap = {
+    blue: 'text-blue-600 bg-blue-50',
+    green: 'text-green-600 bg-green-50',
+    yellow: 'text-yellow-600 bg-yellow-50',
+    emerald: 'text-emerald-600 bg-emerald-50',
+  };
+  const style = colorMap[color] || colorMap.blue;
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/50 border border-gray-100">
+      <div className={`p-2 rounded-xl ${style}`}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <div>
+        <p className="text-xs text-gray-500">{label}</p>
+        <p className="font-display font-bold text-lg text-gray-900">{value}</p>
+      </div>
     </div>
   );
 }

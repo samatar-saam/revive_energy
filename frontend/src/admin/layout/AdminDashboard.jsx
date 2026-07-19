@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
+    User, 
   Package,
   ShoppingCart,
   Users,
@@ -103,7 +104,8 @@ export default function AdminDashboard() {
     { name: "Platform Wallet", path: "/admin/platform-wallet", icon: Wallet },
 { name: "Platform Transactions", path: "/admin/platform-transactions", icon: TrendingUp },
 { name: "Platform Withdrawals", path: "/admin/platform-withdrawals", icon: DollarSign },
-  ];
+{
+  name: 'Profile',icon: User,path: '/admin/profile',}];
 
   // ✅ FIXED: Clear ALL auth-related keys and navigate to admin login
   const handleLogout = () => {

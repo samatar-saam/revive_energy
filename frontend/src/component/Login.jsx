@@ -1330,9 +1330,12 @@ function Login() {
                 <h2 className="font-display mt-2 text-3xl font-bold text-slate-900">Welcome back!</h2>
                 <p className="mt-2 text-slate-500 leading-6">Please enter your details to access your account.</p>
 
-                <form onSubmit={handleLogin} className="mt-6 space-y-4">
+                { /* ─── ★ FIXED: autocomplete off on form and fields ★ ─── */ }
+                <form onSubmit={handleLogin} autoComplete="off" className="mt-6 space-y-4">
                   <div>
-                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">Email Address</label>
+                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                      Email Address
+                    </label>
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
                       <Mail className="w-5 h-5 text-slate-400" />
                       <input
@@ -1342,14 +1345,16 @@ function Login() {
                         value={loginData.email}
                         onChange={handleLoginChange}
                         required
-                        autoComplete="email"
+                        autoComplete="off"
                         className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                      Password
+                    </label>
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
                       <Lock className="w-5 h-5 text-slate-400" />
                       <input
@@ -1359,7 +1364,7 @@ function Login() {
                         value={loginData.password}
                         onChange={handleLoginChange}
                         required
-                        autoComplete="current-password"
+                        autoComplete="new-password"
                         className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
                       />
                       <button
@@ -1370,7 +1375,6 @@ function Login() {
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
-                    {/* ─── Forgot password link ──────────────── */}
                     <div className="mt-2 text-right">
                       <button
                         type="button"

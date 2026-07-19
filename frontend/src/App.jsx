@@ -1,4 +1,3 @@
-// src/App.jsx
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
@@ -22,6 +21,7 @@ import Signup from "./component/Signup";
 import SignupWasteSupplier from "./component/SignupWasteSupplier";
 import SignupEnergyProducer from "./component/SignupEnergyProducer";
 import WelcomeSplash from "./component/WelcomeSplash";
+import FAQ from "./component/FAQ";
 
 import AdminLogin from "./admin/pages/AdminLogin";
 import AdminDashboard from "./admin/layout/AdminDashboard";
@@ -52,6 +52,7 @@ import AdminPartnerships from "./admin/pages/AdminPartnerships";
 import PlatformTransaction from "./admin/pages/PlatformTransaction";
 import PlatformWithdrawals from "./admin/pages/PlatformWithdrawals";
 import PlatformWallet from "./admin/pages/PlatformWallet";
+import AdminProfile from "./admin/pages/AdminProfile";
 
 import UserDashboard from "./users/layout/UserDashboard";
 
@@ -160,6 +161,9 @@ function App() {
         <Route path="/login" element={<><Navbar /><Login /></>} />
         <Route path="/signup" element={<><Navbar /><Signup /></>} />
 
+        {/* ✅ FIXED: Added Navbar to FAQ route */}
+        <Route path="/faq" element={<><Navbar /><FAQ /></>} />
+
         <Route path="/signup/waste-supplier" element={<><Navbar /><SignupWasteSupplier /></>} />
         <Route path="/signup/energy-producer" element={<><Navbar /><SignupEnergyProducer /></>} />
 
@@ -199,6 +203,8 @@ function App() {
           <Route path="platform-transactions" element={<PlatformTransaction />} />
           <Route path="platform-withdrawals" element={<PlatformWithdrawals />} />
           <Route path="platform-wallet" element={<PlatformWallet />} />
+          <Route path="profile" element={<AdminProfile />} />
+
         </Route>
 
         {/* ─── User Dashboard Routes ───────────────────────────── */}

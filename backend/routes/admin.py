@@ -810,16 +810,16 @@ def get_payment_activity():
         return jsonify([]), 200
 
 
-# ─── ★★★★★ UPDATED: RELEASE PAYMENT (FIXES THE RECEIPT ISSUE) ★★★★★ ──
+# ─── ★★★★★ UPDATED: RELEASE PAYMENT WITH PRODUCER CONFIRMATION CHECK ★★★★★ ──
 @admin_bp.route('/payments/<int:payment_id>/release', methods=['POST'])
 @jwt_required()
 @role_required('admin')
 def release_payment(payment_id):
     """
     Release a payment from escrow.
-    FIRST: Ensures all financial breakdowns (waste, transport, platform fees)
-           are filled in to prevent "KSh 0" or "undefined" on the receipt.
-    THEN: Credits supplier, transporter, and platform wallet.
+    PRE-CONDITION: The associated TransportJob must be in 'awaiting_confirmation' status
+                   (i.e., the producer has confirmed delivery).
+    Also ensures all financial breakdowns are filled before releasing.
     """
     try:
         payment = db.session.get(Payment, payment_id)
@@ -832,7 +832,7 @@ def release_payment(payment_id):
         if payment.status not in ["paid", "completed"]:
             return jsonify({"message": "Only paid payments can be released"}), 400
 
-        # ─── ★ NEW: Fetch related records to fill missing breakdowns ──
+        # ─── ★ NEW: Check that the producer has confirmed delivery ──
         transport_job = None
         if payment.transport_job_id:
             transport_job = db.session.get(TransportJob, payment.transport_job_id)
@@ -841,6 +841,29 @@ def release_payment(payment_id):
             if req and req.transport_job_id:
                 transport_job = db.session.get(TransportJob, req.transport_job_id)
 
+        if not transport_job:
+            return jsonify({"message": "No transport job associated with this payment"}), 400
+
+        # ★★★ IMPROVED: User‑friendly message when producer hasn't confirmed ★★★
+        if transport_job.status != "awaiting_confirmation":
+            status_labels = {
+                "open": "Awaiting Pickup",
+                "accepted": "Assigned to Transporter",
+                "picked_up": "Picked Up",
+                "in_transit": "In Transit",
+                "delivered": "Delivered (awaiting producer confirmation)",
+                "cancelled": "Cancelled",
+                "completed": "Already Completed"
+            }
+            label = status_labels.get(transport_job.status, transport_job.status)
+            return jsonify({
+                "message": f"⚠️ Producer has not marked this delivery as confirmed yet. Current status: {label}",
+                "code": "producer_not_confirmed",
+                "current_status": transport_job.status,
+                "current_status_label": label
+            }), 400
+
+        # ─── Fetch related records to fill missing breakdowns ──
         listing = None
         if transport_job and transport_job.listing_id:
             listing = db.session.get(WasteListing, transport_job.listing_id)
@@ -850,7 +873,7 @@ def release_payment(payment_id):
         # Get admin default pricing
         amounts = calculate_amounts(listing)
 
-        # ─── ★ NEW: Fill missing fields BEFORE releasing ──────────────
+        # ─── Fill missing fields BEFORE releasing ──────────────
         # 1. Waste Amount
         if not payment.waste_amount or payment.waste_amount <= 0:
             if listing and hasattr(listing, 'waste_value') and listing.waste_value:
@@ -2264,6 +2287,259 @@ def get_audit_logs():
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
+
+# ─── ADMIN PROFILE MANAGEMENT ──────────────────────────────────────
+
+@admin_bp.route('/profile', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_admin_profile():
+    """
+    Get the current admin's profile information.
+    """
+    try:
+        admin_id = int(get_jwt_identity())
+        admin = db.session.get(User, admin_id)
+        
+        if not admin:
+            return jsonify({'message': 'Admin user not found'}), 404
+        
+        return jsonify({
+            'id': admin.id,
+            'full_name': admin.full_name,
+            'email': admin.email,
+            'phone': admin.phone,
+            'role': admin.role,
+            'avatar': getattr(admin, 'avatar', ''),
+            'bio': getattr(admin, 'bio', ''),
+            'timezone': getattr(admin, 'timezone', 'Africa/Nairobi'),
+            'join_date': admin.created_at.isoformat() if admin.created_at else None,
+            'business_name': admin.business_name,
+            'location': admin.location,
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error in get_admin_profile: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+@role_required('admin')
+def update_admin_profile():
+    """
+    Update the current admin's profile information.
+    """
+    try:
+        admin_id = int(get_jwt_identity())
+        admin = db.session.get(User, admin_id)
+        
+        if not admin:
+            return jsonify({'message': 'Admin user not found'}), 404
+        
+        data = request.get_json() or {}
+        
+        # Allowed fields for update
+        allowed_fields = ['full_name', 'phone', 'bio', 'timezone', 'location', 'business_name']
+        
+        for field in allowed_fields:
+            if field in data and data[field] is not None:
+                setattr(admin, field, data[field])
+        
+        admin.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # ─── Log audit ──────────────────────────────────────────
+        admin_user = db.session.get(User, admin_id)
+        log_audit(
+            user_id=admin_id,
+            event='profile_updated',
+            description=f'Admin {admin_user.full_name} updated their profile',
+            status='success',
+            admin_id=admin_id
+        )
+        
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'profile': {
+                'id': admin.id,
+                'full_name': admin.full_name,
+                'email': admin.email,
+                'phone': admin.phone,
+                'role': admin.role,
+                'avatar': getattr(admin, 'avatar', ''),
+                'bio': getattr(admin, 'bio', ''),
+                'timezone': getattr(admin, 'timezone', 'Africa/Nairobi'),
+                'join_date': admin.created_at.isoformat() if admin.created_at else None,
+                'business_name': admin.business_name,
+                'location': admin.location,
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error in update_admin_profile: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/change-password', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def change_admin_password():
+    """
+    Change the current admin's password.
+    Requires current password for verification.
+    """
+    try:
+        admin_id = int(get_jwt_identity())
+        admin = db.session.get(User, admin_id)
+        
+        if not admin:
+            return jsonify({'message': 'Admin user not found'}), 404
+        
+        data = request.get_json() or {}
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not current_password or not new_password:
+            return jsonify({'message': 'Current password and new password are required'}), 400
+        
+        # ─── Verify current password ──────────────────────────
+        from werkzeug.security import check_password_hash
+        if not check_password_hash(admin.password_hash, current_password):
+            log_audit(
+                user_id=admin_id,
+                event='password_change_failed',
+                description=f'Admin {admin.full_name} attempted to change password with incorrect current password',
+                status='failed',
+                admin_id=admin_id
+            )
+            return jsonify({'message': 'Current password is incorrect'}), 401
+        
+        # ─── Update password ──────────────────────────────────
+        from werkzeug.security import generate_password_hash
+        admin.password_hash = generate_password_hash(new_password)
+        admin.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        # ─── Log audit ──────────────────────────────────────────
+        log_audit(
+            user_id=admin_id,
+            event='password_changed',
+            description=f'Admin {admin.full_name} changed their password',
+            status='success',
+            admin_id=admin_id
+        )
+        
+        return jsonify({'message': 'Password changed successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"❌ Error in change_admin_password: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
+@admin_bp.route('/activity', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_admin_activity():
+    """
+    Get the current admin's recent activity logs.
+    """
+    try:
+        admin_id = int(get_jwt_identity())
+        
+        # ─── Fetch audit logs for this admin ──────────────────
+        logs = AuditLog.query.filter(
+            AuditLog.admin_id == admin_id
+        ).order_by(AuditLog.created_at.desc()).limit(50).all()
+        
+        if not logs:
+            # Return mock data if no logs exist (or empty array)
+            return jsonify([]), 200
+        
+        result = []
+        for log in logs:
+            result.append({
+                'id': log.id,
+                'event': log.event,
+                'description': log.description,
+                'ip': log.ip_address,
+                'device': log.device or 'Unknown',
+                'status': log.status,
+                'time': log.created_at.isoformat() if log.created_at else None,
+            })
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"❌ Error in get_admin_activity: {e}")
+        return jsonify([]), 200
+
+
+# ─── ADMIN DASHBOARD STATS (optional enhancement) ──────────────────
+
+@admin_bp.route('/dashboard/stats', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_admin_dashboard_stats():
+    """
+    Get dashboard statistics for the admin overview.
+    """
+    try:
+        # ─── User stats ────────────────────────────────────────
+        total_users = User.query.count()
+        suppliers = User.query.filter_by(role='supplier').count()
+        producers = User.query.filter_by(role='producer').count()
+        transporters = User.query.filter_by(role='transporter').count()
+        
+        # ─── Listing stats ─────────────────────────────────────
+        total_listings = WasteListing.query.count()
+        active_listings = WasteListing.query.filter(WasteListing.status.in_(['available', 'requested', 'assigned'])).count()
+        
+        # ─── Payment stats ─────────────────────────────────────
+        total_payments = Payment.query.count()
+        pending_payments = Payment.query.filter_by(status='pending').count()
+        total_revenue = db.session.query(func.sum(Payment.amount)).filter(Payment.status.in_(['paid', 'completed', 'released'])).scalar() or 0
+        
+        # ─── Collection stats ──────────────────────────────────
+        total_collections = Collection.query.count()
+        completed_collections = Collection.query.filter_by(status='completed').count()
+        
+        # ─── Recent activity (last 7 days) ────────────────────
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        recent_payments = Payment.query.filter(Payment.created_at >= seven_days_ago).count()
+        recent_listings = WasteListing.query.filter(WasteListing.created_at >= seven_days_ago).count()
+        
+        return jsonify({
+            'users': {
+                'total': total_users,
+                'suppliers': suppliers,
+                'producers': producers,
+                'transporters': transporters,
+            },
+            'listings': {
+                'total': total_listings,
+                'active': active_listings,
+            },
+            'payments': {
+                'total': total_payments,
+                'pending': pending_payments,
+                'revenue': float(total_revenue),
+            },
+            'collections': {
+                'total': total_collections,
+                'completed': completed_collections,
+            },
+            'recent_activity': {
+                'payments': recent_payments,
+                'listings': recent_listings,
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"❌ Error in get_admin_dashboard_stats: {e}")
+        return jsonify({'message': str(e)}), 500
 
 # ─── PLATFORM WALLET STATS ──────────────────────────────────────────
 

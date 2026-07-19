@@ -5,27 +5,23 @@ import {
   MapContainer,
   Marker,
   Popup,
-  Polyline,
   TileLayer,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
 import {
   Truck,
-  MapPin,
   Package,
   AlertCircle,
   RefreshCw,
   CheckCircle,
   Clock,
   ShieldCheck,
-  CreditCard,
   Building2,
   User,
   Search,
   Eye,
   X,
-  Calendar,
   Phone,
   Navigation,
   Check,
@@ -34,6 +30,8 @@ import {
   Star,
   MessageCircle,
   ArrowRight,
+  Receipt,
+  Printer,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -328,7 +326,7 @@ export default function IncomingDeliveries() {
     closeModal();
   };
 
-  // ─── ★★★ UPDATED: DOWNLOAD RECEIPT (FIXED) ★★★ ──────────────
+  // ─── ★★★ PROFESSIONAL RECEIPT (TOTAL ONLY) ★★★ ──────────────
   const handleDownloadReceipt = async (deliveryId) => {
     setActionLoading(true);
     try {
@@ -343,52 +341,302 @@ export default function IncomingDeliveries() {
       }
 
       const data = await res.json();
-      // The backend returns { message, receipt: {...}, job: {...}, payment: {...} }
-      const receipt = data.receipt || data; // fallback
+      const receipt = data.receipt || data;
+
+      const receiptNumber = receipt.receipt_number || `REV-${Date.now()}`;
+      const dateStr = receipt.date ? new Date(receipt.date).toLocaleString("en-KE", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }) : "N/A";
+
+      // Build QR code URL (optional)
+      const qrData = receiptNumber;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(qrData)}`;
 
       const receiptHtml = `
-        <html>
-          <head>
-            <title>Receipt #${receipt.receipt_number || 'N/A'}</title>
-            <style>
-              body { font-family: 'Inter', sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #f8fafc; }
-              .receipt { background: white; border-radius: 16px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-              .header { text-align: center; border-bottom: 2px solid #11402D; padding-bottom: 20px; margin-bottom: 20px; }
-              .header h1 { font-size: 24px; color: #0E2A1C; margin: 0; }
-              .header p { color: #5A7060; margin: 4px 0 0; }
-              .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
-              .row:last-child { border-bottom: none; }
-              .label { color: #5A7060; font-weight: 500; }
-              .value { font-weight: 600; color: #0E2A1C; }
-              .total { margin-top: 16px; padding-top: 16px; border-top: 2px solid #11402D; font-size: 18px; }
-              .total .value { font-size: 20px; color: #11402D; }
-            </style>
-          </head>
-          <body>
-            <div class="receipt">
-              <div class="header">
-                <h1>🧾 ReVive Energy</h1>
-                <p>Receipt #${receipt.receipt_number || 'N/A'}</p>
-                <p style="font-size: 12px; color: #999;">${receipt.date ? new Date(receipt.date).toLocaleString() : 'N/A'}</p>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Receipt #${receiptNumber}</title>
+          <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+              background: #f6f9fc;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              padding: 20px;
+            }
+            .receipt-container {
+              max-width: 420px;
+              width: 100%;
+              background: #ffffff;
+              border-radius: 20px;
+              box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.03);
+              overflow: hidden;
+              padding: 24px 20px;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 1px solid #eaf0f5;
+              padding-bottom: 16px;
+              margin-bottom: 16px;
+            }
+            .header .brand {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              font-size: 20px;
+              font-weight: 700;
+              color: #11402D;
+            }
+            .header .brand svg { width: 24px; height: 24px; }
+            .header .sub {
+              font-size: 12px;
+              color: #5a7060;
+              margin-top: 2px;
+            }
+            .header .contact {
+              font-size: 11px;
+              color: #8a9ba8;
+              margin-top: 4px;
+              line-height: 1.5;
+            }
+            .receipt-number {
+              text-align: center;
+              font-size: 12px;
+              color: #8a9ba8;
+              border-bottom: 1px solid #eaf0f5;
+              padding-bottom: 12px;
+              margin-bottom: 16px;
+            }
+            .details-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 6px 16px;
+              background: #fafcfe;
+              border-radius: 12px;
+              padding: 12px 14px;
+              margin-bottom: 16px;
+            }
+            .detail-item {
+              display: flex;
+              flex-direction: column;
+            }
+            .detail-item .label {
+              font-size: 9px;
+              text-transform: uppercase;
+              letter-spacing: 0.4px;
+              color: #8a9ba8;
+              font-weight: 600;
+            }
+            .detail-item .value {
+              font-size: 13px;
+              font-weight: 500;
+              color: #0e2a1c;
+              margin-top: 1px;
+            }
+            .total-line {
+              display: flex;
+              justify-content: space-between;
+              padding: 12px 0;
+              border-top: 2px solid #11402D;
+              margin-top: 8px;
+              font-size: 16px;
+              font-weight: 700;
+              color: #0e2a1c;
+            }
+            .total-line .amount {
+              color: #11402D;
+              font-size: 20px;
+            }
+            .payment-details {
+              border-top: 1px solid #eaf0f5;
+              padding-top: 12px;
+              margin-top: 12px;
+              font-size: 11px;
+              color: #5a7060;
+              line-height: 1.8;
+            }
+            .payment-details .row {
+              display: flex;
+              justify-content: space-between;
+            }
+            .payment-details .row .label {
+              color: #8a9ba8;
+            }
+            .payment-details .row .value {
+              font-weight: 500;
+              color: #0e2a1c;
+            }
+            .qr-section {
+              display: flex;
+              justify-content: center;
+              border-top: 1px solid #eaf0f5;
+              padding-top: 16px;
+              margin-top: 16px;
+            }
+            .qr-section img {
+              width: 80px;
+              height: 80px;
+              object-fit: contain;
+            }
+            .footer {
+              text-align: center;
+              border-top: 1px solid #eaf0f5;
+              padding-top: 16px;
+              margin-top: 16px;
+              font-size: 10px;
+              color: #8a9ba8;
+              line-height: 1.6;
+            }
+            .footer .thanks {
+              font-weight: 600;
+              color: #0e2a1c;
+              font-size: 12px;
+            }
+            .no-print {
+              display: flex;
+              gap: 8px;
+              justify-content: center;
+              border-top: 1px solid #eaf0f5;
+              padding-top: 16px;
+              margin-top: 16px;
+            }
+            .btn {
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              gap: 4px;
+              padding: 8px 16px;
+              border-radius: 40px;
+              font-size: 12px;
+              font-weight: 600;
+              border: none;
+              cursor: pointer;
+              transition: background 0.15s;
+            }
+            .btn-primary {
+              background: #11402D;
+              color: white;
+            }
+            .btn-primary:hover {
+              background: #0e2a1c;
+            }
+            .btn-outline {
+              background: white;
+              color: #0e2a1c;
+              border: 1px solid #d0d9df;
+            }
+            .btn-outline:hover {
+              background: #f0f4f8;
+            }
+            @media print {
+              body { background: white; padding: 0; }
+              .receipt-container { box-shadow: none; border-radius: 0; padding: 16px; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt-container">
+            <!-- Header -->
+            <div class="header">
+              <div class="brand">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#11402D" stroke-width="2">
+                  <path d="M3 12L5 10L7 12L9 10L11 12L13 10L15 12L17 10L19 12L21 10L23 12" stroke-linecap="round"/>
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+                <span>ReVive Energy</span>
               </div>
-              <div class="row"><span class="label">Waste Type</span><span class="value">${receipt.waste_type || 'N/A'}</span></div>
-              <div class="row"><span class="label">Quantity</span><span class="value">${receipt.quantity || 0} ${receipt.unit || 'kg'}</span></div>
-              <div class="row"><span class="label">Producer</span><span class="value">${receipt.producer_name || 'Unknown'}</span></div>
-              <div class="row"><span class="label">Supplier</span><span class="value">${receipt.supplier_name || 'Unknown'}</span></div>
-              <div class="row"><span class="label">Transporter</span><span class="value">${receipt.transporter_name || 'Unknown'}</span></div>
-              <div class="row"><span class="label">Waste Amount</span><span class="value">${formatCurrency(receipt.waste_amount || 0)}</span></div>
-              <div class="row"><span class="label">Transport Fee</span><span class="value">${formatCurrency(receipt.transport_fee || 0)}</span></div>
-              <div class="row"><span class="label">Platform Fee</span><span class="value">${formatCurrency(receipt.platform_fee || 0)}</span></div>
-              <div class="row total"><span class="label">Total Paid</span><span class="value">${formatCurrency(receipt.total_paid || 0)}</span></div>
-              <div style="text-align: center; margin-top: 24px; font-size: 12px; color: #999;">
-                Thank you for using ReVive Energy
+              <div class="sub">Waste‑to‑Energy Platform</div>
+              <div class="contact">1 Garissa University, Garissa<br />Tel: +254 727 568 271</div>
+            </div>
+
+            <!-- Receipt number & date -->
+            <div class="receipt-number">
+              Receipt #: ${receiptNumber} &nbsp;·&nbsp; ${dateStr}
+            </div>
+
+            <!-- Details Grid -->
+            <div class="details-grid">
+              <div class="detail-item">
+                <span class="label">Waste Type</span>
+                <span class="value">${receipt.waste_type || "N/A"}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Quantity</span>
+                <span class="value">${receipt.quantity || 0} ${receipt.unit || "kg"}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Producer</span>
+                <span class="value">${receipt.producer_name || "Unknown"}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Supplier</span>
+                <span class="value">${receipt.supplier_name || "Unknown"}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Transporter</span>
+                <span class="value">${receipt.transporter_name || "Unknown"}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Payment Method</span>
+                <span class="value">${receipt.payment_method || "M‑Pesa"}</span>
               </div>
             </div>
-          </body>
+
+            <!-- Total (only the amount paid) -->
+            <div class="total-line">
+              <span>Amount Paid</span>
+              <span class="amount">${formatCurrency(receipt.total_paid || 0)}</span>
+            </div>
+
+            <!-- Payment details -->
+            <div class="payment-details">
+              <div class="row"><span class="label">Method</span><span class="value">${receipt.payment_method || "M‑Pesa"}</span></div>
+              <div class="row"><span class="label">M‑Pesa Receipt</span><span class="value">${receipt.mpesa_receipt || "N/A"}</span></div>
+              <div class="row"><span class="label">Status</span><span class="value" style="color:${receipt.status === "completed" || receipt.status === "released" ? "#11402D" : "#f59e0b"}">${receipt.status ? receipt.status.toUpperCase() : "N/A"}</span></div>
+            </div>
+
+            <!-- QR Code -->
+            <div class="qr-section">
+              <img src="${qrUrl}" alt="QR Code" />
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+              <div class="thanks">THANK YOU</div>
+              <div>Electronically generated receipt</div>
+              <div>© ${new Date().getFullYear()} ReVive Energy</div>
+            </div>
+
+            <!-- Buttons (web only) -->
+            <div class="no-print">
+              <button class="btn btn-primary" onclick="window.print()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Receipt
+              </button>
+              <button class="btn btn-outline" onclick="window.print()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M18 9h3v6H3V9h3"/><rect x="6" y="13" width="12" height="8" rx="1"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+                Print
+              </button>
+            </div>
+          </div>
+        </body>
         </html>
       `;
 
-      const newWindow = window.open('', '_blank', 'width=600,height=800');
+      const newWindow = window.open('', '_blank', 'width=480,height=900');
       if (newWindow) {
         newWindow.document.write(receiptHtml);
         newWindow.document.close();
@@ -403,7 +651,7 @@ export default function IncomingDeliveries() {
     }
   };
 
-  // ─── RATE SUPPLIER (kept as before) ──────────────────────────
+  // ─── RATE SUPPLIER ──────────────────────────────────────────
   const handleRateSupplier = async (deliveryId, supplierId, rating) => {
     if (!supplierId) {
       toast.error("Unable to identify supplier for rating.");

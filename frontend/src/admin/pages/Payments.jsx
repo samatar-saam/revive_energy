@@ -21,6 +21,14 @@ import {
   AlertCircle,
   ArrowUpDown,
   Calendar,
+  Users,
+  Truck,
+  Package,
+  Receipt,
+  Shield,
+  ArrowRight,
+  AlertTriangle,
+  User,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -48,14 +56,14 @@ function formatDate(date) {
 
 function getStatusBadge(status) {
   const map = {
-    pending: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-    completed: 'bg-green-50 text-green-700 border-green-200',
-    paid: 'bg-green-50 text-green-700 border-green-200',
-    released: 'bg-green-50 text-green-700 border-green-200',
-    failed: 'bg-red-50 text-red-700 border-red-200',
-    refunded: 'bg-gray-50 text-gray-700 border-gray-200',
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    released: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    failed: 'bg-rose-50 text-rose-700 border-rose-200',
+    refunded: 'bg-slate-50 text-slate-700 border-slate-200',
   };
-  return map[status] || 'bg-gray-50 text-gray-700 border-gray-200';
+  return map[status] || 'bg-slate-50 text-slate-700 border-slate-200';
 }
 
 function getEscrowBadge(escrowStatus, paymentStatus, isReadyForRelease) {
@@ -64,11 +72,11 @@ function getEscrowBadge(escrowStatus, paymentStatus, isReadyForRelease) {
   }
   const map = {
     held: 'bg-blue-50 text-blue-700 border-blue-200',
-    released: 'bg-green-50 text-green-700 border-green-200',
-    refunded: 'bg-gray-50 text-gray-700 border-gray-200',
-    waiting: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    released: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    refunded: 'bg-slate-50 text-slate-700 border-slate-200',
+    waiting: 'bg-amber-50 text-amber-700 border-amber-200',
   };
-  return map[escrowStatus] || 'bg-gray-50 text-gray-700 border-gray-200';
+  return map[escrowStatus] || 'bg-slate-50 text-slate-700 border-slate-200';
 }
 
 function getEscrowLabel(escrowStatus, isReadyForRelease) {
@@ -94,7 +102,7 @@ export default function Payments() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterEscrow, setFilterEscrow] = useState('all');
-  const [filterReady, setFilterReady] = useState('all'); // new: all, ready, not_ready
+  const [filterReady, setFilterReady] = useState('all');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
 
@@ -112,6 +120,8 @@ export default function Payments() {
   const [showDetailDrawer, setShowDetailDrawer] = useState(false);
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
   const [showRefundConfirm, setShowRefundConfirm] = useState(false);
+  const [showNotConfirmedModal, setShowNotConfirmedModal] = useState(false);
+  const [notConfirmedPayment, setNotConfirmedPayment] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const getToken = () => localStorage.getItem('token');
@@ -204,13 +214,13 @@ export default function Payments() {
     fetchRecentActivity();
   }, [fetchPayments]);
 
-  // ─── Compute readiness ─────────────────────────────────────────
+  // ─── Compute readiness and eligibility ──────────────────────
   const isReadyForRelease = (payment) => {
     return payment.escrow_status === 'held' && 
            (payment.status === 'paid' || payment.status === 'completed');
   };
 
-  // ─── Apply filters (including readiness) ──────────────────────
+  // ─── Apply filters ──────────────────────────────────────────────
   const filteredPayments = useMemo(() => {
     let filtered = payments;
 
@@ -220,14 +230,13 @@ export default function Payments() {
       filtered = filtered.filter(p => !isReadyForRelease(p));
     }
 
-    // Additional filters already applied on backend, but we keep client-side search for extra safety
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(p => 
         (p.id && p.id.toString().includes(q)) ||
         (p.producer_name && p.producer_name.toLowerCase().includes(q)) ||
         (p.supplier_name && p.supplier_name.toLowerCase().includes(q)) ||
-        (p.transporter_name && p.transporter_name.toLowerCase().includes(q)) ||
+        (p.transporter_name && p.transporter_name.toLowerCase().includes(q) && p.transporter_name !== 'Not assigned') ||
         (p.mpesa_receipt && p.mpesa_receipt.toLowerCase().includes(q)) ||
         (p.receipt_number && p.receipt_number.toLowerCase().includes(q))
       );
@@ -245,10 +254,19 @@ export default function Payments() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
+      const data = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || 'Release failed');
+        if (data.code === 'producer_not_confirmed') {
+          const payment = payments.find(p => p.id === paymentId);
+          setNotConfirmedPayment(payment || { id: paymentId });
+          setShowNotConfirmedModal(true);
+          setShowReleaseConfirm(false);
+          return;
+        }
+        throw new Error(data.message || 'Release failed');
       }
+
       toast.success('Payment released successfully');
       setShowReleaseConfirm(false);
       fetchPayments();
@@ -340,6 +358,14 @@ export default function Payments() {
     return { totalRevenue, successful, pending, platformEarnings, readyToRelease };
   }, [payments]);
 
+  // ─── Helper: display transporter name ─────────────────────────
+  const getTransporterDisplay = (payment) => {
+    if (!payment.transporter_name || payment.transporter_name === 'Not assigned' || payment.transporter_name === '—') {
+      return 'Not assigned';
+    }
+    return payment.transporter_name;
+  };
+
   // ─── Loading / Error states ────────────────────────────────────
   if (loading) {
     return (
@@ -376,6 +402,15 @@ export default function Payments() {
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         .font-display { font-family: 'Space Grotesk', sans-serif; }
         .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
+        .shadow-soft { box-shadow: 0 2px 15px -3px rgba(0,0,0,0.05), 0 1px 4px -2px rgba(0,0,0,0.02); }
+        .shadow-card { box-shadow: 0 4px 20px -6px rgba(0,0,0,0.06), 0 2px 8px -4px rgba(0,0,0,0.02); }
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.3s ease-out;
+        }
       `}</style>
 
       <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
@@ -383,13 +418,14 @@ export default function Payments() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="font-display text-2xl lg:text-3xl font-bold text-gray-900">Payments Management</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Monitor all producer payments, escrow balances, supplier payouts, transporter payouts, refunds, and platform revenue.
+            <p className="text-sm text-gray-500 mt-1 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
+              Monitor producer payments, escrow balances, supplier payouts, transporter payouts, refunds, and platform revenue.
             </p>
           </div>
           <button
             onClick={() => { fetchPayments(); fetchEscrowStats(); fetchRecentActivity(); }}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-sm"
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition shadow-soft"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -403,12 +439,14 @@ export default function Payments() {
             value={formatCurrency(stats.totalRevenue)}
             icon={DollarSign}
             color="green"
+            trend="+12.5%"
           />
           <StatCard
             label="Escrow Balance"
             value={formatCurrency(escrowStats?.held || 0)}
             icon={Wallet}
             color="blue"
+            subtitle="Held in escrow"
           />
           <StatCard
             label="Platform Earnings"
@@ -417,58 +455,61 @@ export default function Payments() {
             color="orange"
           />
           <StatCard
-            label="Successful"
+            label="Successful Payments"
             value={stats.successful}
             icon={CheckCircle}
-            color="green"
+            color="emerald"
             subtitle={`${stats.pending} pending`}
           />
           <StatCard
             label="Ready to Release"
             value={stats.readyToRelease}
             icon={Check}
-            color="emerald"
+            color="indigo"
             subtitle="Awaiting admin action"
           />
         </div>
 
         {/* ─── Escrow Summary Bar ────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-6 flex-wrap">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-8 flex-wrap">
             <div>
-              <span className="text-xs text-gray-500 uppercase">Held</span>
-              <p className="font-display text-lg font-bold text-blue-600">{formatCurrency(escrowStats?.held || 0)}</p>
+              <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Held</span>
+              <p className="font-display text-xl font-bold text-blue-600">{formatCurrency(escrowStats?.held || 0)}</p>
             </div>
             <div>
-              <span className="text-xs text-gray-500 uppercase">Released</span>
-              <p className="font-display text-lg font-bold text-green-600">{formatCurrency(escrowStats?.released || 0)}</p>
+              <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Released</span>
+              <p className="font-display text-xl font-bold text-emerald-600">{formatCurrency(escrowStats?.released || 0)}</p>
             </div>
             <div>
-              <span className="text-xs text-gray-500 uppercase">Refunded</span>
-              <p className="font-display text-lg font-bold text-gray-600">{formatCurrency(escrowStats?.refunded || 0)}</p>
+              <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Refunded</span>
+              <p className="font-display text-xl font-bold text-slate-600">{formatCurrency(escrowStats?.refunded || 0)}</p>
             </div>
             <div>
-              <span className="text-xs text-gray-500 uppercase">Platform Fees</span>
-              <p className="font-display text-lg font-bold text-orange-600">{formatCurrency(escrowStats?.platform_fees || 0)}</p>
+              <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Platform Fees</span>
+              <p className="font-display text-xl font-bold text-amber-600">{formatCurrency(escrowStats?.platform_fees || 0)}</p>
             </div>
           </div>
-          <div className="text-sm text-gray-500">
-            <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1" />
+          <div className="text-sm text-gray-500 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
             All amounts in KES
           </div>
         </div>
 
         {/* ─── Recent Activity ───────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <h3 className="font-display font-semibold text-gray-700 flex items-center gap-2 text-sm">
-            <Clock className="w-4 h-4" /> Recent Activity
-          </h3>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-display font-semibold text-gray-700 flex items-center gap-2 text-sm">
+              <Clock className="w-4 h-4" /> Recent Activity
+            </h3>
+            <span className="text-xs text-gray-400">Last 5 events</span>
+          </div>
           {recentActivity.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-2">No recent activity</p>
+            <p className="text-sm text-gray-500 text-center py-3">No recent activity</p>
           ) : (
-            <div className="divide-y divide-gray-100 max-h-36 overflow-y-auto">
+            <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
               {recentActivity.map((activity, idx) => (
-                <div key={idx} className="py-2 flex items-center justify-between">
+                <div key={idx} className="py-2.5 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-700">{activity.event}</p>
                     <p className="text-xs text-gray-400">{activity.description}</p>
@@ -481,95 +522,100 @@ export default function Payments() {
         </div>
 
         {/* ─── Filters ────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-soft p-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search by receipt, producer, supplier, or ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50/60 py-2.5 pl-10 pr-4 text-sm outline-none focus:ring-2 focus:ring-[#11402D]/20 focus:border-[#11402D] transition"
               />
             </div>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="paid">Paid</option>
-              <option value="failed">Failed</option>
-              <option value="refunded">Refunded</option>
-            </select>
-            <select
-              value={filterEscrow}
-              onChange={(e) => setFilterEscrow(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="all">All Escrow</option>
-              <option value="held">Held</option>
-              <option value="released">Released</option>
-              <option value="refunded">Refunded</option>
-              <option value="waiting">Waiting</option>
-            </select>
-            <select
-              value={filterReady}
-              onChange={(e) => setFilterReady(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="all">All</option>
-              <option value="ready">Ready to Release</option>
-              <option value="not_ready">Not Ready</option>
-            </select>
-            <input
-              type="date"
-              value={filterDateFrom}
-              onChange={(e) => setFilterDateFrom(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="From"
-            />
-            <input
-              type="date"
-              value={filterDateTo}
-              onChange={(e) => setFilterDateTo(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="To"
-            />
-            <button
-              onClick={() => { setCurrentPage(1); fetchPayments(); }}
-              className="rounded-xl bg-[#11402D] px-5 py-2 text-sm font-bold text-white hover:bg-[#0E2A1C] transition shadow-sm"
-            >
-              Apply Filters
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#11402D]/20"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="paid">Paid</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
+              </select>
+              <select
+                value={filterEscrow}
+                onChange={(e) => setFilterEscrow(e.target.value)}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#11402D]/20"
+              >
+                <option value="all">All Escrow</option>
+                <option value="held">Held</option>
+                <option value="released">Released</option>
+                <option value="refunded">Refunded</option>
+                <option value="waiting">Waiting</option>
+              </select>
+              <select
+                value={filterReady}
+                onChange={(e) => setFilterReady(e.target.value)}
+                className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#11402D]/20"
+              >
+                <option value="all">All</option>
+                <option value="ready">Ready to Release</option>
+                <option value="not_ready">Not Ready</option>
+              </select>
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#11402D]/20 w-36"
+                  placeholder="From"
+                />
+                <span className="text-gray-400">—</span>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#11402D]/20 w-36"
+                  placeholder="To"
+                />
+              </div>
+              <button
+                onClick={() => { setCurrentPage(1); fetchPayments(); }}
+                className="rounded-xl bg-[#11402D] px-6 py-2.5 text-sm font-bold text-white hover:bg-[#0E2A1C] transition shadow-soft"
+              >
+                Apply
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ─── Table ───────────────────────────────────────────────── */}
-        <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-card">
           <table className="w-full min-w-[1400px]">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-gray-50/80 border-b border-gray-100">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 cursor-pointer hover:text-gray-700" onClick={() => handleSort('id')}>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500 cursor-pointer hover:text-gray-700 transition" onClick={() => handleSort('id')}>
                   ID {sortField === 'id' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Producer</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Supplier</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Transporter</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Waste</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Qty</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Transport</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Platform</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Total</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Receipt</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Escrow</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase text-gray-500">Actions</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Producer</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Supplier</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Transporter</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Waste</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Qty</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Amount</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Transport</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Platform</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Total</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Receipt</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Escrow</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold uppercase text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -580,19 +626,31 @@ export default function Payments() {
               ) : (
                 filteredPayments.map((p) => {
                   const ready = isReadyForRelease(p);
+                  const isHeldAndPaid = p.escrow_status === 'held' && (p.status === 'paid' || p.status === 'completed');
+                  const transporterDisplay = getTransporterDisplay(p);
+                  
                   return (
-                    <tr key={p.id} className="hover:bg-gray-50/50 transition">
+                    <tr key={p.id} className="hover:bg-gray-50/60 transition">
                       <td className="px-4 py-3 font-mono-cw text-sm text-gray-500">#{p.id}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{p.producer_name || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{p.supplier_name || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{p.transporter_name || '—'}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-700">{p.producer_name || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{p.supplier_name || '—'}</td>
+                      <td className="px-4 py-3 text-sm">
+                        {transporterDisplay === 'Not assigned' ? (
+                          <span className="inline-flex items-center gap-1 text-gray-400">
+                            <User className="w-3 h-3" />
+                            Not assigned
+                          </span>
+                        ) : (
+                          <span className="text-gray-700">{transporterDisplay}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{p.waste_type || '—'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{p.quantity || 0} {p.unit || 'kg'}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(p.waste_amount)}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(p.transport_fee)}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{formatCurrency(p.platform_fee)}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{formatCurrency(p.total_amount || p.amount)}</td>
-                      <td className="px-4 py-3 text-sm font-mono-cw text-gray-600">{p.mpesa_receipt || '—'}</td>
+                      <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(p.total_amount || p.amount)}</td>
+                      <td className="px-4 py-3 text-sm font-mono-cw text-gray-500">{p.mpesa_receipt || '—'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium border ${getEscrowBadge(p.escrow_status, p.status, ready)}`}>
@@ -601,7 +659,7 @@ export default function Payments() {
                           {ready && (
                             <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200">
                               <Check className="w-3 h-3" />
-                              Release
+                              Ready
                             </span>
                           )}
                         </div>
@@ -635,7 +693,7 @@ export default function Payments() {
                           >
                             <FileText className="h-4 w-4" />
                           </button>
-                          {ready && (
+                          {isHeldAndPaid && (
                             <button
                               onClick={() => { setSelectedPayment(p); setShowReleaseConfirm(true); }}
                               className="rounded-lg p-1.5 text-emerald-500 transition hover:bg-gray-100 hover:text-emerald-700"
@@ -644,7 +702,7 @@ export default function Payments() {
                               <Check className="h-4 w-4" />
                             </button>
                           )}
-                          {p.escrow_status === 'held' && !ready && (
+                          {p.escrow_status === 'held' && !isHeldAndPaid && (
                             <button
                               onClick={() => { setSelectedPayment(p); setShowRefundConfirm(true); }}
                               className="rounded-lg p-1.5 text-red-400 transition hover:bg-gray-100 hover:text-red-600"
@@ -665,7 +723,7 @@ export default function Payments() {
 
         {/* ─── Pagination ────────────────────────────────────────── */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between bg-white rounded-2xl border border-gray-100 shadow-soft px-4 py-3">
             <p className="text-sm text-gray-500">
               Page {currentPage} of {totalPages}
             </p>
@@ -681,7 +739,7 @@ export default function Payments() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`rounded-xl px-3 py-1 text-sm font-medium ${
+                  className={`rounded-xl px-3 py-1.5 text-sm font-medium ${
                     page === currentPage
                       ? 'bg-[#11402D] text-white'
                       : 'text-gray-600 hover:bg-gray-100'
@@ -703,11 +761,11 @@ export default function Payments() {
 
         {/* ─── Detail Drawer ────────────────────────────────────── */}
         {showDetailDrawer && selectedPayment && (
-          <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/30">
+          <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/30 backdrop-blur-sm">
             <div className="relative h-full w-full max-w-2xl bg-white shadow-2xl overflow-y-auto animate-slide-in-right">
               <div className="sticky top-0 z-10 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                 <h2 className="font-display text-xl font-bold text-gray-900">Payment Details</h2>
-                <button onClick={() => setShowDetailDrawer(false)} className="rounded-xl p-2 hover:bg-gray-100">
+                <button onClick={() => setShowDetailDrawer(false)} className="rounded-xl p-2 hover:bg-gray-100 transition">
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
@@ -719,7 +777,7 @@ export default function Payments() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase text-gray-400">Total Amount</p>
-                    <p className="mt-1 font-display text-lg font-bold text-gray-900">{formatCurrency(selectedPayment.total_amount || selectedPayment.amount)}</p>
+                    <p className="mt-1 font-display text-2xl font-bold text-gray-900">{formatCurrency(selectedPayment.total_amount || selectedPayment.amount)}</p>
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase text-gray-400">Status</p>
@@ -759,7 +817,11 @@ export default function Payments() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase text-gray-400">Transporter</p>
-                      <p className="mt-1 text-sm font-medium">{selectedPayment.transporter_name || '—'}</p>
+                      <p className="mt-1 text-sm font-medium">
+                        {selectedPayment.transporter_name && selectedPayment.transporter_name !== 'Not assigned' 
+                          ? selectedPayment.transporter_name 
+                          : 'Not assigned'}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -804,18 +866,23 @@ export default function Payments() {
 
         {/* ─── Release Confirmation ────────────────────────────── */}
         {showReleaseConfirm && selectedPayment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
-              <h3 className="font-display text-lg font-bold text-gray-900">Release Payment</h3>
-              <p className="text-sm text-gray-600 mt-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-emerald-50 rounded-xl">
+                  <Check className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h3 className="font-display text-lg font-bold text-gray-900">Release Payment</h3>
+              </div>
+              <p className="text-sm text-gray-600">
                 Are you sure you want to release <strong>{formatCurrency(selectedPayment.total_amount || selectedPayment.amount)}</strong> from escrow to the supplier?
                 This action cannot be undone.
               </p>
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowReleaseConfirm(false)} className="flex-1 rounded-xl border border-gray-200 py-2.5 font-medium text-gray-700 hover:bg-gray-50">
+                <button onClick={() => setShowReleaseConfirm(false)} className="flex-1 rounded-xl border border-gray-200 py-2.5 font-medium text-gray-700 hover:bg-gray-50 transition">
                   Cancel
                 </button>
-                <button onClick={() => handleRelease(selectedPayment.id)} disabled={actionLoading} className="flex-1 rounded-xl bg-green-600 py-2.5 font-bold text-white hover:bg-green-700 disabled:opacity-70">
+                <button onClick={() => handleRelease(selectedPayment.id)} disabled={actionLoading} className="flex-1 rounded-xl bg-emerald-600 py-2.5 font-bold text-white hover:bg-emerald-700 disabled:opacity-70 transition">
                   {actionLoading ? 'Releasing...' : 'Release Payment'}
                 </button>
               </div>
@@ -825,19 +892,73 @@ export default function Payments() {
 
         {/* ─── Refund Confirmation ──────────────────────────────── */}
         {showRefundConfirm && selectedPayment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
-              <h3 className="font-display text-lg font-bold text-gray-900">Refund Payment</h3>
-              <p className="text-sm text-gray-600 mt-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-rose-50 rounded-xl">
+                  <X className="w-6 h-6 text-rose-600" />
+                </div>
+                <h3 className="font-display text-lg font-bold text-gray-900">Refund Payment</h3>
+              </div>
+              <p className="text-sm text-gray-600">
                 Are you sure you want to refund <strong>{formatCurrency(selectedPayment.total_amount || selectedPayment.amount)}</strong> to the producer?
                 This action cannot be undone.
               </p>
               <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowRefundConfirm(false)} className="flex-1 rounded-xl border border-gray-200 py-2.5 font-medium text-gray-700 hover:bg-gray-50">
+                <button onClick={() => setShowRefundConfirm(false)} className="flex-1 rounded-xl border border-gray-200 py-2.5 font-medium text-gray-700 hover:bg-gray-50 transition">
                   Cancel
                 </button>
-                <button onClick={() => handleRefund(selectedPayment.id)} disabled={actionLoading} className="flex-1 rounded-xl bg-red-600 py-2.5 font-bold text-white hover:bg-red-700 disabled:opacity-70">
+                <button onClick={() => handleRefund(selectedPayment.id)} disabled={actionLoading} className="flex-1 rounded-xl bg-rose-600 py-2.5 font-bold text-white hover:bg-rose-700 disabled:opacity-70 transition">
                   {actionLoading ? 'Refunding...' : 'Refund Payment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ─── Not Confirmed Modal ────────────────────────────── */}
+        {showNotConfirmedModal && notConfirmedPayment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-amber-50 rounded-xl">
+                  <AlertTriangle className="w-6 h-6 text-amber-600" />
+                </div>
+                <h3 className="font-display text-lg font-bold text-gray-900">Cannot Release – Not Confirmed</h3>
+              </div>
+              <div className="space-y-3 text-sm text-gray-600">
+                <p>
+                  <strong>Producer has not marked this delivery as confirmed yet.</strong>
+                </p>
+                <p>
+                  The transporter has delivered the waste, but the producer hasn't confirmed that they received it.
+                  The payment will remain in escrow until the producer confirms delivery.
+                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <p className="text-xs text-amber-800">
+                    <span className="font-bold">Current status:</span> {notConfirmedPayment.current_status_label || 'Awaiting confirmation'}
+                  </p>
+                </div>
+                <p className="text-xs text-gray-400">
+                  If the producer is unresponsive, you may need to reach out to them directly.
+                </p>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowNotConfirmedModal(false)}
+                  className="flex-1 rounded-xl border border-gray-200 py-2.5 font-medium text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Got it
+                </button>
+                <button
+                  onClick={() => {
+                    setShowNotConfirmedModal(false);
+                    setSelectedPayment(notConfirmedPayment);
+                    setShowDetailDrawer(true);
+                  }}
+                  className="flex-1 rounded-xl bg-[#11402D] py-2.5 font-bold text-white hover:bg-[#0E2A1C] transition"
+                >
+                  View Details
                 </button>
               </div>
             </div>
@@ -849,25 +970,32 @@ export default function Payments() {
 }
 
 // ─── Stat Card Component ──────────────────────────────────────
-function StatCard({ label, value, icon: Icon, color, subtitle }) {
+function StatCard({ label, value, icon: Icon, color, subtitle, trend }) {
   const colorMap = {
-    green: 'bg-green-50 text-green-600 border-green-100',
+    green: 'bg-emerald-50 text-emerald-600 border-emerald-100',
     blue: 'bg-blue-50 text-blue-600 border-blue-100',
     orange: 'bg-orange-50 text-orange-600 border-orange-100',
     emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
   };
   const style = colorMap[color] || colorMap.blue;
 
   return (
-    <div className={`bg-white rounded-2xl p-5 shadow-sm border ${style}`}>
-      <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-xl ${style}`}>
-          <Icon className="w-5 h-5" />
-        </div>
+    <div className={`bg-white rounded-2xl p-5 shadow-card border ${style} transition hover:shadow-lg`}>
+      <div className="flex items-start justify-between">
         <div>
-          <p className="font-display text-2xl font-bold text-gray-900">{value}</p>
-          <p className="text-sm text-gray-500">{label}</p>
+          <p className="text-sm font-medium text-gray-500">{label}</p>
+          <p className="font-display text-2xl font-bold text-gray-900 mt-1">{value}</p>
           {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+          {trend && (
+            <span className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 mt-1">
+              <ArrowRight className="w-3 h-3 rotate-45" />
+              {trend}
+            </span>
+          )}
+        </div>
+        <div className={`p-3 rounded-xl ${style}`}>
+          <Icon className="w-5 h-5" />
         </div>
       </div>
     </div>
