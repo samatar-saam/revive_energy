@@ -2,6 +2,9 @@ import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 
+// ─── Import ScrollToTop ──────────────────────────────────────
+import ScrollToTop from "./component/ScrollToTop";
+
 import Navbar from "./component/Navbar";
 import Home from "./component/Home";
 import Marketplace from "./component/Marketplace";
@@ -149,6 +152,9 @@ function App() {
 
   return (
     <BrowserRouter>
+      {/* ─── Scroll to top on every route change ────────────── */}
+      <ScrollToTop />
+
       <Routes>
         <Route path="/" element={<><Navbar /><Home /></>} />
         <Route path="/home" element={<><Navbar /><Home /></>} />
@@ -161,7 +167,6 @@ function App() {
         <Route path="/login" element={<><Navbar /><Login /></>} />
         <Route path="/signup" element={<><Navbar /><Signup /></>} />
 
-        {/* ✅ FIXED: Added Navbar to FAQ route */}
         <Route path="/faq" element={<><Navbar /><FAQ /></>} />
 
         <Route path="/signup/waste-supplier" element={<><Navbar /><SignupWasteSupplier /></>} />
@@ -204,7 +209,6 @@ function App() {
           <Route path="platform-withdrawals" element={<PlatformWithdrawals />} />
           <Route path="platform-wallet" element={<PlatformWallet />} />
           <Route path="profile" element={<AdminProfile />} />
-
         </Route>
 
         {/* ─── User Dashboard Routes ───────────────────────────── */}
