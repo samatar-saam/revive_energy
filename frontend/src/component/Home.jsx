@@ -25,6 +25,7 @@ import {
   Calculator,
   Plus,
   X,
+  Star, // ← added for testimonials
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -511,6 +512,28 @@ export default function ReViveEnergyHomepage() {
     },
   ];
 
+  // ─── NEW: Testimonials data ──────────────────────────────────
+  const testimonials = [
+    {
+      quote:
+        "The waste assessment revealed opportunities we never knew existed. Within 6 months, we cut disposal costs by 60% and started generating revenue from biogas.",
+      name: "Sarah Mbeki",
+      role: "Operations Director, Nairobi Breweries",
+    },
+    {
+      quote:
+        "The integration was seamless. Our team was trained and the system was operational within weeks. The energy savings alone have been transformative.",
+      name: "James Ochieng",
+      role: "Plant Manager, Great Lakes Farms",
+    },
+    {
+      quote:
+        "From assessment to installation, the ReVive team was professional and supportive. We've now achieved our sustainability targets ahead of schedule.",
+      name: "Amina Diallo",
+      role: "Sustainability Lead, Mombasa Port Authority",
+    },
+  ];
+
   const scrollToSection = (id) => {
     const el = document.getElementById(id);
     if (el) {
@@ -696,7 +719,6 @@ export default function ReViveEnergyHomepage() {
 
       {/* IMPACT STATS */}
       <section id="impact" className="bg-[#0E2A1C] text-white py-16 sm:py-20 lg:py-24">
-        {/* ... (unchanged) ... */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
           <div className="max-w-xl">
             <p className="text-sm font-mono-cw uppercase tracking-wider text-[#9CF06B]/70 mb-3">
@@ -723,7 +745,6 @@ export default function ReViveEnergyHomepage() {
 
       {/* MARQUEE */}
       <section className="bg-[#F6F8F4] py-12 sm:py-16 lg:py-20">
-        {/* ... (unchanged) ... */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
           <div className="text-center mb-10">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-bold text-[#0E2A1C] tracking-tight">
@@ -790,7 +811,6 @@ export default function ReViveEnergyHomepage() {
 
       {/* SOLUTIONS */}
       <section id="solutions" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28">
-        {/* ... (unchanged) ... */}
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
           <div className="max-w-xl">
             <p className="text-sm font-mono-cw uppercase tracking-wider text-[#11402D]/60 mb-3">
@@ -827,7 +847,6 @@ export default function ReViveEnergyHomepage() {
 
       {/* SUSTAINABILITY */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-16 lg:py-20">
-        {/* ... (unchanged) ... */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="relative rounded-3xl overflow-hidden h-[300px] sm:h-[380px] lg:h-[430px] order-2 lg:order-1">
             <img
@@ -883,7 +902,6 @@ export default function ReViveEnergyHomepage() {
 
       {/* GLOBAL */}
       <section id="global" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28">
-        {/* ... (unchanged) ... */}
         <div className="bg-[#11402D] rounded-3xl px-6 sm:px-10 lg:px-14 py-12 sm:py-16 lg:py-20 text-white relative overflow-hidden">
           <div className="absolute -right-24 -top-24 w-80 h-80 rounded-full border border-white/10" />
           <div className="absolute -right-10 -top-10 w-60 h-60 rounded-full border border-white/10" />
@@ -919,9 +937,40 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* TESTIMONIAL */}
+      {/* ─── ★ NEW TESTIMONIALS SECTION ★ ────────────────────── */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-24 bg-white">
+        <div className="text-center mb-12">
+          <p className="text-sm font-mono-cw uppercase tracking-wider text-[#11402D]/60 mb-3 flex items-center justify-center gap-2">
+            <Star className="w-4 h-4" /> Testimonials
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl lg:text-[44px] font-semibold tracking-tight text-[#0E2A1C] leading-tight">
+            What Our <span className="text-[#11402D]">Partners</span> Say
+          </h2>
+          <p className="mt-3 text-lg text-[#142019]/65 max-w-2xl mx-auto">
+            Real experiences from real partners
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {testimonials.map((t, i) => (
+            <div key={i} className="bg-[#F6F8F4] rounded-2xl p-6 border border-[#11402D]/5 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+              <div className="flex gap-1 mb-4">
+                {[...Array(5)].map((_, j) => (
+                  <Star key={j} className="w-4 h-4 fill-[#9CF06B] text-[#9CF06B]" />
+                ))}
+              </div>
+              <p className="text-sm text-[#142019]/55 leading-relaxed italic">"{t.quote}"</p>
+              <div className="mt-4 pt-4 border-t border-[#11402D]/10">
+                <p className="font-display font-semibold text-[#0E2A1C]">{t.name}</p>
+                <p className="text-xs text-[#142019]/50">{t.role}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── ORIGINAL TESTIMONIAL (kept unchanged) ────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-16 lg:py-20">
-        {/* ... (unchanged) ... */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-5 relative rounded-3xl overflow-hidden h-[260px] sm:h-[340px] lg:h-[370px]">
             <img
@@ -953,7 +1002,6 @@ export default function ReViveEnergyHomepage() {
 
       {/* CTA */}
       <section id="contact" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-16 lg:py-24">
-        {/* ... (unchanged) ... */}
         <div className="rounded-3xl bg-[#0E2A1C] px-6 sm:px-10 lg:px-16 py-12 sm:py-16 lg:py-20 text-center">
           <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-white max-w-3xl mx-auto leading-tight">
             Ready to turn your city's waste into its next power source?
