@@ -19,6 +19,7 @@ import {
   Lightbulb,
   Award,
   BarChart3,
+  Recycle,
 } from "lucide-react";
 
 const Resources = () => {

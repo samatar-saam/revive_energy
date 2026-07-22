@@ -2565,3 +2565,87 @@ def get_platform_wallet():
         }), 200
     except Exception as e:
         return jsonify({'message': str(e)}), 500
+
+        # routes/admin.py – add this new endpoint
+
+@admin_bp.route('/impact/data', methods=['GET'])
+@jwt_required()  # Remove if you want public access
+@role_required('admin')
+def get_impact_data():
+    """
+    Get real-time impact statistics and chart data for the Impact page.
+    """
+    try:
+        from sqlalchemy import func, extract
+        from models import User, WasteListing, Collection, Payment, ProcessingPlant
+
+        # ─── Overall Stats ──────────────────────────────────────
+        total_users = User.query.count()
+        total_waste_diverted = db.session.query(func.sum(WasteListing.quantity)).scalar() or 0
+        # If you have a 'energy_generated' field on Collection or WasteListing:
+        total_energy = db.session.query(func.sum(Collection.energy_generated)).scalar() or 0
+        # If no energy_generated, estimate from waste amount or use Payment amounts?
+        # For now, let's use a placeholder: we can compute from payments revenue maybe.
+        # We'll also get carbon offset from Collection.carbon_offset if exists.
+        total_carbon = db.session.query(func.sum(Collection.carbon_offset)).scalar() or 0
+        active_facilities = ProcessingPlant.query.filter_by(status='active').count()
+        active_partners = User.query.filter(User.role.in_(['supplier','producer','transporter'])).count()
+
+        # ─── Chart Data: Monthly growth (last 12 months) ────
+        # We'll group by month for users, waste, energy.
+        # This query may vary based on your DB (SQLite vs PostgreSQL)
+        # Here's a generic approach using SQLAlchemy func.
+
+        # For users: count by month of creation
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        start_date = now - timedelta(days=365)  # last 12 months
+
+        # We'll create a list of month labels and then query for each month
+        months = []
+        current = start_date
+        while current <= now:
+            months.append(current.strftime('%Y-%m'))
+            current += timedelta(days=30)  # approximate
+
+        chart_data = []
+        for month in months:
+            year, month_num = month.split('-')
+            # Users registered in that month
+            user_count = User.query.filter(
+                extract('year', User.created_at) == int(year),
+                extract('month', User.created_at) == int(month_num)
+            ).count()
+            # Waste listed in that month (or collections)
+            waste_count = db.session.query(func.sum(WasteListing.quantity)).filter(
+                extract('year', WasteListing.created_at) == int(year),
+                extract('month', WasteListing.created_at) == int(month_num)
+            ).scalar() or 0
+            # Energy generated in that month (if you have it)
+            energy_count = db.session.query(func.sum(Collection.energy_generated)).filter(
+                extract('year', Collection.created_at) == int(year),
+                extract('month', Collection.created_at) == int(month_num)
+            ).scalar() or 0
+
+            chart_data.append({
+                'month': month,
+                'users': user_count,
+                'waste': float(waste_count),
+                'energy': float(energy_count)
+            })
+
+        return jsonify({
+            'stats': {
+                'totalUsers': total_users,
+                'totalWasteDiverted': float(total_waste_diverted),
+                'totalEnergyGenerated': float(total_energy),
+                'totalCarbonOffset': float(total_carbon),
+                'activeFacilities': active_facilities,
+                'activePartners': active_partners
+            },
+            'chartData': chart_data
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error fetching impact data: {e}")
+        return jsonify({'message': str(e)}), 500
