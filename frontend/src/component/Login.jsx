@@ -449,6 +449,7 @@ function Login() {
     }
   };
 
+  // ─── ★ UPDATED: completeSignup – sends welcome email ★ ────
   const completeSignup = async () => {
     if (!emailVerified) {
       toast.error("Please verify your email first");
@@ -481,6 +482,22 @@ function Login() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Registration failed");
+
+      // ─── ★ Send welcome email (role‑based) ────────────────
+      try {
+        await fetch(`${API_URL}/send-welcome-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: signupData.email,
+            full_name: signupData.full_name,
+            role: selectedRole,
+          }),
+        });
+      } catch (emailErr) {
+        console.error("Failed to send welcome email:", emailErr);
+        // Non‑blocking – user still gets account created
+      }
 
       toast.update(toastId, {
         render: "Account created successfully! 🎉 Please login.",
@@ -1330,7 +1347,6 @@ function Login() {
                 <h2 className="font-display mt-2 text-3xl font-bold text-slate-900">Welcome back!</h2>
                 <p className="mt-2 text-slate-500 leading-6">Please enter your details to access your account.</p>
 
-                { /* ─── ★ FIXED: autocomplete off on form and fields ★ ─── */ }
                 <form onSubmit={handleLogin} autoComplete="off" className="mt-6 space-y-4">
                   <div>
                     <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">

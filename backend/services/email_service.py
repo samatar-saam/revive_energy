@@ -74,7 +74,7 @@ def send_verification_email(email, first_name, code):
 
         Your verification code is: {code}
 
-        This code will expire in 10 minutes.
+        This code will expire in 60 seconds.
 
         If you didn't request this, please ignore this email.
 

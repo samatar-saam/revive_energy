@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Mail, Phone, Building2, MapPin, Lock, Save,
   RefreshCw, AlertCircle, CheckCircle, Briefcase,
-  Package, Truck, Zap, Calendar, Award, Edit3,
+  Package, Truck, Zap, Calendar, Edit3,
   Camera, X, Upload, Shield, Trash2,
   Eye, EyeOff, Check, Video,
   FlipHorizontal, ArrowLeft,
+  Crown,
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -26,10 +27,10 @@ const ROLE_META = {
   supplier:    { label:'Waste Supplier',    Icon:Package, pill:'bg-emerald-50 text-emerald-700 border-emerald-200' },
   producer:    { label:'Energy Producer',   Icon:Zap,     pill:'bg-amber-50 text-amber-700 border-amber-200'   },
   transporter: { label:'Transport Partner', Icon:Truck,   pill:'bg-blue-50 text-blue-700 border-blue-200'      },
-  admin:       { label:'Administrator',     Icon:Award,   pill:'bg-purple-50 text-purple-700 border-purple-200'},
+  admin:       { label:'Administrator',     Icon:Crown,   pill:'bg-purple-50 text-purple-700 border-purple-200' },
 };
 
-const raw = r => ({ ...ROLE_META[r] } || { label: r, Icon: User, pill:'bg-gray-50 text-gray-600 border-gray-200' });
+const raw = r => ROLE_META[r] || { label: r || 'User', Icon: User, pill:'bg-gray-50 text-gray-600 border-gray-200' };
 
 /* ─── TOAST ────────────────────────────────────────────────── */
 const TOAST = {
@@ -59,9 +60,9 @@ const fc = `w-full rounded-xl border border-[#E5EDE8] bg-[#F6F8F4] px-4 py-3 tex
   text-[#0A1A0F] placeholder-[#A8BBB3] outline-none
   focus:border-[#11402D] focus:ring-2 focus:ring-[#11402D]/8 transition-all`;
 
-function Field({ label, note, children }) {
+function Field({ label, note, className = '', children }) {
   return (
-    <div>
+    <div className={className}>
       <label className="block text-xs font-bold uppercase tracking-[0.13em] text-[#3D5248] mb-1.5">{label}</label>
       {children}
       {note && <p className="text-[10px] text-[#A8BBB3] mt-1.5">{note}</p>}
@@ -133,7 +134,7 @@ function CameraModal({ onCapture, onClose }) {
         className="bg-[#0A1A0F] rounded-3xl overflow-hidden w-full max-w-lg border border-white/8">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
           <div className="flex items-center gap-2.5">
-            <Video className="w-4 h-4 text-[#9CF06B]"/>
+            <Video className="w-4 h-4 text-[#4ADE80]"/>
             <span className="text-sm font-bold text-white">Take Photo</span>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-xl bg-white/6 flex items-center justify-center hover:bg-white/12 transition-colors">
@@ -155,10 +156,10 @@ function CameraModal({ onCapture, onClose }) {
               )}
               {!captured && (
                 <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-[#9CF06B] rounded-tl-lg"/>
-                  <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-[#9CF06B] rounded-tr-lg"/>
-                  <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-[#9CF06B] rounded-bl-lg"/>
-                  <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-[#9CF06B] rounded-br-lg"/>
+                  <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-[#4ADE80] rounded-tl-lg"/>
+                  <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-[#4ADE80] rounded-tr-lg"/>
+                  <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-[#4ADE80] rounded-bl-lg"/>
+                  <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-[#4ADE80] rounded-br-lg"/>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="w-36 h-44 rounded-full border border-white/20 border-dashed"/>
                   </div>
@@ -175,8 +176,8 @@ function CameraModal({ onCapture, onClose }) {
                 <FlipHorizontal className="w-5 h-5 text-white/60"/>
               </button>
               <button onClick={capture} disabled={!ready}
-                className="w-16 h-16 rounded-full border-4 border-white/20 flex items-center justify-center hover:border-[#9CF06B]/60 transition-all group disabled:opacity-40">
-                <div className="w-12 h-12 rounded-full bg-white group-hover:bg-[#9CF06B] transition-colors"/>
+                className="w-16 h-16 rounded-full border-4 border-white/20 flex items-center justify-center hover:border-[#4ADE80]/60 transition-all group disabled:opacity-40">
+                <div className="w-12 h-12 rounded-full bg-white group-hover:bg-[#4ADE80] transition-colors"/>
               </button>
               <div className="w-11 h-11"/>
             </>
@@ -187,7 +188,7 @@ function CameraModal({ onCapture, onClose }) {
               </button>
               <button onClick={use}
                 className="flex items-center gap-2 text-sm font-bold text-[#0A1A0F] px-6 py-2.5 rounded-full"
-                style={{ background:'#9CF06B' }}>
+                style={{ background:'#4ADE80' }}>
                 <Check className="w-4 h-4"/> Use Photo
               </button>
             </>
@@ -234,21 +235,21 @@ function AvatarSection({ name, avatar, tempAvatar, isChanged, onFileChange, onCa
             onDrop={handleDrop}
             whileHover={{ scale:1.03 }} whileTap={{ scale:.97 }}
             className={`relative w-28 h-28 rounded-full overflow-hidden border-4 flex items-center justify-center transition-all ${
-              dragging ? 'border-[#9CF06B] scale-105' : isChanged ? 'border-[#9CF06B]' : 'border-white/80'
+              dragging ? 'border-[#4ADE80] scale-105' : isChanged ? 'border-amber-400' : 'border-[#E5EDE8]'
             }`}
-            style={{ boxShadow:'0 0 0 4px rgba(17,64,45,0.1)' }}>
+            style={{ boxShadow:'0 0 0 4px rgba(17,64,45,0.06)' }}>
             {displayAv
               ? <img src={displayAv} alt="Avatar" className="w-full h-full object-cover" />
               : <div className="w-full h-full bg-gradient-to-br from-[#11402D] to-[#1a5c3e] flex items-center justify-center">
-                  <span className="text-2xl font-black text-[#9CF06B]">{getInitials(name)}</span>
+                  <span className="text-2xl font-black text-white">{getInitials(name)}</span>
                 </div>}
-            <div className="absolute inset-0 bg-[#0A1A0F]/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#0A1A0F]/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
               <Camera className="w-6 h-6 text-white"/>
             </div>
           </motion.button>
           {isChanged && (
-            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#9CF06B] border-2 border-white flex items-center justify-center">
-              <Check className="w-2.5 h-2.5 text-[#0A1A0F]"/>
+            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-amber-400 border-2 border-white flex items-center justify-center">
+              <Check className="w-2.5 h-2.5 text-white"/>
             </div>
           )}
           <AnimatePresence>
@@ -283,7 +284,7 @@ function AvatarSection({ name, avatar, tempAvatar, isChanged, onFileChange, onCa
           Click to upload, take photo, or drag & drop
         </p>
         {isChanged && (
-          <span className="text-[10px] font-bold text-[#9CF06B] bg-[#11402D]/10 px-2.5 py-1 rounded-full">
+          <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
             Unsaved
           </span>
         )}
@@ -476,6 +477,8 @@ export default function ProfileSettings() {
         input:-webkit-autofill { -webkit-box-shadow:0 0 0 40px #F6F8F4 inset; }
         ::-webkit-scrollbar { width:4px; }
         ::-webkit-scrollbar-thumb { background:#D8E8E0; border-radius:99px; }
+        .shadow-card { box-shadow: 0 4px 20px -6px rgba(0,0,0,0.06), 0 2px 8px -4px rgba(0,0,0,0.02); }
+        .shadow-soft { box-shadow: 0 2px 15px -3px rgba(0,0,0,0.05), 0 1px 4px -2px rgba(0,0,0,0.02); }
       `}</style>
 
       {/* Toast stack */}
@@ -492,18 +495,14 @@ export default function ProfileSettings() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
 
         {/* ── HERO CARD ── */}
-        <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }}
-          className="relative bg-[#0A1A0F] rounded-3xl overflow-hidden mb-8 border border-white/5 shadow-2xl">
-          {/* Subtle texture */}
-          <div className="absolute inset-0 grid grid-cols-4 grid-rows-2 gap-px opacity-10">
-            {['#11402D','#0E2A1C','#1a5c3e','#11402D','#0E2A1C','#1a5c3e','#11402D','#0E2A1C'].map((c,i) => (
-              <div key={i} style={{ background: c }}/>
-            ))}
-          </div>
-          <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl pointer-events-none" style={{ background:'#9CF06B0A' }}/>
-          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full blur-2xl pointer-events-none" style={{ background:'#11402D20' }}/>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-3xl shadow-card border border-[#E5EDE8] overflow-hidden mb-8"
+        >
+          <div className="px-6 sm:px-8 py-8 flex flex-col sm:flex-row items-center sm:items-start gap-6">
 
-          <div className="relative px-6 sm:px-10 py-10 flex flex-col sm:flex-row items-center sm:items-start gap-7">
+            {/* Avatar */}
             <AvatarSection
               name={profile.full_name}
               avatar={profile.avatar}
@@ -514,53 +513,67 @@ export default function ProfileSettings() {
               onRemove={handleRemoveAvatar}
               onCancelChange={handleCancelAvatar}
             />
-            <div className="flex-1 text-center sm:text-left">
-              <div className="flex items-center justify-center sm:justify-start gap-2 mb-3">
-                <div className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/30 font-mono-cw">
-                  {profile.role || 'User'}
-                </div>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#9CF06B] animate-pulse"/>
-              </div>
-              <h1 className="font-display text-4xl sm:text-5xl text-white leading-tight mb-2">
-                {profile.full_name || 'Your Name'}
-              </h1>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-1.5 text-sm text-white/40 mt-3">
-                <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5"/>{profile.email || '—'}</span>
-                {profile.location && <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5"/>{profile.location}</span>}
-                {profile.business_name && <span className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5"/>{profile.business_name}</span>}
-                <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5"/>Joined {fmt(profile.created_at)}</span>
-              </div>
-            </div>
-            <button onClick={() => { setActiveTab('profile'); formRef.current?.scrollIntoView({ behavior:'smooth' }); }}
-              className="flex-shrink-0 flex items-center gap-2 text-sm font-bold text-[#0A1A0F] px-5 py-2.5 rounded-xl self-start transition hover:opacity-80 active:scale-[0.98]"
-              style={{ background:'#9CF06B' }}>
-              <Edit3 className="w-4 h-4"/> Edit Profile
-            </button>
-          </div>
 
-          {/* Stats strip */}
-          <div className="relative grid grid-cols-2 sm:grid-cols-4 border-t border-white/6">
-            {[
-              { label:'Member Since', val:fmt(profile.created_at), Icon:Calendar },
-              { label:'Business',     val:profile.business_name||'—', Icon:Building2 },
-              { label:'Role',         val:profile.role||'—',           Icon:Briefcase },
-              { label:'Waste Types',  val:profile.waste_types||'—',    Icon:Package },
-            ].map((s,i) => (
-              <div key={i} className={`px-5 py-4 flex items-center gap-3 ${i < 3 ? 'border-r border-white/6' : ''}`}>
-                <div className="w-8 h-8 rounded-xl bg-white/6 flex items-center justify-center flex-shrink-0">
-                  <s.Icon className="w-3.5 h-3.5 text-white/40"/>
-                </div>
-                <div className="min-w-0">
-                  <div className="text-[9px] text-white/25 font-mono-cw uppercase tracking-widest mb-0.5">{s.label}</div>
-                  <div className="text-xs font-semibold text-white/70 truncate">{s.val}</div>
-                </div>
+            {/* Info */}
+            <div className="flex-1 min-w-0 text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#0A1A0F] tracking-tight">
+                  {profile.full_name || 'Your Name'}
+                </h1>
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${meta.pill}`}>
+                  <RoleIcon className="w-3.5 h-3.5" />
+                  {profile.role || 'User'}
+                </span>
               </div>
-            ))}
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-5 gap-y-1.5 text-sm text-[#5A7060] mt-3">
+                <span className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-[#A8BBB3]" /> {profile.email || '—'}
+                </span>
+                {profile.phone && (
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-[#A8BBB3]" /> {profile.phone}
+                  </span>
+                )}
+                {profile.location && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-[#A8BBB3]" /> {profile.location}
+                  </span>
+                )}
+                {profile.business_name && (
+                  <span className="flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[#A8BBB3]" /> {profile.business_name}
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#A8BBB3]" /> Member since {fmt(profile.created_at)}
+                </span>
+              </div>
+
+              {profile.waste_types && (
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 mt-3.5">
+                  {profile.waste_types.split(',').map(w => w.trim()).filter(Boolean).map(tag => (
+                    <span key={tag} className="text-[11px] font-medium text-[#3D5248] bg-[#F6F8F4] border border-[#E5EDE8] px-2.5 py-1 rounded-lg">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Edit button */}
+            <button
+              onClick={() => { setActiveTab('profile'); formRef.current?.scrollIntoView({ behavior:'smooth' }); }}
+              className="flex-shrink-0 flex items-center gap-2 text-sm font-bold text-white px-5 py-2.5 rounded-xl self-center sm:self-start transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{ background:'#11402D' }}
+            >
+              <Edit3 className="w-4 h-4" /> Edit Profile
+            </button>
           </div>
         </motion.div>
 
         {/* ── TAB BAR ── */}
-        <div className="flex gap-1 bg-white border border-[#E5EDE8] rounded-2xl p-1 mb-6 shadow-sm">
+        <div className="flex gap-1 bg-white border border-[#E5EDE8] rounded-2xl p-1 mb-6 shadow-soft">
           {TABS.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${
@@ -582,7 +595,7 @@ export default function ProfileSettings() {
               initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-12 }}
               transition={{ duration:0.25 }}>
               <form onSubmit={handleSaveProfile}>
-                <div className="bg-white rounded-2xl border border-[#E5EDE8] overflow-hidden shadow-sm">
+                <div className="bg-white rounded-2xl border border-[#E5EDE8] overflow-hidden shadow-soft">
                   <div className="px-6 py-5 border-b border-[#F0F5F2]">
                     <h2 className="font-display text-xl text-[#0A1A0F]">Personal Information</h2>
                     <p className="text-xs text-[#5A7060] mt-0.5">Update your account details and business information.</p>
@@ -671,7 +684,7 @@ export default function ProfileSettings() {
               initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-12 }}
               transition={{ duration:0.25 }}>
               <form onSubmit={handleSavePassword}>
-                <div className="bg-white rounded-2xl border border-[#E5EDE8] overflow-hidden shadow-sm">
+                <div className="bg-white rounded-2xl border border-[#E5EDE8] overflow-hidden shadow-soft">
                   <div className="px-6 py-5 border-b border-[#F0F5F2] flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-[#11402D]/6 flex items-center justify-center">
                       <Lock className="w-4 h-4 text-[#11402D]"/>
@@ -758,7 +771,7 @@ export default function ProfileSettings() {
               initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-12 }}
               transition={{ duration:0.25 }}>
               <div className="space-y-4">
-                <div className="bg-white rounded-2xl border border-amber-200 overflow-hidden shadow-sm">
+                <div className="bg-white rounded-2xl border border-amber-200 overflow-hidden shadow-soft">
                   <div className="px-6 py-5 flex items-start gap-4">
                     <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <AlertCircle className="w-5 h-5 text-amber-500"/>
@@ -780,7 +793,7 @@ export default function ProfileSettings() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border-2 border-red-200 overflow-hidden shadow-sm">
+                <div className="bg-white rounded-2xl border-2 border-red-200 overflow-hidden shadow-soft">
                   <div className="px-6 py-5 flex items-start gap-4">
                     <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <Trash2 className="w-5 h-5 text-red-500"/>

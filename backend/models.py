@@ -1,4 +1,4 @@
- # models.py
+# models.py
 from datetime import datetime
 from database import db
 from flask_bcrypt import Bcrypt
@@ -826,10 +826,7 @@ class WithdrawalRequest(db.Model):
         }
 
 
-        from datetime import datetime
-from database import db
-
-
+# ========== TRANSPORT LOCATION ==========
 class TransportLocation(db.Model):
     __tablename__ = "transport_locations"
 
@@ -879,7 +876,9 @@ class TransportLocation(db.Model):
                 else None
             ),
         }
-        # ========== PARTNERSHIP APPLICATION ==========
+
+
+# ========== PARTNERSHIP APPLICATION ==========
 class PartnershipApplication(db.Model):
     __tablename__ = 'partnership_applications'
 
@@ -891,7 +890,7 @@ class PartnershipApplication(db.Model):
     organization_type = db.Column(db.String(100), nullable=False)
     waste_types = db.Column(db.String(200))  # comma-separated
     message = db.Column(db.Text)
-    status = db.Column(db.String(20), default='pending')  # pending, reviewed, contacted, rejected
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -909,3 +908,7 @@ class PartnershipApplication(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+# ========== OTHER MODELS ==========
+# (Any other models you may have, like Review, PlatformWallet, etc., can be appended here)

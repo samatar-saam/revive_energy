@@ -21,9 +21,11 @@ import L from "leaflet";
 import {
   AlertCircle,
   ArrowLeft,
-  CheckCircle,
+  CheckCircle2,
+  Circle,
   Clock,
   Crosshair,
+  Gauge,
   LoaderCircle,
   MapPin,
   Navigation,
@@ -41,6 +43,68 @@ import { toast } from "react-toastify";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+// ─── Design tokens (injected once) ──────────────────────────────
+const DESIGN_TOKENS = `
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  .rt-root {
+    --canopy: #0F3D2B;
+    --canopy-dark: #09241A;
+    --canopy-tint: #E7F0EA;
+    --mist: #F4F6F2;
+    --paper: #FFFFFF;
+    --ink: #1B231D;
+    --slate: #6E7B71;
+    --hairline: #E2E7DF;
+    --amber: #DC9A3C;
+    --amber-tint: #FBF0DC;
+    --route: #3E6E86;
+    --route-tint: #E4EEF1;
+    --signal: #BD4438;
+    --signal-tint: #FBE9E7;
+    font-family: 'Inter', sans-serif;
+    background: var(--mist);
+    color: var(--ink);
+  }
+  .rt-root .font-display { font-family: 'Fraunces', serif; }
+  .rt-root .font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+  @keyframes rt-fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .rt-animate { animation: rt-fade-up 0.5s ease both; }
+
+  @keyframes rt-pulse-ring {
+    0% { transform: scale(0.6); opacity: 0.55; }
+    70% { transform: scale(1.6); opacity: 0; }
+    100% { opacity: 0; }
+  }
+  .live-marker { position: relative; width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
+  .live-marker-pulse { position: absolute; inset: 0; border-radius: 50%; background: rgba(15,61,43,0.38); animation: rt-pulse-ring 2.2s ease-out infinite; }
+  .live-marker-core { position: relative; z-index: 1; width: 42px; height: 42px; border-radius: 50%; background: #0F3D2B; color: #fff; display: flex; align-items: center; justify-content: center; border: 4px solid #fff; box-shadow: 0 8px 20px rgba(15,61,43,.35); font-size: 19px; }
+
+  .rt-stamp {
+    transform: rotate(-3deg);
+    border-style: dashed;
+  }
+
+  @keyframes rt-dash {
+    to { stroke-dashoffset: -24; }
+  }
+  .rt-rail-active-line { stroke-dasharray: 5 7; animation: rt-dash 1.4s linear infinite; }
+`;
+
+function useInjectedStyles() {
+  useEffect(() => {
+    if (document.getElementById("rt-design-tokens")) return;
+    const style = document.createElement("style");
+    style.id = "rt-design-tokens";
+    style.innerHTML = DESIGN_TOKENS;
+    document.head.appendChild(style);
+  }, []);
+}
+
 // ─── Leaflet icon fix ──────────────────────────────────────────
 delete L.Icon.Default.prototype._getIconUrl;
 
@@ -56,70 +120,61 @@ L.Icon.Default.mergeOptions({
 const transporterIcon = new L.DivIcon({
   className: "",
   html: `
-    <div style="
-      width:42px;
-      height:42px;
-      border-radius:50%;
-      background:#11402D;
-      color:white;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border:4px solid white;
-      box-shadow:0 5px 15px rgba(0,0,0,.25);
-      font-size:20px;
-    ">
-      🚚
+    <div class="live-marker">
+      <span class="live-marker-pulse"></span>
+      <div class="live-marker-core">🚛</div>
     </div>
   `,
-  iconSize: [42, 42],
-  iconAnchor: [21, 21],
+  iconSize: [56, 56],
+  iconAnchor: [28, 28],
 });
 
 const pickupIcon = new L.DivIcon({
   className: "",
   html: `
     <div style="
-      width:34px;
-      height:34px;
-      border-radius:50%;
-      background:#f59e0b;
+      width:32px;
+      height:32px;
+      border-radius:8px;
+      background:#DC9A3C;
       color:white;
       display:flex;
       align-items:center;
       justify-content:center;
       border:3px solid white;
       box-shadow:0 4px 12px rgba(0,0,0,.2);
-      font-size:15px;
-    ">
-      P
-    </div>
+      font-size:13px;
+      font-family:'IBM Plex Mono',monospace;
+      font-weight:600;
+      transform:rotate(45deg);
+    "><span style="transform:rotate(-45deg)">P</span></div>
   `,
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
 });
 
 const destinationIcon = new L.DivIcon({
   className: "",
   html: `
     <div style="
-      width:34px;
-      height:34px;
-      border-radius:50%;
-      background:#2563eb;
+      width:32px;
+      height:32px;
+      border-radius:8px;
+      background:#3E6E86;
       color:white;
       display:flex;
       align-items:center;
       justify-content:center;
       border:3px solid white;
       box-shadow:0 4px 12px rgba(0,0,0,.2);
-      font-size:15px;
-    ">
-      D
-    </div>
+      font-size:13px;
+      font-family:'IBM Plex Mono',monospace;
+      font-weight:600;
+      transform:rotate(45deg);
+    "><span style="transform:rotate(-45deg)">D</span></div>
   `,
-  iconSize: [34, 34],
-  iconAnchor: [17, 17],
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
 });
 
 // ─── Helpers ────────────────────────────────────────────────────
@@ -165,6 +220,11 @@ function formatDate(value) {
   });
 }
 
+function formatCoord(value) {
+  if (value == null) return "—";
+  return Number(value).toFixed(5);
+}
+
 function isAtLeastStatus(currentStatus, targetStatus) {
   const order = [
     "open",
@@ -181,6 +241,16 @@ function isAtLeastStatus(currentStatus, targetStatus) {
   const targetIndex = order.indexOf(targetStatus);
   if (currentIndex === -1 || targetIndex === -1) return false;
   return currentIndex >= targetIndex;
+}
+
+function getStatusTone(status) {
+  if (status === "completed") {
+    return { bg: "var(--canopy-tint)", fg: "var(--canopy)", border: "var(--canopy)" };
+  }
+  if (status === "open" || !status) {
+    return { bg: "#F1F2EF", fg: "var(--slate)", border: "var(--hairline)" };
+  }
+  return { bg: "var(--amber-tint)", fg: "#8A5C1E", border: "var(--amber)" };
 }
 
 // ─── Map Re-center component ──────────────────────────────────
@@ -211,22 +281,23 @@ function JobList({ jobs, loading, onSelect, onRefresh, error }) {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <LoaderCircle className="h-12 w-12 animate-spin text-[#11402D]" />
+        <LoaderCircle className="h-10 w-10 animate-spin text-[var(--canopy)]" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="mx-auto max-w-xl rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
-        <AlertCircle className="mx-auto h-14 w-14 text-red-500" />
-        <h2 className="mt-4 text-xl font-bold text-red-700">Unable to Load Jobs</h2>
-        <p className="mt-2 text-sm text-red-600">{error}</p>
+      <div className="mx-auto max-w-xl rounded-2xl border p-8 text-center" style={{ background: "var(--signal-tint)", borderColor: "#EFC4BE" }}>
+        <AlertCircle className="mx-auto h-12 w-12" style={{ color: "var(--signal)" }} />
+        <h2 className="mt-4 font-display text-xl font-semibold" style={{ color: "var(--signal)" }}>Unable to load jobs</h2>
+        <p className="mt-2 text-sm" style={{ color: "#8C382E" }}>{error}</p>
         <button
           onClick={onRefresh}
-          className="mt-6 rounded-xl bg-red-600 px-5 py-2.5 font-semibold text-white hover:bg-red-700"
+          className="mt-6 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+          style={{ background: "var(--signal)" }}
         >
-          Try Again
+          Try again
         </button>
       </div>
     );
@@ -234,10 +305,10 @@ function JobList({ jobs, loading, onSelect, onRefresh, error }) {
 
   if (!jobs || jobs.length === 0) {
     return (
-      <div className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-12 text-center shadow-sm">
-        <Route className="mx-auto h-16 w-16 text-[#11402D]" />
-        <h2 className="mt-4 text-xl font-bold text-gray-900">No Active Jobs</h2>
-        <p className="mt-2 text-sm text-gray-500">
+      <div className="mx-auto max-w-xl rounded-2xl border bg-[var(--paper)] p-12 text-center" style={{ borderColor: "var(--hairline)" }}>
+        <Route className="mx-auto h-14 w-14" style={{ color: "var(--canopy)" }} />
+        <h2 className="mt-4 font-display text-xl font-semibold">No active jobs</h2>
+        <p className="mt-2 text-sm" style={{ color: "var(--slate)" }}>
           You don't have any jobs available for live tracking at the moment.
         </p>
       </div>
@@ -246,39 +317,146 @@ function JobList({ jobs, loading, onSelect, onRefresh, error }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {jobs.map((job) => (
+      {jobs.map((job, i) => {
+        const tone = getStatusTone(job.status);
+        return (
+          <div
+            key={job.job_id}
+            className="rt-animate group cursor-pointer rounded-2xl border bg-[var(--paper)] p-6 transition hover:-translate-y-1 hover:shadow-[0_16px_32px_-16px_rgba(15,61,43,0.25)]"
+            style={{ borderColor: "var(--hairline)", animationDelay: `${i * 40}ms` }}
+            onClick={() => onSelect(job.job_id)}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-display text-lg font-semibold leading-tight">{job.waste_type}</h3>
+                <p className="font-mono mt-1 text-xs" style={{ color: "var(--slate)" }}>JOB #{job.job_id}</p>
+              </div>
+              <span
+                className="whitespace-nowrap rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                style={{ background: tone.bg, color: tone.fg }}
+              >
+                {formatStatus(job.status)}
+              </span>
+            </div>
+            <div className="mt-4 space-y-2 text-sm" style={{ color: "var(--ink)" }}>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 shrink-0" style={{ color: "var(--amber)" }} />
+                <span className="truncate">{job.pickup_location?.name || "Pickup"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 shrink-0" style={{ color: "var(--route)" }} />
+                <span className="truncate">{job.delivery_location?.name || "Delivery"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Truck className="h-4 w-4 shrink-0" style={{ color: "var(--slate)" }} />
+                <span className="truncate" style={{ color: "var(--slate)" }}>{job.transporter?.name || "No transporter assigned"}</span>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center gap-1.5 text-sm font-semibold" style={{ color: "var(--canopy)" }}>
+              Track live
+              <Navigation className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Waybill route rail (signature element) ────────────────────
+const RAIL_STEPS = [
+  { key: "accepted", label: "Accepted" },
+  { key: "heading_to_pickup", label: "Heading to Pickup" },
+  { key: "arrived_at_pickup", label: "At Pickup" },
+  { key: "picked_up", label: "Picked Up" },
+  { key: "in_transit", label: "In Transit" },
+  { key: "arrived_at_destination", label: "At Destination" },
+];
+
+function WaybillRail({ status, timeline, createdAt }) {
+  const activeIndex = RAIL_STEPS.reduce(
+    (acc, step, i) => (isAtLeastStatus(status, step.key) ? i : acc),
+    -1
+  );
+  const dates = {
+    accepted: createdAt,
+    heading_to_pickup: timeline?.tracking_started_at,
+    arrived_at_pickup: timeline?.arrived_pickup_at,
+    picked_up: timeline?.picked_up_at,
+    in_transit: null,
+    arrived_at_destination: timeline?.arrived_destination_at,
+  };
+
+  return (
+    <div className="overflow-x-auto pb-1">
+      <div className="relative flex min-w-[720px] items-start justify-between px-2">
+        <div className="absolute left-6 right-6 top-[15px] h-[2px]" style={{ background: "var(--hairline)" }} />
         <div
-          key={job.job_id}
-          className="cursor-pointer rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-          onClick={() => onSelect(job.job_id)}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <h3 className="font-bold text-gray-900">{job.waste_type}</h3>
-              <p className="text-sm text-gray-500">Job #{job.job_id}</p>
+          className="absolute left-6 top-[15px] h-[2px] rt-rail-active-line"
+          style={{
+            width: activeIndex <= 0 ? "0%" : `calc(${(activeIndex / (RAIL_STEPS.length - 1)) * 100}% - 24px)`,
+            stroke: "var(--canopy)",
+            background: "repeating-linear-gradient(to right, var(--canopy) 0 6px, transparent 6px 11px)",
+          }}
+        />
+        {RAIL_STEPS.map((step, i) => {
+          const complete = i <= activeIndex;
+          const isCurrent = i === activeIndex;
+          return (
+            <div key={step.key} className="relative z-10 flex w-full flex-col items-center text-center">
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-full border-2 bg-[var(--paper)] transition"
+                style={{
+                  borderColor: complete ? "var(--canopy)" : "var(--hairline)",
+                  color: complete ? "var(--canopy)" : "var(--slate)",
+                  boxShadow: isCurrent ? "0 0 0 4px var(--canopy-tint)" : "none",
+                }}
+              >
+                {complete ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-3 w-3" />}
+              </div>
+              <p className="font-display mt-2 text-xs font-semibold leading-tight" style={{ color: complete ? "var(--ink)" : "var(--slate)" }}>
+                {step.label}
+              </p>
+              <p className="font-mono mt-1 text-[10px]" style={{ color: "var(--slate)" }}>
+                {dates[step.key] ? formatDate(dates[step.key]) : complete ? "Done" : "Pending"}
+              </p>
             </div>
-            <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-xs font-semibold text-[#11402D]">
-              {formatStatus(job.status)}
-            </span>
-          </div>
-          <div className="mt-3 space-y-1 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-gray-400" />
-              <span>{job.pickup_location?.name || "Pickup"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-gray-400" />
-              <span>{job.delivery_location?.name || "Delivery"}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Truck className="h-4 w-4 text-gray-400" />
-              <span>{job.transporter?.name || "No transporter assigned"}</span>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-sm">
-            <span className="font-medium text-[#11402D]">Track</span>
-            <Navigation className="h-4 w-4 text-[#11402D]" />
-          </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Live telemetry ticker ──────────────────────────────────────
+function TelemetryTicker({ location, sharing }) {
+  const items = [
+    { label: "LAT", value: formatCoord(location?.latitude) },
+    { label: "LNG", value: formatCoord(location?.longitude) },
+    { label: "SPEED", value: location?.speed != null ? `${Math.round(location.speed)} km/h` : "0 km/h" },
+    { label: "HEADING", value: location?.heading != null ? `${Math.round(location.heading)}°` : "—" },
+    { label: "ACCURACY", value: location?.accuracy != null ? `±${Math.round(location.accuracy)}m` : "—" },
+  ];
+  return (
+    <div
+      className="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-2xl border px-5 py-3"
+      style={{ borderColor: "var(--hairline)", background: "var(--canopy-dark)" }}
+    >
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          {sharing && (
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" style={{ background: "#5FCB8E" }} />
+          )}
+          <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: sharing ? "#5FCB8E" : "#7C8B82" }} />
+        </span>
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-white/90">
+          {sharing ? "Live feed" : "Standing by"}
+        </span>
+      </div>
+      {items.map((item) => (
+        <div key={item.label} className="flex items-baseline gap-1.5">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-white/45">{item.label}</span>
+          <span className="font-mono text-[13px] font-medium text-white">{item.value}</span>
         </div>
       ))}
     </div>
@@ -287,6 +465,8 @@ function JobList({ jobs, loading, onSelect, onRefresh, error }) {
 
 // ─── Main Component ────────────────────────────────────────────
 export default function RouteTracking() {
+  useInjectedStyles();
+
   // ─── All useState hooks (always in this order) ─────────────
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -585,18 +765,26 @@ export default function RouteTracking() {
   const mapCenter =
     currentPosition || pickupPosition || deliveryPosition || [-1.286389, 36.817223];
 
+  const statusTone = getStatusTone(tracking?.status);
+
   // ─── Conditional rendering (AFTER all hooks) ────────────────
 
   // 1. Job list view
   if (!selectedJobId) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6">
+      <div className="rt-root min-h-screen p-4 sm:p-6">
         <div className="mx-auto max-w-7xl space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="text-2xl font-bold text-gray-900">Route Tracking</h1>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="font-mono text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--canopy)" }}>
+                Fleet Operations
+              </p>
+              <h1 className="font-display mt-1 text-3xl font-semibold">Route Tracking</h1>
+            </div>
             <button
               onClick={handleRefresh}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-2 self-start rounded-full border bg-[var(--paper)] px-4 py-2 text-sm font-medium transition hover:bg-[var(--canopy-tint)]"
+              style={{ borderColor: "var(--hairline)" }}
             >
               <RefreshCw className="h-4 w-4" />
               Refresh
@@ -617,10 +805,12 @@ export default function RouteTracking() {
   // 2. Loading state for tracking
   if (loading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center">
+      <div className="rt-root flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <LoaderCircle className="mx-auto h-12 w-12 animate-spin text-[#11402D]" />
-          <p className="mt-4 text-sm text-gray-500">Loading live route...</p>
+          <LoaderCircle className="mx-auto h-10 w-10 animate-spin" style={{ color: "var(--canopy)" }} />
+          <p className="font-mono mt-4 text-xs uppercase tracking-widest" style={{ color: "var(--slate)" }}>
+            Loading live route…
+          </p>
         </div>
       </div>
     );
@@ -629,23 +819,27 @@ export default function RouteTracking() {
   // 3. Error state
   if (error) {
     return (
-      <div className="mx-auto max-w-xl rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
-        <AlertCircle className="mx-auto h-14 w-14 text-red-500" />
-        <h2 className="mt-4 text-xl font-bold text-red-700">Unable to Load Route</h2>
-        <p className="mt-2 text-sm text-red-600">{error}</p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <button
-            onClick={() => fetchTracking()}
-            className="rounded-xl bg-red-600 px-5 py-2.5 font-semibold text-white hover:bg-red-700"
-          >
-            Try Again
-          </button>
-          <button
-            onClick={goBackToList}
-            className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Go Back
-          </button>
+      <div className="rt-root flex min-h-screen items-center justify-center p-4">
+        <div className="mx-auto max-w-xl rounded-2xl border p-8 text-center" style={{ background: "var(--signal-tint)", borderColor: "#EFC4BE" }}>
+          <AlertCircle className="mx-auto h-12 w-12" style={{ color: "var(--signal)" }} />
+          <h2 className="font-display mt-4 text-xl font-semibold" style={{ color: "var(--signal)" }}>Unable to load route</h2>
+          <p className="mt-2 text-sm" style={{ color: "#8C382E" }}>{error}</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <button
+              onClick={() => fetchTracking()}
+              className="rounded-full px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+              style={{ background: "var(--signal)" }}
+            >
+              Try again
+            </button>
+            <button
+              onClick={goBackToList}
+              className="rounded-full border bg-[var(--paper)] px-5 py-2.5 text-sm font-semibold hover:bg-[var(--mist)]"
+              style={{ borderColor: "var(--hairline)" }}
+            >
+              Go back
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -653,58 +847,86 @@ export default function RouteTracking() {
 
   // 4. Live tracking view
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6">
+    <div className="rt-root min-h-screen p-4 sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Header with Back button */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <button
-              onClick={goBackToList}
-              className="rounded-xl border border-gray-200 bg-white p-2 text-gray-600 shadow-sm hover:bg-gray-50"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold text-gray-900">Live Route Tracking</h1>
-                <span className="rounded-full bg-[#E8F5EE] px-3 py-1 text-xs font-semibold text-[#11402D]">
+        {/* Waybill header */}
+        <div className="rt-animate overflow-hidden rounded-3xl border bg-[var(--paper)]" style={{ borderColor: "var(--hairline)" }}>
+          <div className="flex flex-col gap-5 p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <button
+                  onClick={goBackToList}
+                  className="rounded-full border p-2 transition hover:bg-[var(--mist)]"
+                  style={{ borderColor: "var(--hairline)" }}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+                <div>
+                  <p className="font-mono text-[11px] font-semibold uppercase tracking-widest" style={{ color: "var(--slate)" }}>
+                    Job #{tracking?.job_id} · {tracking?.waste_type}
+                  </p>
+                  <h1 className="font-display mt-1 text-2xl font-semibold sm:text-[28px]">
+                    {tracking?.pickup_location?.name || "Pickup"}
+                    <span className="mx-2 font-sans font-normal" style={{ color: "var(--slate)" }}>→</span>
+                    {tracking?.delivery_location?.name || "Destination"}
+                  </h1>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span
+                  className="rt-stamp rounded-lg border-2 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider"
+                  style={{ color: statusTone.fg, borderColor: statusTone.border, background: statusTone.bg }}
+                >
                   {formatStatus(tracking?.status)}
                 </span>
               </div>
-              <p className="mt-1 text-sm text-gray-500">
-                Job #{tracking?.job_id} · {tracking?.waste_type}
-              </p>
+            </div>
+
+            <WaybillRail status={tracking?.status} timeline={tracking?.timeline} createdAt={tracking?.created_at} />
+
+            <div className="flex flex-wrap gap-2 border-t pt-4" style={{ borderColor: "var(--hairline)" }}>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="inline-flex items-center gap-2 rounded-full border bg-[var(--paper)] px-4 py-2 text-sm font-medium transition hover:bg-[var(--mist)] disabled:opacity-50"
+                style={{ borderColor: "var(--hairline)" }}
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
+              {isTransporter && !sharingLocation && (
+                <button
+                  onClick={startLocationSharing}
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                  style={{ background: "var(--canopy)" }}
+                >
+                  <Navigation className="h-4 w-4" />
+                  Share Location
+                </button>
+              )}
+              {isTransporter && sharingLocation && (
+                <button
+                  onClick={stopLocationSharing}
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                  style={{ background: "var(--signal)" }}
+                >
+                  <WifiOff className="h-4 w-4" />
+                  Stop Sharing
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
-            {isTransporter && !sharingLocation && (
-              <button
-                onClick={startLocationSharing}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#11402D] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0E2A1C]"
-              >
-                <Navigation className="h-4 w-4" />
-                Share Location
-              </button>
-            )}
-            {isTransporter && sharingLocation && (
-              <button
-                onClick={stopLocationSharing}
-                className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-              >
-                <WifiOff className="h-4 w-4" />
-                Stop Sharing
-              </button>
-            )}
-          </div>
         </div>
+
+        {/* Live telemetry ticker */}
+        <TelemetryTicker location={tracking?.current_location} sharing={sharingLocation} />
+
+        {locationError && (
+          <div className="flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm" style={{ background: "var(--signal-tint)", borderColor: "#EFC4BE", color: "#8C382E" }}>
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            {locationError}
+          </div>
+        )}
 
         {/* Summary Cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -719,7 +941,7 @@ export default function RouteTracking() {
             value={tracking?.distance_remaining_km != null ? `${tracking.distance_remaining_km} km` : "Unavailable"}
           />
           <SummaryCard
-            icon={Truck}
+            icon={Gauge}
             label="Current Speed"
             value={tracking?.current_location?.speed ? `${Math.round(tracking.current_location.speed)} km/h` : "0 km/h"}
           />
@@ -730,25 +952,18 @@ export default function RouteTracking() {
           />
         </div>
 
-        {locationError && (
-          <div className="flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            {locationError}
-          </div>
-        )}
-
         {/* Map & Sidebar */}
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+          <div className="overflow-hidden rounded-3xl border bg-[var(--paper)]" style={{ borderColor: "var(--hairline)" }}>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4" style={{ borderColor: "var(--hairline)" }}>
               <div>
-                <h2 className="font-bold text-gray-900">Live Map</h2>
-                <p className="text-xs text-gray-500">
+                <h2 className="font-display font-semibold">Live Map</h2>
+                <p className="font-mono mt-0.5 text-xs" style={{ color: "var(--slate)" }}>
                   Updated {formatDate(tracking?.current_location?.updated_at)}
                 </p>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+              <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--canopy-tint)", color: "var(--canopy)" }}>
+                <span className="h-2 w-2 animate-pulse rounded-full" style={{ background: "var(--canopy)" }} />
                 Live
               </span>
             </div>
@@ -793,7 +1008,7 @@ export default function RouteTracking() {
                 {routePositions.length > 1 && (
                   <Polyline
                     positions={routePositions}
-                    pathOptions={{ color: "#11402D", weight: 5, opacity: 0.8 }}
+                    pathOptions={{ color: "#0F3D2B", weight: 5, opacity: 0.8 }}
                   />
                 )}
               </MapContainer>
@@ -801,24 +1016,25 @@ export default function RouteTracking() {
           </div>
 
           <div className="space-y-5">
-            <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="font-bold text-gray-900">Driver Information</h2>
+            <div className="rounded-3xl border bg-[var(--paper)] p-5" style={{ borderColor: "var(--hairline)" }}>
+              <h2 className="font-display font-semibold">Driver Information</h2>
               <div className="mt-4 flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#E8F5EE] text-[#11402D]">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "var(--canopy-tint)", color: "var(--canopy)" }}>
                   <User className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{tracking?.transporter?.name}</p>
-                  <p className="text-xs text-gray-500">Assigned transporter</p>
+                  <p className="font-semibold">{tracking?.transporter?.name}</p>
+                  <p className="text-xs" style={{ color: "var(--slate)" }}>Assigned transporter</p>
                 </div>
               </div>
               <InfoRow label="Phone" value={tracking?.transporter?.phone} />
               <InfoRow label="Vehicle" value={tracking?.transporter?.vehicle_type} />
-              <InfoRow label="Registration" value={tracking?.transporter?.vehicle_number} />
+              <InfoRow label="Registration" value={tracking?.transporter?.vehicle_number} mono />
               {tracking?.transporter?.phone && (
                 <a
                   href={`tel:${tracking.transporter.phone}`}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#11402D] py-2.5 text-sm font-semibold text-white hover:bg-[#0E2A1C]"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+                  style={{ background: "var(--canopy)" }}
                 >
                   <Phone className="h-4 w-4" />
                   Call Driver
@@ -826,78 +1042,44 @@ export default function RouteTracking() {
               )}
             </div>
 
-            <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-              <h2 className="font-bold text-gray-900">Delivery Details</h2>
+            <div className="rounded-3xl border bg-[var(--paper)] p-5" style={{ borderColor: "var(--hairline)" }}>
+              <h2 className="font-display font-semibold">Delivery Details</h2>
               <InfoRow label="Waste Type" value={tracking?.waste_type} />
-              <InfoRow label="Quantity" value={`${tracking?.quantity || 0} ${tracking?.unit || "kg"}`} />
+              <InfoRow label="Quantity" value={`${tracking?.quantity || 0} ${tracking?.unit || "kg"}`} mono />
               <InfoRow label="Supplier" value={tracking?.supplier?.name} />
               <InfoRow label="Producer" value={tracking?.producer?.name} />
-              <div className="mt-4 rounded-2xl bg-blue-50 p-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-blue-700">
+              <div className="mt-4 rounded-2xl p-3" style={{ background: "var(--route-tint)" }}>
+                <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--route)" }}>
                   <ShieldCheck className="h-4 w-4" />
                   Escrow Protected
                 </div>
-                <p className="mt-1 text-xs text-blue-600">
+                <p className="mt-1 text-xs" style={{ color: "var(--route)" }}>
                   Payment remains secured until delivery is confirmed.
                 </p>
               </div>
             </div>
 
             {isTransporter && nextAction && (
-              <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-                <h2 className="font-bold text-gray-900">Update Delivery</h2>
-                <p className="mt-1 text-sm text-gray-500">
+              <div className="rounded-3xl border bg-[var(--paper)] p-5" style={{ borderColor: "var(--hairline)" }}>
+                <h2 className="font-display font-semibold">Update Delivery</h2>
+                <p className="mt-1 text-sm" style={{ color: "var(--slate)" }}>
                   Current status: {formatStatus(tracking?.status)}
                 </p>
                 <button
                   onClick={() => updateStatus(nextAction.nextStatus)}
                   disabled={updatingStatus}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#11402D] py-3 text-sm font-bold text-white hover:bg-[#0E2A1C] disabled:opacity-60"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
+                  style={{ background: "var(--canopy)" }}
                 >
                   {updatingStatus ? (
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                   ) : (
-                    <CheckCircle className="h-4 w-4" />
+                    <CheckCircle2 className="h-4 w-4" />
                   )}
                   {nextAction.label}
                 </button>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-900">Delivery Progress</h2>
-          <div className="mt-6 grid gap-5 md:grid-cols-3 lg:grid-cols-6">
-            <TimelineStep
-              title="Accepted"
-              complete={isAtLeastStatus(tracking?.status, "accepted")}
-              date={tracking?.created_at}
-            />
-            <TimelineStep
-              title="Heading to Pickup"
-              complete={isAtLeastStatus(tracking?.status, "heading_to_pickup")}
-              date={tracking?.timeline?.tracking_started_at}
-            />
-            <TimelineStep
-              title="Arrived at Pickup"
-              complete={isAtLeastStatus(tracking?.status, "arrived_at_pickup")}
-              date={tracking?.timeline?.arrived_pickup_at}
-            />
-            <TimelineStep
-              title="Picked Up"
-              complete={isAtLeastStatus(tracking?.status, "picked_up")}
-              date={tracking?.timeline?.picked_up_at}
-            />
-            <TimelineStep
-              title="In Transit"
-              complete={isAtLeastStatus(tracking?.status, "in_transit")}
-            />
-            <TimelineStep
-              title="At Destination"
-              complete={isAtLeastStatus(tracking?.status, "arrived_at_destination")}
-              date={tracking?.timeline?.arrived_destination_at}
-            />
           </div>
         </div>
       </div>
@@ -909,45 +1091,27 @@ export default function RouteTracking() {
 
 function SummaryCard({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+    <div className="rounded-3xl border bg-[var(--paper)] p-5" style={{ borderColor: "var(--hairline)" }}>
       <div className="flex items-center gap-3">
-        <div className="rounded-2xl bg-[#E8F5EE] p-3 text-[#11402D]">
+        <div className="rounded-2xl p-3" style={{ background: "var(--canopy-tint)", color: "var(--canopy)" }}>
           <Icon className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-xs text-gray-500">{label}</p>
-          <p className="mt-1 font-bold text-gray-900">{value}</p>
+          <p className="text-xs" style={{ color: "var(--slate)" }}>{label}</p>
+          <p className="font-display mt-1 text-lg font-semibold">{value}</p>
         </div>
       </div>
     </div>
   );
 }
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, mono }) {
   return (
-    <div className="mt-4 flex items-start justify-between gap-4 border-b border-gray-100 pb-3 last:border-0">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className="text-right text-sm font-medium text-gray-800">
+    <div className="mt-4 flex items-start justify-between gap-4 border-b pb-3 last:border-0" style={{ borderColor: "var(--hairline)" }}>
+      <span className="text-xs" style={{ color: "var(--slate)" }}>{label}</span>
+      <span className={`text-right text-sm font-medium ${mono ? "font-mono" : ""}`}>
         {value || "Not available"}
       </span>
-    </div>
-  );
-}
-
-function TimelineStep({ title, complete, date }) {
-  return (
-    <div className="relative">
-      <div
-        className={`flex h-9 w-9 items-center justify-center rounded-full ${
-          complete ? "bg-[#11402D] text-white" : "bg-gray-100 text-gray-400"
-        }`}
-      >
-        {complete ? <CheckCircle className="h-5 w-5" /> : <Clock className="h-5 w-5" />}
-      </div>
-      <p className="mt-3 text-sm font-semibold text-gray-800">{title}</p>
-      <p className="mt-1 text-xs text-gray-400">
-        {date ? formatDate(date) : complete ? "Completed" : "Waiting"}
-      </p>
     </div>
   );
 }

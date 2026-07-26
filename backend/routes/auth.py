@@ -1,4 +1,4 @@
-# routes/auth.py
+# routes/auth.py (updated with welcome email endpoint)
 from flask import Blueprint, request, jsonify, current_app, redirect, session
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
@@ -704,6 +704,121 @@ ReVive Energy Team
         return jsonify({"message": "Failed to send OTP. Please try again."}), 500
 
     return jsonify({"message": "OTP resent successfully"}), 200
+
+
+# ─── ★ NEW: SEND WELCOME EMAIL ★ ─────────────────────────────
+@auth_bp.route("/send-welcome-email", methods=["POST"])
+def send_welcome_email():
+    """
+    Send a role‑based welcome email to a newly registered user.
+    Called by the frontend after successful signup.
+    """
+    data = request.get_json() or {}
+    email = data.get("email", "").strip()
+    full_name = data.get("full_name", "User").strip()
+    role = data.get("role", "").strip()
+
+    if not email or not full_name or not role:
+        return jsonify({"message": "email, full_name and role are required"}), 400
+
+    # Map role to a friendly display name
+    role_map = {
+        "waste-supplier": "Waste Supplier",
+        "energy-producer": "Energy Producer",
+        "transport-partner": "Transport Partner",
+        "supplier": "Waste Supplier",
+        "producer": "Energy Producer",
+        "transporter": "Transport Partner",
+        "admin": "Administrator",
+    }
+    role_display = role_map.get(role, role)
+
+    # ─── Build the email ──────────────────────────────────────────
+    subject = f"Welcome to ReVive Energy, {full_name}! ♻️"
+
+    # Role-specific content
+    role_specific_next_steps = {
+        "waste-supplier": (
+            "📦 List your waste streams – hotels, farms, factories, and markets can start earning from their waste.\n"
+            "🔍 Get matched with verified collectors within hours."
+        ),
+        "energy-producer": (
+            "🔌 Secure a steady feedstock pipeline for your biogas plant or recycling facility.\n"
+            "📊 Track throughput and energy output in real time."
+        ),
+        "transport-partner": (
+            "🚚 Fill every route with paid collection jobs matched to your fleet.\n"
+            "📍 Optimise your logistics with smart route planning."
+        ),
+        "supplier": "📦 List your waste streams and start earning.",
+        "producer": "🔌 Secure waste feedstock for your energy production.",
+        "transporter": "🚚 Find paid collection jobs near you.",
+        "admin": "🛠️ Manage the platform and support all users.",
+    }
+    next_steps = role_specific_next_steps.get(role, "🚀 Explore the platform and start making an impact.")
+
+    html_body = f"""
+    <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f6f9fc;">
+        <div style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          <div style="text-align: center; border-bottom: 2px solid #11402D; padding-bottom: 20px; margin-bottom: 20px;">
+            <h1 style="color: #0E2A1C; font-size: 28px; margin: 0;">♻️ ReVive Energy</h1>
+            <p style="color: #5A7060; font-size: 14px; margin: 4px 0 0;">Waste‑to‑Value Platform</p>
+          </div>
+
+          <h2 style="color: #0E2A1C; font-size: 24px; margin-top: 0;">Welcome, {full_name}! 👋</h2>
+
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Thank you for joining ReVive Energy as a <strong>{role_display}</strong>.
+            You are now part of a community that turns waste into clean energy and builds a circular economy.
+          </p>
+
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            <strong>Here’s what you can do next:</strong>
+          </p>
+
+          <ul style="color: #333; font-size: 15px; line-height: 1.8; padding-left: 20px;">
+            <li>✅ Complete your profile – add business details, location, and contact info.</li>
+            <li style="white-space: pre-line;">{next_steps}</li>
+            <li>🌍 Track your environmental impact in real‑time.</li>
+          </ul>
+
+          <div style="background: #f0f4f8; border-radius: 12px; padding: 16px; margin-top: 20px; text-align: center;">
+            <p style="margin: 0; color: #0E2A1C; font-weight: 600;">
+              🔗 <a href="https://revive.energy/dashboard" style="color: #11402D; text-decoration: none;">Visit your dashboard</a> to get started.
+            </p>
+          </div>
+
+          <div style="border-top: 1px solid #e0e7ed; margin-top: 30px; padding-top: 20px; text-align: center; font-size: 13px; color: #8a9ba8;">
+            <p style="margin: 0;">Need help? Contact us at <a href="mailto:support@revive.energy" style="color: #11402D; text-decoration: none;">support@revive.energy</a></p>
+            <p style="margin-top: 10px;">© 2026 ReVive Energy. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+
+    # ─── Send the email ────────────────────────────────────────────
+    try:
+        msg = Message(
+            subject=subject,
+            recipients=[email],
+            html=html_body
+        )
+        current_app.extensions['mail'].send(msg)
+        current_app.logger.info(f"✅ Welcome email sent to {email} (role: {role_display})")
+        return jsonify({"message": "Welcome email sent successfully"}), 200
+
+    except Exception as e:
+        current_app.logger.error(f"❌ Failed to send welcome email: {e}")
+        # Return a 500, but the frontend should still show success because
+        # the account is already created. We log the error and return an error
+        # so the frontend knows the email failed (but doesn't block the user).
+        return jsonify({"message": "Account created, but welcome email could not be sent."}), 500
 
 
 # ─── SEED ADMIN ─────────────────────────────────────────────────

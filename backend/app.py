@@ -31,6 +31,7 @@ from models import (
     Wallet,
     WalletTransaction,
     WithdrawalRequest,
+    PartnershipApplication,  # ✅ Added new model
 )
 
 from routes.auth import auth_bp
@@ -44,7 +45,7 @@ from routes.invoices import invoices_bp
 from routes.messages import messages_bp
 from routes.admin import admin_bp
 from routes.wallet import wallet_bp
-from routes.contact import contact_bp
+from routes.contact import contact_bp          # ✅ Already imported
 from routes.tracking import tracking_bp
 from routes.disputes import disputes_bp
 
@@ -79,7 +80,7 @@ def create_app():
     app.register_blueprint(messages_bp, url_prefix="/api")
     app.register_blueprint(admin_bp)                  # admin blueprint
     app.register_blueprint(wallet_bp)
-    app.register_blueprint(contact_bp)
+    app.register_blueprint(contact_bp)                # ✅ contact blueprint for partnerships
     app.register_blueprint(tracking_bp)               # /api/tracking/...
     app.register_blueprint(disputes_bp)               # /api/disputes
     # ─── NEW: Platform Wallet ──────────────────────────────────
@@ -262,7 +263,7 @@ def create_app():
         if not all([supplier_id, amount, phone]):
             return jsonify({"message": "Missing required fields"}), 400
 
-        supplier = User.query.get(supplier_id)
+        supplier = db.session.get(User, supplier_id)
 
         if not supplier:
             return jsonify({"message": "Supplier not found"}), 404
@@ -354,7 +355,7 @@ def create_app():
     def get_receipt(payment_id):
         user_id = int(get_jwt_identity())
 
-        payment = Payment.query.get(payment_id)
+        payment = db.session.get(Payment, payment_id)
 
         if not payment:
             return jsonify({"message": "Payment not found"}), 404
@@ -414,7 +415,7 @@ def create_app():
         if not subject or not message:
             return jsonify({"message": "Subject and message are required"}), 400
 
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if not user:
             return jsonify({"message": "User not found"}), 404
 
@@ -444,7 +445,7 @@ def create_app():
     @jwt_required()
     def get_user():
         user_id = int(get_jwt_identity())
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
 
         if not user:
             return jsonify({"message": "User not found"}), 404
@@ -455,7 +456,7 @@ def create_app():
     @jwt_required()
     def update_user():
         user_id = int(get_jwt_identity())
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
 
         if not user:
             return jsonify({"message": "User not found"}), 404
@@ -481,6 +482,36 @@ def create_app():
             "message": "Profile updated successfully",
             "user": user.to_dict(),
         }), 200
+
+    # ─── Change password endpoint ──────────────────────────────
+    @app.route("/api/user/password", methods=["PUT"])
+    @jwt_required()
+    def change_password():
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "Missing JSON payload"}), 400
+
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+
+        if not current_password or not new_password:
+            return jsonify({"message": "Both current and new password are required"}), 400
+
+        user_id = int(get_jwt_identity())
+        user = db.session.get(User, user_id)
+
+        if not user:
+            return jsonify({"message": "User not found"}), 404
+
+        # Verify current password using the model's method
+        if not user.check_password(current_password):
+            return jsonify({"message": "Current password is incorrect"}), 401
+
+        # Update password using the model's method
+        user.set_password(new_password)
+        db.session.commit()
+
+        return jsonify({"message": "Password updated successfully"}), 200
 
     @app.route("/api/dashboard/test", methods=["GET"])
     def test_route():

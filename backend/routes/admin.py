@@ -1337,6 +1337,78 @@ def get_impact_data():
         return jsonify({'message': str(e)}), 500
 
 
+# ─── ★ NEW IMPACT METRICS (real‑time data for the Impact page) ──
+
+@admin_bp.route('/impact/data', methods=['GET'])
+@jwt_required()
+@role_required('admin')
+def get_impact_metrics():   # ← renamed from get_impact_data to avoid conflict
+    """
+    Get real-time impact statistics and chart data for the Impact page.
+    """
+    try:
+        from sqlalchemy import func, extract
+        from models import User, WasteListing, Collection, Payment, ProcessingPlant
+
+        # ─── Overall Stats ──────────────────────────────────────
+        total_users = User.query.count()
+        total_waste_diverted = db.session.query(func.sum(WasteListing.quantity)).scalar() or 0
+        total_energy = db.session.query(func.sum(Collection.energy_generated)).scalar() or 0
+        total_carbon = db.session.query(func.sum(Collection.carbon_offset)).scalar() or 0
+        active_facilities = ProcessingPlant.query.filter_by(status='active').count()
+        active_partners = User.query.filter(User.role.in_(['supplier','producer','transporter'])).count()
+
+        # ─── Chart Data: Monthly growth (last 12 months) ────
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        start_date = now - timedelta(days=365)
+
+        months = []
+        current = start_date
+        while current <= now:
+            months.append(current.strftime('%Y-%m'))
+            current += timedelta(days=30)
+
+        chart_data = []
+        for month in months:
+            year, month_num = month.split('-')
+            user_count = User.query.filter(
+                extract('year', User.created_at) == int(year),
+                extract('month', User.created_at) == int(month_num)
+            ).count()
+            waste_count = db.session.query(func.sum(WasteListing.quantity)).filter(
+                extract('year', WasteListing.created_at) == int(year),
+                extract('month', WasteListing.created_at) == int(month_num)
+            ).scalar() or 0
+            energy_count = db.session.query(func.sum(Collection.energy_generated)).filter(
+                extract('year', Collection.created_at) == int(year),
+                extract('month', Collection.created_at) == int(month_num)
+            ).scalar() or 0
+
+            chart_data.append({
+                'month': month,
+                'users': user_count,
+                'waste': float(waste_count),
+                'energy': float(energy_count)
+            })
+
+        return jsonify({
+            'stats': {
+                'totalUsers': total_users,
+                'totalWasteDiverted': float(total_waste_diverted),
+                'totalEnergyGenerated': float(total_energy),
+                'totalCarbonOffset': float(total_carbon),
+                'activeFacilities': active_facilities,
+                'activePartners': active_partners
+            },
+            'chartData': chart_data
+        }), 200
+
+    except Exception as e:
+        print(f"❌ Error fetching impact metrics: {e}")
+        return jsonify({'message': str(e)}), 500
+
+
 # ─── CARBON CREDITS CRUD ─────────────────────────────────────────
 
 @admin_bp.route('/carbon-credits', methods=['GET'])
@@ -1672,6 +1744,7 @@ def get_settings():
         return jsonify({'message': str(e)}), 500
 
 
+# ✅ FIXED: correct decorator syntax
 @admin_bp.route('/settings', methods=['PUT'])
 @jwt_required()
 @role_required('admin')
@@ -2566,86 +2639,135 @@ def get_platform_wallet():
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
-        # routes/admin.py – add this new endpoint
+        # ─── PARTNERSHIP APPLICATIONS ──────────────────────────────────
 
-@admin_bp.route('/impact/data', methods=['GET'])
-@jwt_required()  # Remove if you want public access
+@admin_bp.route('/partnerships', methods=['GET'])
+@jwt_required()
 @role_required('admin')
-def get_impact_data():
-    """
-    Get real-time impact statistics and chart data for the Impact page.
-    """
+def get_partnerships():
+    """List all partnership applications (paginated)."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    status = request.args.get('status')  # optional filter
+
+    query = PartnershipApplication.query
+    if status:
+        query = query.filter_by(status=status)
+
+    applications = query.order_by(PartnershipApplication.created_at.desc()) \
+                        .paginate(page=page, per_page=per_page, error_out=False)
+
+    return jsonify({
+        'data': [app.to_dict() for app in applications.items],
+        'pagination': {
+            'page': applications.page,
+            'per_page': applications.per_page,
+            'total': applications.total,
+            'pages': applications.pages,
+        }
+    }), 200
+
+
+@admin_bp.route('/partnerships/<int:app_id>/approve', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def approve_partnership(app_id):
+    app = db.session.get(PartnershipApplication, app_id)
+    if not app:
+        return jsonify({'message': 'Application not found'}), 404
+
+    if app.status != 'pending':
+        return jsonify({'message': f'Application is already {app.status}'}), 400
+
+    app.status = 'approved'
+    app.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    # Send approval email
+    send_partnership_status_email(app, 'approved')
+
+    return jsonify({
+        'message': 'Partnership application approved',
+        'application': app.to_dict()
+    }), 200
+
+
+@admin_bp.route('/partnerships/<int:app_id>/reject', methods=['POST'])
+@jwt_required()
+@role_required('admin')
+def reject_partnership(app_id):
+    app = db.session.get(PartnershipApplication, app_id)
+    if not app:
+        return jsonify({'message': 'Application not found'}), 404
+
+    if app.status != 'pending':
+        return jsonify({'message': f'Application is already {app.status}'}), 400
+
+    data = request.get_json() or {}
+    admin_notes = data.get('admin_notes', '')
+
+    app.status = 'rejected'
+    app.admin_notes = admin_notes
+    app.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    # Send rejection email
+    send_partnership_status_email(app, 'rejected')
+
+    return jsonify({
+        'message': 'Partnership application rejected',
+        'application': app.to_dict()
+    }), 200
+
+
+def send_partnership_status_email(app, status):
+    """Send email notification to the applicant."""
+    from flask_mail import Message
+    from flask import current_app
+
+    subject = f"Partnership Application {status.capitalize()} – ReVive Energy"
+
+    if status == 'approved':
+        body = f"""
+        Dear {app.contact_name},
+
+        Congratulations! Your partnership application for "{app.organization_name}" has been approved by ReVive Energy.
+
+        We're excited to work with you. A member of our partnerships team will contact you shortly.
+
+        Meanwhile, you can reach us at:
+        Phone: +254 727 568 271
+        Email: samatar578@gmail.com
+
+        We look forward to a successful partnership.
+
+        Best regards,
+        ReVive Energy Partnerships Team
+        """
+    else:  # rejected
+        body = f"""
+        Dear {app.contact_name},
+
+        Thank you for your interest in partnering with ReVive Energy.
+
+        After careful review, we regret to inform you that your application for "{app.organization_name}" has not been approved at this time.
+
+        If you have any questions, please don't hesitate to contact us:
+        Phone: +254 727 568 271
+        Email: samatar578@gmail.com
+
+        We appreciate your interest and encourage you to reapply in the future.
+
+        Best regards,
+        ReVive Energy Partnerships Team
+        """
+
     try:
-        from sqlalchemy import func, extract
-        from models import User, WasteListing, Collection, Payment, ProcessingPlant
-
-        # ─── Overall Stats ──────────────────────────────────────
-        total_users = User.query.count()
-        total_waste_diverted = db.session.query(func.sum(WasteListing.quantity)).scalar() or 0
-        # If you have a 'energy_generated' field on Collection or WasteListing:
-        total_energy = db.session.query(func.sum(Collection.energy_generated)).scalar() or 0
-        # If no energy_generated, estimate from waste amount or use Payment amounts?
-        # For now, let's use a placeholder: we can compute from payments revenue maybe.
-        # We'll also get carbon offset from Collection.carbon_offset if exists.
-        total_carbon = db.session.query(func.sum(Collection.carbon_offset)).scalar() or 0
-        active_facilities = ProcessingPlant.query.filter_by(status='active').count()
-        active_partners = User.query.filter(User.role.in_(['supplier','producer','transporter'])).count()
-
-        # ─── Chart Data: Monthly growth (last 12 months) ────
-        # We'll group by month for users, waste, energy.
-        # This query may vary based on your DB (SQLite vs PostgreSQL)
-        # Here's a generic approach using SQLAlchemy func.
-
-        # For users: count by month of creation
-        from datetime import datetime, timedelta
-        now = datetime.utcnow()
-        start_date = now - timedelta(days=365)  # last 12 months
-
-        # We'll create a list of month labels and then query for each month
-        months = []
-        current = start_date
-        while current <= now:
-            months.append(current.strftime('%Y-%m'))
-            current += timedelta(days=30)  # approximate
-
-        chart_data = []
-        for month in months:
-            year, month_num = month.split('-')
-            # Users registered in that month
-            user_count = User.query.filter(
-                extract('year', User.created_at) == int(year),
-                extract('month', User.created_at) == int(month_num)
-            ).count()
-            # Waste listed in that month (or collections)
-            waste_count = db.session.query(func.sum(WasteListing.quantity)).filter(
-                extract('year', WasteListing.created_at) == int(year),
-                extract('month', WasteListing.created_at) == int(month_num)
-            ).scalar() or 0
-            # Energy generated in that month (if you have it)
-            energy_count = db.session.query(func.sum(Collection.energy_generated)).filter(
-                extract('year', Collection.created_at) == int(year),
-                extract('month', Collection.created_at) == int(month_num)
-            ).scalar() or 0
-
-            chart_data.append({
-                'month': month,
-                'users': user_count,
-                'waste': float(waste_count),
-                'energy': float(energy_count)
-            })
-
-        return jsonify({
-            'stats': {
-                'totalUsers': total_users,
-                'totalWasteDiverted': float(total_waste_diverted),
-                'totalEnergyGenerated': float(total_energy),
-                'totalCarbonOffset': float(total_carbon),
-                'activeFacilities': active_facilities,
-                'activePartners': active_partners
-            },
-            'chartData': chart_data
-        }), 200
-
+        msg = Message(
+            subject=subject,
+            recipients=[app.email],
+            body=body
+        )
+        current_app.extensions['mail'].send(msg)
     except Exception as e:
-        print(f"❌ Error fetching impact data: {e}")
-        return jsonify({'message': str(e)}), 500
+        current_app.logger.error(f"Failed to send partnership status email: {e}")
