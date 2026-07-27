@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import organicWasteImage from "../assets/organic-waste.jpg.jpeg";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
@@ -7,7 +8,7 @@ import {
   Play, ChevronRight, Sparkles, Package, FlaskConical,
   Droplets, Sun, Wind, Truck, Factory, Award, BarChart3,
   Phone, Mail, Utensils, Apple, Coffee, Pizza, Fish,
-  Flame, Gauge, Activity, 
+  Flame, Gauge, Activity, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 /* ─── ANIMATED COUNTER ─── */
@@ -128,10 +129,44 @@ const TESTIMONIALS = [
   }
 ];
 
+const FAQ_DATA = [
+  {
+    q: "What types of organic waste can be processed?",
+    a: "We process food waste from restaurants, hotels, and markets; fruit and vegetable waste; food processing byproducts; and other organic waste streams."
+  },
+  {
+    q: "How much biogas can I generate from food waste?",
+    a: "On average, one tonne of food waste can produce 100-150 cubic meters of biogas, depending on the composition and moisture content."
+  },
+  {
+    q: "What is the ROI on an organic waste system?",
+    a: "Most businesses see ROI within 3-5 years through reduced disposal costs, energy savings, and fertilizer production."
+  },
+  {
+    q: "Can I use the biogas for cooking?",
+    a: "Yes! Biogas can be used for cooking, heating, electricity generation, and even upgraded to biomethane for vehicle fuel."
+  },
+  {
+    q: "Is the fertilizer safe for farming?",
+    a: "Yes, the digestate is a high-quality organic fertilizer rich in nutrients. It's safe and effective for agricultural use."
+  }
+];
+
 /* ─── MAIN PAGE ─── */
 export default function OrganicWasteSolution() {
+  const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const toggleFaq = (index) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
 
   return (
     <div className="min-h-screen bg-[#F6F8F4] text-[#142019] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -147,8 +182,8 @@ export default function OrganicWasteSolution() {
         }
       `}</style>
 
-      {/* ============ HERO SECTION - MOVED UP ============ */}
-      <section className="relative min-h-[55vh] flex items-center bg-white pt-0">
+      {/* ============ HERO SECTION ============ */}
+      <section className="relative min-h-[55vh] flex items-center bg-white pt-0" id="hero">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 right-10 w-96 h-96 bg-[#9CF06B]/5 rounded-full blur-3xl" />
           <div className="absolute bottom-20 left-10 w-80 h-80 bg-[#11402D]/5 rounded-full blur-3xl" />
@@ -165,9 +200,6 @@ export default function OrganicWasteSolution() {
                 Turn food waste into
                 <span className="relative inline-block mx-3">
                   <span className="relative z-10 text-[#11402D]">energy.</span>
-                  {/* <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 300 10" preserveAspectRatio="none">
-                    <path d="M2 6C60 2 240 2 298 6" stroke="#9CF06B" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  </svg> */}
                 </span>
               </h1>
               
@@ -178,12 +210,16 @@ export default function OrganicWasteSolution() {
               <div className="flex flex-wrap gap-4">
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/partners')}
                   className="bg-[#11402D] text-white font-display font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
                 >
                   Request Free Assessment <ArrowRight className="w-4 h-4" />
                 </motion.button>
                 <motion.button 
                   whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/solutions')}  // <--- Navigate to solution page
                   className="border-2 border-[#11402D]/20 text-[#11402D] font-display font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
                 >
                   Watch Video <Play className="w-4 h-4" />
@@ -242,7 +278,7 @@ export default function OrganicWasteSolution() {
       </section>
 
       {/* ============ OVERVIEW SECTION ============ */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white" id="overview">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <motion.div
@@ -296,7 +332,7 @@ export default function OrganicWasteSolution() {
       </section>
 
       {/* ============ KEY BENEFITS ============ */}
-      <section className="py-24 bg-[#F6F8F4]">
+      <section className="py-24 bg-[#F6F8F4]" id="benefits">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -346,7 +382,7 @@ export default function OrganicWasteSolution() {
       </section>
 
       {/* ============ HOW IT WORKS ============ */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white" id="process">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -398,7 +434,7 @@ export default function OrganicWasteSolution() {
       </section>
 
       {/* ============ IMPACT STATS ============ */}
-      <section className="py-20 bg-[#0E2A1C]">
+      <section className="py-20 bg-[#0E2A1C]" id="impact">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
@@ -426,7 +462,7 @@ export default function OrganicWasteSolution() {
       </section>
 
       {/* ============ CASE STUDIES ============ */}
-      <section className="py-24 bg-[#F6F8F4]">
+      <section className="py-24 bg-[#F6F8F4]" id="case-studies">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -486,7 +522,7 @@ export default function OrganicWasteSolution() {
       </section>
 
       {/* ============ TESTIMONIALS ============ */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white" id="testimonials">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -541,7 +577,7 @@ export default function OrganicWasteSolution() {
       </section>
 
       {/* ============ FAQ SECTION ============ */}
-      <section className="py-24 bg-[#F6F8F4]">
+      <section className="py-24 bg-[#F6F8F4]" id="faq">
         <div className="max-w-4xl mx-auto px-6 lg:px-12">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -561,38 +597,41 @@ export default function OrganicWasteSolution() {
           </motion.div>
 
           <div className="space-y-4">
-            {[
-              {
-                q: "What types of organic waste can be processed?",
-                a: "We process food waste from restaurants, hotels, and markets; fruit and vegetable waste; food processing byproducts; and other organic waste streams."
-              },
-              {
-                q: "How much biogas can I generate from food waste?",
-                a: "On average, one tonne of food waste can produce 100-150 cubic meters of biogas, depending on the composition and moisture content."
-              },
-              {
-                q: "What is the ROI on an organic waste system?",
-                a: "Most businesses see ROI within 3-5 years through reduced disposal costs, energy savings, and fertilizer production."
-              },
-              {
-                q: "Can I use the biogas for cooking?",
-                a: "Yes! Biogas can be used for cooking, heating, electricity generation, and even upgraded to biomethane for vehicle fuel."
-              },
-              {
-                q: "Is the fertilizer safe for farming?",
-                a: "Yes, the digestate is a high-quality organic fertilizer rich in nutrients. It's safe and effective for agricultural use."
-              }
-            ].map((faq, i) => (
+            {FAQ_DATA.map((faq, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-white rounded-xl p-6 hover:shadow-md transition-all"
+                className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-[#11402D]/5"
               >
-                <h4 className="font-display font-bold text-[#0E2A1C] mb-2">{faq.q}</h4>
-                <p className="text-sm text-[#142019]/55 leading-relaxed">{faq.a}</p>
+                <button
+                  onClick={() => toggleFaq(i)}
+                  className="w-full flex items-center justify-between p-6 text-left hover:bg-[#F6F8F4] transition-colors"
+                >
+                  <h4 className="font-display font-bold text-[#0E2A1C] pr-8">{faq.q}</h4>
+                  {openFaq === i ? (
+                    <ChevronUp className="w-5 h-5 text-[#11402D] flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-[#11402D] flex-shrink-0" />
+                  )}
+                </button>
+                <AnimatePresence>
+                  {openFaq === i && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-6 pb-6 pt-0">
+                        <p className="text-sm text-[#142019]/55 leading-relaxed">{faq.a}</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             ))}
           </div>
@@ -600,7 +639,7 @@ export default function OrganicWasteSolution() {
       </section>
 
       {/* ============ CTA SECTION ============ */}
-      <section className="py-20 bg-[#0E2A1C]">
+      <section className="py-20 bg-[#0E2A1C]" id="cta">
         <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -619,12 +658,16 @@ export default function OrganicWasteSolution() {
             <div className="flex flex-wrap gap-4 justify-center">
               <motion.button 
                 whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/partners')}
                 className="bg-[#9CF06B] text-[#0E2A1C] font-display font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
               >
                 Schedule Free Assessment <ArrowRight className="w-4 h-4" />
               </motion.button>
               <motion.button 
                 whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => scrollToSection('footer')}
                 className="border-2 border-white/20 text-white font-display font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
               >
                 <Phone className="w-4 h-4" /> Call an Expert
@@ -633,61 +676,59 @@ export default function OrganicWasteSolution() {
           </motion.div>
         </div>
       </section>
-      <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
-                  <div className="lg:col-span-2">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
-                        <Recycle className="w-5 h-5 text-[#9CF06B]" />
-                      </div>
-      
-                      <span className="font-display text-xl font-semibold">
-                        ReVive Energy
-                      </span>
-                    </div>
-      
-                    <p className="text-white/50 text-sm leading-relaxed max-w-sm">
-                      Designing and operating waste-to-energy infrastructure that
-                      turns disposal problems into clean energy opportunities.
-                    </p>
-                  </div>
-      
-                  {[
-                    ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
-                    ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
-                    ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
-                  ].map(([title, links], index) => (
-                    <div key={index}>
-                      <h3 className="font-display font-semibold mb-4">{title}</h3>
-      
-                      <ul className="space-y-2.5 text-sm text-white/50">
-                        {links.map((link, i) => (
-                          <li key={i}>
-                            <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                              {link}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
+
+      {/* ─── FOOTER ─── */}
+      <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8" id="footer">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
+                  <Recycle className="w-5 h-5 text-[#9CF06B]" />
                 </div>
-      
-                <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
-                  <span>© 2026 ReVive Energy. All rights reserved.</span>
-      
-                  <div className="flex flex-wrap justify-center gap-5">
-                    <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                      Privacy Policy
-                    </a>
-                    <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                      Terms of Service
-                    </a>
-                  </div>
-                </div>
+                <span className="font-display text-xl font-semibold">
+                  ReVive Energy
+                </span>
               </div>
-            </footer>
+              <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+                Designing and operating waste-to-energy infrastructure that
+                turns disposal problems into clean energy opportunities.
+              </p>
+            </div>
+
+            {[
+              ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
+              ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
+              ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
+            ].map(([title, links], index) => (
+              <div key={index}>
+                <h3 className="font-display font-semibold mb-4">{title}</h3>
+                <ul className="space-y-2.5 text-sm text-white/50">
+                  {links.map((link, i) => (
+                    <li key={i}>
+                      <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('hero'); }} className="hover:text-[#9CF06B] transition-colors">
+                        {link}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
+            <span>© 2026 ReVive Energy. All rights reserved.</span>
+            <div className="flex flex-wrap justify-center gap-5">
+              <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('hero'); }} className="hover:text-[#9CF06B] transition-colors">
+                Privacy Policy
+              </a>
+              <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('hero'); }} className="hover:text-[#9CF06B] transition-colors">
+                Terms of Service
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

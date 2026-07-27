@@ -1077,5 +1077,5 @@ export default function ReViveEnergyHomepage() {
         </div>
       </footer>
     </div>
-  );
+  );                      
 }

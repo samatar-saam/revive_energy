@@ -1,30 +1,14 @@
 // src/admin/pages/AdminImpactReports.jsx
 import React, { useState, useEffect } from 'react';
 import {
-  Leaf,
-  Zap,
-  Droplets,
-  BarChart3,
-  RefreshCw,
-  AlertCircle,
-  Download,
-  Calendar,
-  ChevronDown,
-  TrendingUp,
+  Leaf, Zap, Droplets, BarChart3, RefreshCw, AlertCircle,
+  Download, ChevronDown, TrendingUp, Inbox, Users, Truck
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import {
-  AreaChart,
-  Area,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  AreaChart, Area, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, BarChart, Bar
 } from 'recharts';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -87,7 +71,7 @@ export default function AdminImpactReports() {
   };
 
   const formatNumber = (num) => {
-    if (num === undefined || num === null) return '0';
+    if (num === undefined || num === null || isNaN(num)) return '0';
     if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
     return num.toFixed(1);
   };
@@ -123,11 +107,20 @@ export default function AdminImpactReports() {
 
   if (!data) return null;
 
-  const { summary, energyTrend, carbonTrend, wasteByType, recentActivity } = data;
+  const {
+    summary,
+    energyTrend,
+    carbonTrend,
+    wasteByType,
+    recentActivity,
+    supplierBreakdown,
+    transporterBreakdown,
+  } = data;
+
+  const hasData = summary?.totalWaste > 0 || summary?.totalCollections > 0;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-['Inter']">
-      {/* ─── Fonts ────────────────────────────────────────────────── */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         .font-display { font-family: 'Space Grotesk', sans-serif; }
@@ -146,7 +139,7 @@ export default function AdminImpactReports() {
               <select
                 value={timeRange}
                 onChange={(e) => setTimeRange(e.target.value)}
-                className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-4 pr-10 text-sm outline-none focus:ring-2 focus:ring-[#11402D] font-['Inter']"
+                className="appearance-none rounded-xl border border-gray-200 bg-white py-2 pl-4 pr-10 text-sm outline-none focus:ring-2 focus:ring-[#11402D]"
               >
                 <option value="7days">Last 7 Days</option>
                 <option value="30days">Last 30 Days</option>
@@ -168,166 +161,218 @@ export default function AdminImpactReports() {
           </div>
         </div>
 
-        {/* ─── Stats Cards ────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Total Waste Collected"
-            value={`${formatNumber(summary.totalWaste)} tonnes`}
-            icon={Droplets}
-            color="blue"
-          />
-          <StatCard
-            label="Energy Generated"
-            value={`${formatNumber(summary.totalEnergy)} kWh`}
-            icon={Zap}
-            color="green"
-          />
-          <StatCard
-            label="Carbon Offset"
-            value={`${formatNumber(summary.totalCarbon)} kg CO₂`}
-            icon={Leaf}
-            color="purple"
-          />
-          <StatCard
-            label="Total Collections"
-            value={summary.totalCollections}
-            icon={BarChart3}
-            color="orange"
-          />
-        </div>
-
-        {/* ─── Charts Row 1 ───────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Energy Generated Trend */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[#11402D]" /> Energy Generated (kWh)
-            </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={energyTrend}>
-                  <defs>
-                    <linearGradient id="energyGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#9CF06B" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#9CF06B" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 10 }} />
-                  <YAxis tickFormatter={(v) => `${v.toFixed(0)}`} tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    formatter={(value) => `${value.toFixed(2)} kWh`}
-                    labelFormatter={(label) => formatDate(label)}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#9CF06B"
-                    fill="url(#energyGradient)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+        {!hasData ? (
+          // ─── Empty State ──────────────────────────────────────────
+          <div className="bg-white rounded-2xl p-12 shadow-sm border border-gray-100 text-center">
+            <Inbox className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="font-display text-xl font-semibold text-gray-700">No impact data yet</h3>
+            <p className="text-gray-500 max-w-md mx-auto mt-2">
+              Start collecting waste to see your environmental impact metrics appear here.
+            </p>
           </div>
-
-          {/* Carbon Offset Trend */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Leaf className="w-5 h-5 text-[#11402D]" /> Carbon Offset (kg CO₂)
-            </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={carbonTrend}>
-                  <defs>
-                    <linearGradient id="carbonGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#11402D" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#11402D" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 10 }} />
-                  <YAxis tickFormatter={(v) => `${v.toFixed(0)}`} tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    formatter={(value) => `${value.toFixed(2)} kg CO₂`}
-                    labelFormatter={(label) => formatDate(label)}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#11402D"
-                    fill="url(#carbonGradient)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+        ) : (
+          <>
+            {/* ─── Stats Cards ────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard
+                label="Total Waste Collected"
+                value={`${formatNumber(summary.totalWaste)} tonnes`}
+                icon={Droplets}
+                color="blue"
+              />
+              <StatCard
+                label="Energy Generated"
+                value={`${formatNumber(summary.totalEnergy)} kWh`}
+                icon={Zap}
+                color="green"
+              />
+              <StatCard
+                label="Carbon Offset"
+                value={`${formatNumber(summary.totalCarbon)} kg CO₂`}
+                icon={Leaf}
+                color="purple"
+              />
+              <StatCard
+                label="Total Collections"
+                value={summary.totalCollections || 0}
+                icon={BarChart3}
+                color="orange"
+              />
             </div>
-          </div>
-        </div>
 
-        {/* ─── Charts Row 2 ───────────────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Waste by Type */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Droplets className="w-5 h-5 text-[#11402D]" /> Waste by Type
-            </h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={wasteByType}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {wasteByType.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => `${value.toFixed(2)} tonnes`} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+            {/* ─── Charts Row 1 ───────────────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Energy Generated Trend */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-[#11402D]" /> Energy Generated (kWh)
+                </h3>
+                <div className="h-64">
+                  {energyTrend?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={energyTrend}>
+                        <defs>
+                          <linearGradient id="energyGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#9CF06B" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#9CF06B" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 10 }} />
+                        <YAxis tickFormatter={(v) => `${v.toFixed(0)}`} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value) => `${Number(value).toFixed(2)} kWh`} />
+                        <Area type="monotone" dataKey="value" stroke="#9CF06B" fill="url(#energyGradient)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">No energy data available</div>
+                  )}
+                </div>
+              </div>
 
-          {/* Recent Impact Activities */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[#11402D]" /> Recent Impact Activities
-            </h3>
-            <div className="overflow-y-auto max-h-64">
-              {recentActivity.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">No recent activity</p>
-              ) : (
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Type</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Details</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {recentActivity.map((activity, index) => (
-                      <tr key={index} className="hover:bg-gray-50/50 transition">
-                        <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                          <span className="capitalize">{activity.type}</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{activity.details}</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{formatDate(activity.date)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              {/* Carbon Offset Trend */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Leaf className="w-5 h-5 text-[#11402D]" /> Carbon Offset (kg CO₂)
+                </h3>
+                <div className="h-64">
+                  {carbonTrend?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={carbonTrend}>
+                        <defs>
+                          <linearGradient id="carbonGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#11402D" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#11402D" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 10 }} />
+                        <YAxis tickFormatter={(v) => `${v.toFixed(0)}`} tick={{ fontSize: 10 }} />
+                        <Tooltip formatter={(value) => `${Number(value).toFixed(2)} kg CO₂`} />
+                        <Area type="monotone" dataKey="value" stroke="#11402D" fill="url(#carbonGradient)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">No carbon data available</div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+
+            {/* ─── Charts Row 2 ───────────────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Waste by Type */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Droplets className="w-5 h-5 text-[#11402D]" /> Waste by Type
+                </h3>
+                <div className="h-64">
+                  {wasteByType?.length > 0 && wasteByType[0].name !== 'No Data' ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={wasteByType}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {wasteByType.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${Number(value).toFixed(2)} tonnes`} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">No waste type data</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Recent Impact Activities */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-[#11402D]" /> Recent Impact Activities
+                </h3>
+                <div className="overflow-y-auto max-h-64">
+                  {recentActivity?.length > 0 ? (
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Type</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Details</th>
+                          <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-500">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {recentActivity.map((activity, index) => (
+                          <tr key={index} className="hover:bg-gray-50/50 transition">
+                            <td className="px-4 py-3 text-sm font-medium text-gray-900 capitalize">{activity.type}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{activity.details}</td>
+                            <td className="px-4 py-3 text-sm text-gray-500">{formatDate(activity.date)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">No recent activities</div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ─── ★ NEW: Breakdown Row ────────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Waste Supplied by Supplier */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#11402D]" /> Waste Supplied by Supplier (tonnes)
+                </h3>
+                <div className="h-64">
+                  {supplierBreakdown?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={supplierBreakdown} layout="vertical" margin={{ left: 80 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis type="number" tickFormatter={(v) => v.toFixed(1)} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
+                        <Tooltip formatter={(value) => `${Number(value).toFixed(2)} tonnes`} />
+                        <Bar dataKey="total" fill="#9CF06B" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">No supplier data</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Waste Collected by Transporter */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-display font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-[#11402D]" /> Waste Collected by Transporter (tonnes)
+                </h3>
+                <div className="h-64">
+                  {transporterBreakdown?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={transporterBreakdown} layout="vertical" margin={{ left: 80 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                        <XAxis type="number" tickFormatter={(v) => v.toFixed(1)} />
+                        <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
+                        <Tooltip formatter={(value) => `${Number(value).toFixed(2)} tonnes`} />
+                        <Bar dataKey="total" fill="#11402D" radius={[0, 4, 4, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">No transporter data</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -56,6 +56,9 @@ export default function WasteListings() {
   const [viewingListing, setViewingListing] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
 
+  // ─── Delete loading state ────────────────────────────────────
+  const [deletingId, setDeletingId] = useState(null);
+
   const getToken = () => localStorage.getItem('token');
 
   // ─── Fetch data from API ──────────────────────────────────────
@@ -178,8 +181,23 @@ export default function WasteListings() {
     setShowModal(true);
   };
 
+  // ─── OPTIMISTIC DELETE ────────────────────────────────────────
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this waste listing?')) return;
+
+    // Find the listing to delete (for potential revert)
+    const listingToDelete = listings.find((l) => l.id === id);
+    if (!listingToDelete) return;
+
+    // Store previous state for rollback
+    const previousListings = [...listings];
+
+    // Set loading state for this specific listing
+    setDeletingId(id);
+
+    // Optimistically remove from UI
+    setListings((prev) => prev.filter((l) => l.id !== id));
+
     try {
       const token = getToken();
       if (!token) throw new Error('Not authenticated');
@@ -189,11 +207,19 @@ export default function WasteListings() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!res.ok) throw new Error('Failed to delete');
-      setListings((prev) => prev.filter((l) => l.id !== id));
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Delete failed');
+      }
+
       toast.success('Waste listing deleted successfully');
+      // No need to re-fetch – we already removed locally
     } catch (error) {
+      // Revert on error
+      setListings(previousListings);
       toast.error(error.message || 'Failed to delete waste listing');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -446,49 +472,59 @@ export default function WasteListings() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {paginatedListings.map((listing) => (
-                    <tr key={listing.id} className="hover:bg-gray-50/50 transition">
-                      <td className="px-4 py-3 font-mono-cw text-sm text-gray-500">#{listing.id}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{listing.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{getCategoryLabel(listing.type)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        {listing.quantity || '—'} {listing.unit || 'kg'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{listing.location}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{listing.supplier_name || 'Unknown'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(listing.status)}`}>
-                          {listing.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-mono-cw text-gray-500">{formatDate(listing.created_at)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => handleView(listing)}
-                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-[#11402D]"
-                            title="View"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(listing)}
-                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-blue-600"
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(listing.id)}
-                            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-red-600"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {paginatedListings.map((listing) => {
+                    const isDeleting = deletingId === listing.id;
+                    return (
+                      <tr key={listing.id} className="hover:bg-gray-50/50 transition">
+                        <td className="px-4 py-3 font-mono-cw text-sm text-gray-500">#{listing.id}</td>
+                        <td className="px-4 py-3 font-medium text-gray-900">{listing.name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{getCategoryLabel(listing.type)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          {listing.quantity || '—'} {listing.unit || 'kg'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{listing.location}</td>
+                        <td className="px-4 py-3 text-sm text-gray-600">{listing.supplier_name || 'Unknown'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadge(listing.status)}`}>
+                            {listing.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono-cw text-gray-500">{formatDate(listing.created_at)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleView(listing)}
+                              className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-[#11402D]"
+                              title="View"
+                              disabled={isDeleting}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(listing)}
+                              className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-blue-600"
+                              title="Edit"
+                              disabled={isDeleting}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(listing.id)}
+                              className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-red-600"
+                              title="Delete"
+                              disabled={isDeleting}
+                            >
+                              {isDeleting ? (
+                                <div className="h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

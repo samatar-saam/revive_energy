@@ -26,6 +26,8 @@ from models import (
     AuditLog,
     PlatformWallet,
     PlatformTransaction,
+    PartnershipApplication,
+    Notification,
 )
 from database import db
 from utils.decorators import role_required
@@ -35,10 +37,6 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 # ─── HELPER: fetch admin setting ──────────────────────────────
 def get_setting(key, default=10.0):
-    """
-    Fetch a setting value from AdminSetting and convert to float.
-    If the setting doesn't exist, returns the default.
-    """
     setting = AdminSetting.query.filter_by(key=key).first()
     if setting and setting.value is not None:
         try:
@@ -49,34 +47,25 @@ def get_setting(key, default=10.0):
 
 
 def calculate_amounts(listing=None):
-    """
-    Return pricing amounts read from admin settings.
-    Keys: waste_price, platform_fee, transport_fee.
-    Default: 10.00 each.
-    """
     waste_value = get_setting('waste_price', 10.00)
     platform_fee = get_setting('platform_fee', 10.00)
     transport_fee = get_setting('transport_fee', 10.00)
-    total_amount = waste_value + platform_fee + transport_fee
-
     return {
         "waste_value": waste_value,
         "transport_fee": transport_fee,
         "platform_fee": platform_fee,
-        "total_amount": total_amount,
+        "total_amount": waste_value + platform_fee + transport_fee,
         "price_per_unit": 0.0,
         "transport_rate_per_unit": 0.0,
     }
 
 
-# ─── HELPER: paginate ────────────────────────────────────────────
 def paginate_query(query, page, per_page):
     total = query.count()
     items = query.offset((page - 1) * per_page).limit(per_page).all()
     return items, total
 
 
-# ─── HELPER: log audit ──────────────────────────────────────────
 def log_audit(user_id=None, event=None, description=None, status='info',
               ip_address=None, device=None, browser=None, location=None,
               request_payload=None, response_payload=None,
@@ -231,14 +220,43 @@ def delete_user(user_id):
         current_user_id = int(get_jwt_identity())
         if user_id == current_user_id:
             return jsonify({'message': 'You cannot delete your own account'}), 400
+
         user = User.query.get(user_id)
         if not user:
             return jsonify({'message': 'User not found'}), 404
-        db.session.delete(user)
+
+        with db.session.no_autoflush:
+            Notification.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+
+            listing_ids = [l.id for l in WasteListing.query.filter_by(supplier_id=user_id).all()]
+            if listing_ids:
+                WasteRequest.query.filter(WasteRequest.listing_id.in_(listing_ids)).delete(synchronize_session=False)
+
+            WasteListing.query.filter_by(supplier_id=user_id).delete(synchronize_session=False)
+            Collection.query.filter_by(supplier_id=user_id).delete(synchronize_session=False)
+            Payment.query.filter(
+                or_(Payment.supplier_id == user_id,
+                    Payment.producer_id == user_id,
+                    Payment.transporter_id == user_id)
+            ).delete(synchronize_session=False)
+            Wallet.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+            WithdrawalRequest.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+            TransportJob.query.filter_by(transporter_id=user_id).delete(synchronize_session=False)
+            WasteRequest.query.filter_by(producer_id=user_id).delete(synchronize_session=False)
+            Dispute.query.filter(
+                or_(Dispute.producer_id == user_id,
+                    Dispute.supplier_id == user_id,
+                    Dispute.transporter_id == user_id)
+            ).delete(synchronize_session=False)
+
+            db.session.delete(user)
+
         db.session.commit()
         return jsonify({'message': 'User deleted successfully'}), 200
+
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Delete user error: {e}")
         return jsonify({'message': str(e)}), 500
 
 
@@ -362,11 +380,28 @@ def delete_waste_source(source_id):
         source = WasteListing.query.get(source_id)
         if not source:
             return jsonify({'message': 'Waste listing not found'}), 404
+
+        payments = Payment.query.filter_by(listing_id=source_id).first()
+        if payments:
+            return jsonify({
+                'message': 'Cannot delete this listing because it has associated payments. Archive it instead.'
+            }), 400
+
+        transport_jobs = TransportJob.query.filter_by(listing_id=source_id).first()
+        if transport_jobs:
+            return jsonify({
+                'message': 'Cannot delete this listing because it has associated transport jobs.'
+            }), 400
+
+        WasteRequest.query.filter_by(listing_id=source_id).delete()
+
         db.session.delete(source)
         db.session.commit()
         return jsonify({'message': 'Waste listing deleted successfully'}), 200
+
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Delete waste source error: {e}")
         return jsonify({'message': str(e)}), 500
 
 
@@ -810,17 +845,10 @@ def get_payment_activity():
         return jsonify([]), 200
 
 
-# ─── ★★★★★ UPDATED: RELEASE PAYMENT WITH PRODUCER CONFIRMATION CHECK ★★★★★ ──
 @admin_bp.route('/payments/<int:payment_id>/release', methods=['POST'])
 @jwt_required()
 @role_required('admin')
 def release_payment(payment_id):
-    """
-    Release a payment from escrow.
-    PRE-CONDITION: The associated TransportJob must be in 'awaiting_confirmation' status
-                   (i.e., the producer has confirmed delivery).
-    Also ensures all financial breakdowns are filled before releasing.
-    """
     try:
         payment = db.session.get(Payment, payment_id)
         if not payment:
@@ -832,7 +860,6 @@ def release_payment(payment_id):
         if payment.status not in ["paid", "completed"]:
             return jsonify({"message": "Only paid payments can be released"}), 400
 
-        # ─── ★ NEW: Check that the producer has confirmed delivery ──
         transport_job = None
         if payment.transport_job_id:
             transport_job = db.session.get(TransportJob, payment.transport_job_id)
@@ -844,7 +871,6 @@ def release_payment(payment_id):
         if not transport_job:
             return jsonify({"message": "No transport job associated with this payment"}), 400
 
-        # ★★★ IMPROVED: User‑friendly message when producer hasn't confirmed ★★★
         if transport_job.status != "awaiting_confirmation":
             status_labels = {
                 "open": "Awaiting Pickup",
@@ -863,50 +889,38 @@ def release_payment(payment_id):
                 "current_status_label": label
             }), 400
 
-        # ─── Fetch related records to fill missing breakdowns ──
         listing = None
         if transport_job and transport_job.listing_id:
             listing = db.session.get(WasteListing, transport_job.listing_id)
         elif payment.listing_id:
             listing = db.session.get(WasteListing, payment.listing_id)
 
-        # Get admin default pricing
         amounts = calculate_amounts(listing)
 
-        # ─── Fill missing fields BEFORE releasing ──────────────
-        # 1. Waste Amount
         if not payment.waste_amount or payment.waste_amount <= 0:
             if listing and hasattr(listing, 'waste_value') and listing.waste_value:
                 payment.waste_amount = listing.waste_value
             else:
                 payment.waste_amount = amounts.get("waste_value", 0.0)
 
-        # 2. Transport Fee
         if not payment.transport_fee or payment.transport_fee <= 0:
             if transport_job and transport_job.transport_fee:
                 payment.transport_fee = transport_job.transport_fee
             else:
                 payment.transport_fee = amounts.get("transport_fee", 0.0)
 
-        # 3. Platform Fee
         if not payment.platform_fee or payment.platform_fee <= 0:
             payment.platform_fee = amounts.get("platform_fee", 0.0)
 
-        # 4. Ensure total amount is the sum of parts
         if not payment.amount or payment.amount <= 0:
             payment.amount = payment.waste_amount + payment.transport_fee + payment.platform_fee
 
-        # 5. Supplier amount (defaults to waste amount)
         if not payment.supplier_amount or payment.supplier_amount <= 0:
             payment.supplier_amount = payment.waste_amount or 0.0
 
-        # 6. Transporter amount (defaults to transport fee)
         if not payment.transporter_amount or payment.transporter_amount <= 0:
             payment.transporter_amount = payment.transport_fee or 0.0
 
-        # ─── End of breakdown fix ──────────────────────────────────────
-
-        # ─── Ensure transporter details ────────────────────────────
         transporter_id = payment.transporter_id
         transporter_amount = payment.transporter_amount or 0
 
@@ -923,7 +937,6 @@ def release_payment(payment_id):
         if not payment.supplier_amount:
             payment.supplier_amount = payment.waste_amount or 0
 
-        # ─── Credit supplier wallet ──────────────────────────────────
         supplier = User.query.get(payment.supplier_id)
         if supplier:
             supplier_wallet = Wallet.query.filter_by(user_id=supplier.id).first()
@@ -943,7 +956,6 @@ def release_payment(payment_id):
                 )
                 db.session.add(tx_supplier)
 
-        # ─── Credit transporter wallet (if applicable) ──────────────
         if transporter_id and transporter_amount > 0:
             transporter = User.query.get(transporter_id)
             if transporter:
@@ -965,7 +977,6 @@ def release_payment(payment_id):
                 payment.transporter_id = transporter_id
                 payment.transporter_amount = transporter_amount
 
-        # ─── Credit platform wallet with platform fee ──────────────
         platform_fee = payment.platform_fee or 0
         if platform_fee > 0:
             platform_wallet = PlatformWallet.query.first()
@@ -982,7 +993,6 @@ def release_payment(payment_id):
             )
             db.session.add(platform_tx)
 
-        # ─── Update transport job status ────────────────────────────
         if payment.transport_job_id:
             transport_job = db.session.get(TransportJob, payment.transport_job_id)
             if transport_job:
@@ -993,7 +1003,6 @@ def release_payment(payment_id):
                     if listing:
                         listing.status = "completed"
 
-        # ─── Update payment status ──────────────────────────────────
         payment.escrow_status = "released"
         payment.status = "released"
         payment.payment_status = "released"
@@ -1002,7 +1011,6 @@ def release_payment(payment_id):
 
         db.session.commit()
 
-        # ─── Log audit ──────────────────────────────────────────────
         admin_id = int(get_jwt_identity())
         admin_user = db.session.get(User, admin_id)
         log_audit(
@@ -1121,7 +1129,6 @@ def get_analytics():
             Payment.status.in_(['completed', 'paid'])
         ).scalar() or 0
 
-        # Revenue trend
         revenue_by_day = db.session.query(
             func.date(Payment.created_at).label('date'),
             func.sum(Payment.amount).label('amount')
@@ -1146,7 +1153,6 @@ def get_analytics():
                 revenue_trend_data.append({'date': current_date.isoformat(), 'amount': 0})
             current_date += timedelta(days=1)
 
-        # User growth
         users_by_day = db.session.query(
             func.date(User.created_at).label('date'),
             func.count(User.id).label('count')
@@ -1165,7 +1171,6 @@ def get_analytics():
             user_growth_data.append({'date': current_date.isoformat(), 'count': cumulative})
             current_date += timedelta(days=1)
 
-        # Waste by category
         waste_categories = db.session.query(
             WasteListing.category,
             func.sum(WasteListing.quantity).label('total')
@@ -1174,7 +1179,6 @@ def get_analytics():
         if not waste_by_category:
             waste_by_category = [{'name': 'No Data', 'value': 1}]
 
-        # Payment status distribution
         status_counts = db.session.query(
             Payment.status,
             func.count(Payment.id).label('count')
@@ -1183,7 +1187,6 @@ def get_analytics():
         if not payment_status:
             payment_status = [{'name': 'No Data', 'value': 1}]
 
-        # Recent activity
         recent_payments = Payment.query.order_by(Payment.created_at.desc()).limit(10).all()
         recent_activity = []
         for p in recent_payments:
@@ -1206,7 +1209,6 @@ def get_analytics():
         recent_activity.sort(key=lambda x: x['created_at'], reverse=True)
         recent_activity = recent_activity[:20]
 
-        # Trends
         revenue_trend_pct = 0
         if len(revenue_by_day) >= 2:
             total_prev = sum(float(r.amount) for r in revenue_by_day[:-1])
@@ -1241,7 +1243,7 @@ def get_analytics():
         return jsonify({'message': str(e)}), 500
 
 
-# ─── IMPACT REPORTS ──────────────────────────────────────────────
+# ─── IMPACT REPORTS (robust version) ────────────────────────────
 
 @admin_bp.route('/impact', methods=['GET'])
 @jwt_required()
@@ -1252,74 +1254,140 @@ def get_impact_data():
         days = int(range_param.replace('days', ''))
         cutoff = datetime.utcnow() - timedelta(days=days)
 
+        # ─── Summary ──────────────────────────────────────────────
         total_collections = Collection.query.count()
         total_waste = db.session.query(func.sum(Collection.quantity)).scalar() or 0
-        total_energy = db.session.query(func.sum(Collection.energy_generated)).scalar() or 0
-        total_carbon = db.session.query(func.sum(Collection.carbon_offset)).scalar() or 0
+        try:
+            total_energy = db.session.query(func.sum(Collection.energy_generated)).scalar() or 0
+        except Exception:
+            total_energy = 0
+        try:
+            total_carbon = db.session.query(func.sum(Collection.carbon_offset)).scalar() or 0
+        except Exception:
+            total_carbon = 0
 
-        # Energy trend
-        energy_by_day = db.session.query(
-            func.date(Collection.pickup_datetime).label('date'),
-            func.sum(Collection.energy_generated).label('value')
-        ).filter(
-            Collection.pickup_datetime >= cutoff,
-            Collection.status == 'completed'
-        ).group_by(func.date(Collection.pickup_datetime)).order_by('date').all()
+        # ─── Energy trend ─────────────────────────────────────────
         energy_trend = []
-        current_date = cutoff.date()
-        while current_date <= datetime.utcnow().date():
-            found = False
-            for r in energy_by_day:
-                if r.date == current_date:
-                    energy_trend.append({'date': current_date.isoformat(), 'value': float(r.value) if r.value else 0})
-                    found = True
-                    break
-            if not found:
-                energy_trend.append({'date': current_date.isoformat(), 'value': 0})
-            current_date += timedelta(days=1)
+        try:
+            energy_by_day = db.session.query(
+                func.date(Collection.pickup_datetime).label('date'),
+                func.sum(Collection.energy_generated).label('value')
+            ).filter(
+                Collection.pickup_datetime >= cutoff,
+                Collection.status == 'completed'
+            ).group_by(func.date(Collection.pickup_datetime)).order_by('date').all()
+            current_date = cutoff.date()
+            while current_date <= datetime.utcnow().date():
+                found = False
+                for r in energy_by_day:
+                    if r.date == current_date:
+                        energy_trend.append({'date': current_date.isoformat(), 'value': float(r.value) if r.value else 0})
+                        found = True
+                        break
+                if not found:
+                    energy_trend.append({'date': current_date.isoformat(), 'value': 0})
+                current_date += timedelta(days=1)
+        except Exception as e:
+            print(f"Energy trend error: {e}")
+            energy_trend = []
 
-        # Carbon trend
-        carbon_by_day = db.session.query(
-            func.date(Collection.pickup_datetime).label('date'),
-            func.sum(Collection.carbon_offset).label('value')
-        ).filter(
-            Collection.pickup_datetime >= cutoff,
-            Collection.status == 'completed'
-        ).group_by(func.date(Collection.pickup_datetime)).order_by('date').all()
+        # ─── Carbon trend ─────────────────────────────────────────
         carbon_trend = []
-        current_date = cutoff.date()
-        while current_date <= datetime.utcnow().date():
-            found = False
-            for r in carbon_by_day:
-                if r.date == current_date:
-                    carbon_trend.append({'date': current_date.isoformat(), 'value': float(r.value) if r.value else 0})
-                    found = True
-                    break
-            if not found:
-                carbon_trend.append({'date': current_date.isoformat(), 'value': 0})
-            current_date += timedelta(days=1)
+        try:
+            carbon_by_day = db.session.query(
+                func.date(Collection.pickup_datetime).label('date'),
+                func.sum(Collection.carbon_offset).label('value')
+            ).filter(
+                Collection.pickup_datetime >= cutoff,
+                Collection.status == 'completed'
+            ).group_by(func.date(Collection.pickup_datetime)).order_by('date').all()
+            current_date = cutoff.date()
+            while current_date <= datetime.utcnow().date():
+                found = False
+                for r in carbon_by_day:
+                    if r.date == current_date:
+                        carbon_trend.append({'date': current_date.isoformat(), 'value': float(r.value) if r.value else 0})
+                        found = True
+                        break
+                if not found:
+                    carbon_trend.append({'date': current_date.isoformat(), 'value': 0})
+                current_date += timedelta(days=1)
+        except Exception as e:
+            print(f"Carbon trend error: {e}")
+            carbon_trend = []
 
-        # Waste by type
-        waste_types = db.session.query(
-            Collection.waste_type,
-            func.sum(Collection.quantity).label('total')
-        ).filter(Collection.waste_type.isnot(None)).group_by(Collection.waste_type).all()
-        waste_by_type = [{'name': w.waste_type or 'Other', 'value': float(w.total)} for w in waste_types]
-        if not waste_by_type:
+        # ─── Waste by type ────────────────────────────────────────
+        waste_by_type = []
+        try:
+            waste_types = db.session.query(
+                Collection.waste_type,
+                func.sum(Collection.quantity).label('total')
+            ).filter(Collection.waste_type.isnot(None)).group_by(Collection.waste_type).all()
+            waste_by_type = [{'name': w.waste_type or 'Other', 'value': float(w.total)} for w in waste_types]
+            if not waste_by_type:
+                waste_by_type = [{'name': 'No Data', 'value': 1}]
+        except Exception as e:
+            print(f"Waste by type error: {e}")
             waste_by_type = [{'name': 'No Data', 'value': 1}]
 
-        # Recent activity
-        recent_collections = Collection.query.order_by(Collection.created_at.desc()).limit(15).all()
+        # ─── Recent activity ──────────────────────────────────────
         recent_activity = []
-        for c in recent_collections:
-            supplier = User.query.get(c.supplier_id)
-            recent_activity.append({
-                'type': 'collection',
-                'details': f'{c.waste_type} - {c.quantity} {c.unit} collected',
-                'date': c.created_at.isoformat() if c.created_at else None,
-            })
+        try:
+            recent_collections = Collection.query.order_by(Collection.created_at.desc()).limit(15).all()
+            for c in recent_collections:
+                supplier = User.query.get(c.supplier_id)
+                recent_activity.append({
+                    'type': 'collection',
+                    'details': f'{c.waste_type} - {c.quantity} {c.unit} collected',
+                    'date': c.created_at.isoformat() if c.created_at else None,
+                })
+        except Exception as e:
+            print(f"Recent activity error: {e}")
+            recent_activity = []
 
-        return jsonify({
+        # ─── Supplier breakdown ──────────────────────────────────
+        supplier_stats = []
+        try:
+            supplier_breakdown = db.session.query(
+                User.full_name.label('name'),
+                func.sum(Collection.quantity).label('total')
+            ).join(Collection, Collection.supplier_id == User.id) \
+             .filter(Collection.status == 'completed') \
+             .filter(Collection.pickup_datetime >= cutoff) \
+             .group_by(User.id) \
+             .order_by(func.sum(Collection.quantity).desc()) \
+             .all()
+            supplier_stats = [
+                {'name': s.name or 'Unknown', 'total': float(s.total)}
+                for s in supplier_breakdown
+            ]
+        except Exception as e:
+            print(f"Supplier breakdown error: {e}")
+            supplier_stats = []
+
+        # ─── Transporter breakdown ──────────────────────────────
+        transporter_stats = []
+        try:
+            transporter_breakdown = db.session.query(
+                User.full_name.label('name'),
+                func.sum(WasteListing.quantity).label('total')
+            ).join(TransportJob, TransportJob.transporter_id == User.id) \
+             .join(WasteListing, WasteListing.id == TransportJob.listing_id) \
+             .filter(TransportJob.status == 'completed') \
+             .filter(TransportJob.created_at >= cutoff) \
+             .group_by(User.id) \
+             .order_by(func.sum(WasteListing.quantity).desc()) \
+             .all()
+            transporter_stats = [
+                {'name': t.name or 'Unknown', 'total': float(t.total)}
+                for t in transporter_breakdown
+            ]
+        except Exception as e:
+            print(f"Transporter breakdown error: {e}")
+            transporter_stats = []
+
+        # ─── Build response ─────────────────────────────────────
+        response = {
             'summary': {
                 'totalWaste': float(total_waste),
                 'totalEnergy': float(total_energy),
@@ -1330,27 +1398,40 @@ def get_impact_data():
             'carbonTrend': carbon_trend,
             'wasteByType': waste_by_type,
             'recentActivity': recent_activity,
-        }), 200
+            'supplierBreakdown': supplier_stats,
+            'transporterBreakdown': transporter_stats,
+        }
+
+        return jsonify(response), 200
 
     except Exception as e:
         print(f"❌ Error in get_impact_data: {e}")
-        return jsonify({'message': str(e)}), 500
+        return jsonify({
+            'summary': {
+                'totalWaste': 0,
+                'totalEnergy': 0,
+                'totalCarbon': 0,
+                'totalCollections': 0,
+            },
+            'energyTrend': [],
+            'carbonTrend': [],
+            'wasteByType': [{'name': 'No Data', 'value': 1}],
+            'recentActivity': [],
+            'supplierBreakdown': [],
+            'transporterBreakdown': [],
+            'error': str(e)
+        }), 200
 
 
-# ─── ★ NEW IMPACT METRICS (real‑time data for the Impact page) ──
+# ─── IMPACT METRICS (real‑time data) ─────────────────────────────
 
 @admin_bp.route('/impact/data', methods=['GET'])
 @jwt_required()
 @role_required('admin')
-def get_impact_metrics():   # ← renamed from get_impact_data to avoid conflict
-    """
-    Get real-time impact statistics and chart data for the Impact page.
-    """
+def get_impact_metrics():
     try:
         from sqlalchemy import func, extract
-        from models import User, WasteListing, Collection, Payment, ProcessingPlant
 
-        # ─── Overall Stats ──────────────────────────────────────
         total_users = User.query.count()
         total_waste_diverted = db.session.query(func.sum(WasteListing.quantity)).scalar() or 0
         total_energy = db.session.query(func.sum(Collection.energy_generated)).scalar() or 0
@@ -1358,7 +1439,6 @@ def get_impact_metrics():   # ← renamed from get_impact_data to avoid conflict
         active_facilities = ProcessingPlant.query.filter_by(status='active').count()
         active_partners = User.query.filter(User.role.in_(['supplier','producer','transporter'])).count()
 
-        # ─── Chart Data: Monthly growth (last 12 months) ────
         from datetime import datetime, timedelta
         now = datetime.utcnow()
         start_date = now - timedelta(days=365)
@@ -1744,7 +1824,6 @@ def get_settings():
         return jsonify({'message': str(e)}), 500
 
 
-# ✅ FIXED: correct decorator syntax
 @admin_bp.route('/settings', methods=['PUT'])
 @jwt_required()
 @role_required('admin')
@@ -2367,16 +2446,11 @@ def get_audit_logs():
 @jwt_required()
 @role_required('admin')
 def get_admin_profile():
-    """
-    Get the current admin's profile information.
-    """
     try:
         admin_id = int(get_jwt_identity())
         admin = db.session.get(User, admin_id)
-        
         if not admin:
             return jsonify({'message': 'Admin user not found'}), 404
-        
         return jsonify({
             'id': admin.id,
             'full_name': admin.full_name,
@@ -2390,7 +2464,6 @@ def get_admin_profile():
             'business_name': admin.business_name,
             'location': admin.location,
         }), 200
-        
     except Exception as e:
         print(f"❌ Error in get_admin_profile: {e}")
         return jsonify({'message': str(e)}), 500
@@ -2400,38 +2473,25 @@ def get_admin_profile():
 @jwt_required()
 @role_required('admin')
 def update_admin_profile():
-    """
-    Update the current admin's profile information.
-    """
     try:
         admin_id = int(get_jwt_identity())
         admin = db.session.get(User, admin_id)
-        
         if not admin:
             return jsonify({'message': 'Admin user not found'}), 404
-        
         data = request.get_json() or {}
-        
-        # Allowed fields for update
-        allowed_fields = ['full_name', 'phone', 'bio', 'timezone', 'location', 'business_name']
-        
-        for field in allowed_fields:
+        allowed = ['full_name', 'phone', 'bio', 'timezone', 'location', 'business_name']
+        for field in allowed:
             if field in data and data[field] is not None:
                 setattr(admin, field, data[field])
-        
         admin.updated_at = datetime.utcnow()
         db.session.commit()
-        
-        # ─── Log audit ──────────────────────────────────────────
-        admin_user = db.session.get(User, admin_id)
         log_audit(
             user_id=admin_id,
             event='profile_updated',
-            description=f'Admin {admin_user.full_name} updated their profile',
+            description=f'Admin {admin.full_name} updated their profile',
             status='success',
             admin_id=admin_id
         )
-        
         return jsonify({
             'message': 'Profile updated successfully',
             'profile': {
@@ -2448,7 +2508,6 @@ def update_admin_profile():
                 'location': admin.location,
             }
         }), 200
-        
     except Exception as e:
         db.session.rollback()
         print(f"❌ Error in update_admin_profile: {e}")
@@ -2459,26 +2518,18 @@ def update_admin_profile():
 @jwt_required()
 @role_required('admin')
 def change_admin_password():
-    """
-    Change the current admin's password.
-    Requires current password for verification.
-    """
     try:
         admin_id = int(get_jwt_identity())
         admin = db.session.get(User, admin_id)
-        
         if not admin:
             return jsonify({'message': 'Admin user not found'}), 404
-        
         data = request.get_json() or {}
         current_password = data.get('current_password')
         new_password = data.get('new_password')
-        
         if not current_password or not new_password:
             return jsonify({'message': 'Current password and new password are required'}), 400
-        
-        # ─── Verify current password ──────────────────────────
-        from werkzeug.security import check_password_hash
+
+        from werkzeug.security import check_password_hash, generate_password_hash
         if not check_password_hash(admin.password_hash, current_password):
             log_audit(
                 user_id=admin_id,
@@ -2488,14 +2539,10 @@ def change_admin_password():
                 admin_id=admin_id
             )
             return jsonify({'message': 'Current password is incorrect'}), 401
-        
-        # ─── Update password ──────────────────────────────────
-        from werkzeug.security import generate_password_hash
+
         admin.password_hash = generate_password_hash(new_password)
         admin.updated_at = datetime.utcnow()
         db.session.commit()
-        
-        # ─── Log audit ──────────────────────────────────────────
         log_audit(
             user_id=admin_id,
             event='password_changed',
@@ -2503,9 +2550,7 @@ def change_admin_password():
             status='success',
             admin_id=admin_id
         )
-        
         return jsonify({'message': 'Password changed successfully'}), 200
-        
     except Exception as e:
         db.session.rollback()
         print(f"❌ Error in change_admin_password: {e}")
@@ -2516,21 +2561,11 @@ def change_admin_password():
 @jwt_required()
 @role_required('admin')
 def get_admin_activity():
-    """
-    Get the current admin's recent activity logs.
-    """
     try:
         admin_id = int(get_jwt_identity())
-        
-        # ─── Fetch audit logs for this admin ──────────────────
         logs = AuditLog.query.filter(
             AuditLog.admin_id == admin_id
         ).order_by(AuditLog.created_at.desc()).limit(50).all()
-        
-        if not logs:
-            # Return mock data if no logs exist (or empty array)
-            return jsonify([]), 200
-        
         result = []
         for log in logs:
             result.append({
@@ -2542,79 +2577,51 @@ def get_admin_activity():
                 'status': log.status,
                 'time': log.created_at.isoformat() if log.created_at else None,
             })
-        
         return jsonify(result), 200
-        
     except Exception as e:
         print(f"❌ Error in get_admin_activity: {e}")
         return jsonify([]), 200
 
 
-# ─── ADMIN DASHBOARD STATS (optional enhancement) ──────────────────
+# ─── ADMIN DASHBOARD STATS ──────────────────────────────────────
 
 @admin_bp.route('/dashboard/stats', methods=['GET'])
 @jwt_required()
 @role_required('admin')
 def get_admin_dashboard_stats():
-    """
-    Get dashboard statistics for the admin overview.
-    """
     try:
-        # ─── User stats ────────────────────────────────────────
-        total_users = User.query.count()
-        suppliers = User.query.filter_by(role='supplier').count()
-        producers = User.query.filter_by(role='producer').count()
-        transporters = User.query.filter_by(role='transporter').count()
-        
-        # ─── Listing stats ─────────────────────────────────────
-        total_listings = WasteListing.query.count()
-        active_listings = WasteListing.query.filter(WasteListing.status.in_(['available', 'requested', 'assigned'])).count()
-        
-        # ─── Payment stats ─────────────────────────────────────
-        total_payments = Payment.query.count()
-        pending_payments = Payment.query.filter_by(status='pending').count()
-        total_revenue = db.session.query(func.sum(Payment.amount)).filter(Payment.status.in_(['paid', 'completed', 'released'])).scalar() or 0
-        
-        # ─── Collection stats ──────────────────────────────────
-        total_collections = Collection.query.count()
-        completed_collections = Collection.query.filter_by(status='completed').count()
-        
-        # ─── Recent activity (last 7 days) ────────────────────
         seven_days_ago = datetime.utcnow() - timedelta(days=7)
-        recent_payments = Payment.query.filter(Payment.created_at >= seven_days_ago).count()
-        recent_listings = WasteListing.query.filter(WasteListing.created_at >= seven_days_ago).count()
-        
         return jsonify({
             'users': {
-                'total': total_users,
-                'suppliers': suppliers,
-                'producers': producers,
-                'transporters': transporters,
+                'total': User.query.count(),
+                'suppliers': User.query.filter_by(role='supplier').count(),
+                'producers': User.query.filter_by(role='producer').count(),
+                'transporters': User.query.filter_by(role='transporter').count(),
             },
             'listings': {
-                'total': total_listings,
-                'active': active_listings,
+                'total': WasteListing.query.count(),
+                'active': WasteListing.query.filter(WasteListing.status.in_(['available', 'requested', 'assigned'])).count(),
             },
             'payments': {
-                'total': total_payments,
-                'pending': pending_payments,
-                'revenue': float(total_revenue),
+                'total': Payment.query.count(),
+                'pending': Payment.query.filter_by(status='pending').count(),
+                'revenue': float(db.session.query(func.sum(Payment.amount)).filter(Payment.status.in_(['paid', 'completed', 'released'])).scalar() or 0),
             },
             'collections': {
-                'total': total_collections,
-                'completed': completed_collections,
+                'total': Collection.query.count(),
+                'completed': Collection.query.filter_by(status='completed').count(),
             },
             'recent_activity': {
-                'payments': recent_payments,
-                'listings': recent_listings,
+                'payments': Payment.query.filter(Payment.created_at >= seven_days_ago).count(),
+                'listings': WasteListing.query.filter(WasteListing.created_at >= seven_days_ago).count(),
             }
         }), 200
-        
     except Exception as e:
         print(f"❌ Error in get_admin_dashboard_stats: {e}")
         return jsonify({'message': str(e)}), 500
 
-# ─── PLATFORM WALLET STATS ──────────────────────────────────────────
+
+# ─── PLATFORM WALLET ─────────────────────────────────────────────
 
 @admin_bp.route('/platform-wallet', methods=['GET'])
 @jwt_required()
@@ -2639,16 +2646,16 @@ def get_platform_wallet():
     except Exception as e:
         return jsonify({'message': str(e)}), 500
 
-        # ─── PARTNERSHIP APPLICATIONS ──────────────────────────────────
+
+# ─── PARTNERSHIP APPLICATIONS ──────────────────────────────────────
 
 @admin_bp.route('/partnerships', methods=['GET'])
 @jwt_required()
 @role_required('admin')
 def get_partnerships():
-    """List all partnership applications (paginated)."""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
-    status = request.args.get('status')  # optional filter
+    status = request.args.get('status')
 
     query = PartnershipApplication.query
     if status:
@@ -2675,7 +2682,6 @@ def approve_partnership(app_id):
     app = db.session.get(PartnershipApplication, app_id)
     if not app:
         return jsonify({'message': 'Application not found'}), 404
-
     if app.status != 'pending':
         return jsonify({'message': f'Application is already {app.status}'}), 400
 
@@ -2683,8 +2689,10 @@ def approve_partnership(app_id):
     app.updated_at = datetime.utcnow()
     db.session.commit()
 
-    # Send approval email
-    send_partnership_status_email(app, 'approved')
+    try:
+        send_partnership_status_email(app, 'approved')
+    except Exception as e:
+        print(f"Email send error: {e}")
 
     return jsonify({
         'message': 'Partnership application approved',
@@ -2699,20 +2707,20 @@ def reject_partnership(app_id):
     app = db.session.get(PartnershipApplication, app_id)
     if not app:
         return jsonify({'message': 'Application not found'}), 404
-
     if app.status != 'pending':
         return jsonify({'message': f'Application is already {app.status}'}), 400
 
     data = request.get_json() or {}
     admin_notes = data.get('admin_notes', '')
-
     app.status = 'rejected'
     app.admin_notes = admin_notes
     app.updated_at = datetime.utcnow()
     db.session.commit()
 
-    # Send rejection email
-    send_partnership_status_email(app, 'rejected')
+    try:
+        send_partnership_status_email(app, 'rejected')
+    except Exception as e:
+        print(f"Email send error: {e}")
 
     return jsonify({
         'message': 'Partnership application rejected',

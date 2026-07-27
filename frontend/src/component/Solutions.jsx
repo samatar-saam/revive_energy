@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import wasteToEnergyImage from "../assets/waste-to-energy.jpg";
 import biogasImage from "../assets/biogas.jpg";
 import electricityImage from "../assets/electricity.jpg";
@@ -13,14 +14,14 @@ import biogasProcessVideo from "../assets/videos/biogas-process.mp4";
 import electricityProcessVideo from "../assets/videos/electricity-process.mp4";
 import fertilizerProcessVideo from "../assets/videos/fertilizer-process.mp4";
 import biocharProcessVideo from "../assets/videos/biochar-process.mp4";
-import biomassProcessVideo from "../assets/videos/biomass-fuel.jpg.mp4"; // Note: your file has .jpg.mp4 extension
+import biomassProcessVideo from "../assets/videos/biomass-fuel.jpg.mp4";
 import recyclingProcessVideo from "../assets/videos/recycling-process.mp4";
 import {
   ArrowRight, Recycle, Leaf, Zap, Flame, Droplets, Sun, Wind,
   Truck, Factory, Package, Wheat, Users, Globe, BarChart3,
   CheckCircle2, MapPin, Clock, Star, Shield, TrendingUp,
   Award, Play, ChevronRight, Sparkles, Gauge, Activity,
-  Flame as FireIcon, Droplet as DropletIcon, Sprout, Circle,
+   Droplet as DropletIcon, Sprout, Circle,
   ChevronDown, Mail, Phone, Building2, Home, Battery, ChartBar,
   Gift, Recycle as RecycleIcon, Compass, Target, Eye,
   Filter, Layers, Boxes, ArrowDown, ArrowUp, CircleDot,
@@ -108,7 +109,7 @@ const ENERGY_PRODUCTS = [
   {
     id: 5,
     title: "Biomass Fuel",
-    icon: FireIcon,
+    // icon: FireIcon,
     image: biomassFuelImage,
     description: "High-density fuel produced from agricultural and industrial waste, offering clean combustion.",
     uses: ["Boilers", "Industrial energy", "Heating systems", "Power plants"],
@@ -389,12 +390,24 @@ function VideoCard({ item, index }) {
 
 /* ─── MAIN PAGE ─── */
 export default function EnergyProductsPage() {
+  const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
   const progressWidth = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
   const [activeProduct, setActiveProduct] = useState(0);
   const [showAllProducts, setShowAllProducts] = useState(false);
 
   const displayedProducts = showAllProducts ? ENERGY_PRODUCTS : ENERGY_PRODUCTS.slice(0, 3);
+
+  const scrollToSection = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const navigateTo = (path) => {
+    navigate(path);
+  };
 
   return (
     <div className="min-h-screen bg-[#F6F8F4] text-[#142019] overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
@@ -435,9 +448,6 @@ export default function EnergyProductsPage() {
                 From Waste To
                 <span className="relative inline-block mx-3">
                   <span className="relative z-10 text-[#11402D]">Valuable</span>
-                  {/* <svg className="absolute -bottom-2 left-0 w-full" height="10" viewBox="0 0 300 10" preserveAspectRatio="none">
-                    <path d="M2 6C60 2 240 2 298 6" stroke="#9CF06B" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  </svg> */}
                 </span>
                 Resources
               </h1>
@@ -449,12 +459,16 @@ export default function EnergyProductsPage() {
               <div className="flex flex-wrap gap-4">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => scrollToSection('products')}
                   className="bg-[#11402D] text-white font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
                 >
                   Explore Solutions <ArrowRight className="w-4 h-4" />
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigateTo('/partners')}
                   className="border-2 border-[#11402D]/20 text-[#11402D] font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
                 >
                   Become a Partner
@@ -493,7 +507,7 @@ export default function EnergyProductsPage() {
       </section>
 
       {/* ============ WASTE TO PRODUCT JOURNEY ============ */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white" id="journey">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -554,7 +568,7 @@ export default function EnergyProductsPage() {
       </section>
 
       {/* ============ ENERGY PRODUCTS ============ */}
-      <section className="py-24 bg-[#F6F8F4]">
+      <section className="py-24 bg-[#F6F8F4]" id="products">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -636,27 +650,29 @@ export default function EnergyProductsPage() {
             })}
           </div>
 
-          {/* View All Button */}
-          {!showAllProducts && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              className="text-center mt-12"
+          {/* View All / Show Less Button */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mt-12"
+          >
+            <button
+              onClick={() => setShowAllProducts(!showAllProducts)}
+              className="inline-flex items-center gap-2 border-2 border-[#11402D]/12 text-[#11402D] font-display font-bold px-8 py-3.5 rounded-full text-sm hover:bg-[#11402D] hover:text-white hover:border-[#11402D] transition-all"
             >
-              <button
-                onClick={() => setShowAllProducts(true)}
-                className="inline-flex items-center gap-2 border-2 border-[#11402D]/12 text-[#11402D] font-display font-bold px-8 py-3.5 rounded-full text-sm hover:bg-[#11402D] hover:text-white hover:border-[#11402D] transition-all"
-              >
-                View All Products <ChevronDown className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
+              {showAllProducts ? (
+                <>Show Less <ArrowUp className="w-4 h-4" /></>
+              ) : (
+                <>View All Products <ChevronDown className="w-4 h-4" /></>
+              )}
+            </button>
+          </motion.div>
         </div>
       </section>
 
       {/* ============ WASTE TYPES TABLE ============ */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white" id="waste-types">
         <div className="max-w-6xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -736,7 +752,7 @@ export default function EnergyProductsPage() {
       </section>
 
       {/* ============ PROCESS VIDEOS ============ */}
-      <section className="py-24 bg-[#F6F8F4]">
+      <section className="py-24 bg-[#F6F8F4]" id="videos">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -767,7 +783,7 @@ export default function EnergyProductsPage() {
       </section>
 
       {/* ============ IMPACT STATS ============ */}
-      <section className="py-24 bg-[#0E2A1C] text-white">
+      <section className="py-24 bg-[#0E2A1C] text-white" id="impact">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -817,7 +833,7 @@ export default function EnergyProductsPage() {
       </section>
 
       {/* ============ CIRCULAR ECONOMY DIAGRAM ============ */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white" id="circular">
         <div className="max-w-6xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -892,7 +908,7 @@ export default function EnergyProductsPage() {
       </section>
 
       {/* ============ CTA SECTION ============ */}
-      <section className="py-24 bg-[#0E2A1C]">
+      <section className="py-24 bg-[#0E2A1C]" id="cta">
         <div className="max-w-4xl mx-auto px-6 lg:px-12 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -912,6 +928,7 @@ export default function EnergyProductsPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => navigateTo('/marketplace')}
                 className="bg-[#9CF06B] text-[#0E2A1C] font-display font-bold px-8 py-4 rounded-full text-sm shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
               >
                 Join Marketplace <ArrowRight className="w-4 h-4" />
@@ -919,6 +936,7 @@ export default function EnergyProductsPage() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
+                onClick={() => scrollToSection('footer')}
                 className="border-2 border-white/20 text-white font-display font-bold px-8 py-4 rounded-full text-sm hover:bg-white/10 transition-all flex items-center gap-2"
               >
                 <Phone className="w-4 h-4" /> Contact Us
@@ -928,61 +946,57 @@ export default function EnergyProductsPage() {
         </div>
       </section>
 
-     <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
-             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
-                 <div className="lg:col-span-2">
-                   <div className="flex items-center gap-3 mb-4">
-                     <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
-                       <Recycle className="w-5 h-5 text-[#9CF06B]" />
-                     </div>
-     
-                     <span className="font-display text-xl font-semibold">
-                       ReVive Energy
-                     </span>
-                   </div>
-     
-                   <p className="text-white/50 text-sm leading-relaxed max-w-sm">
-                     Designing and operating waste-to-energy infrastructure that
-                     turns disposal problems into clean energy opportunities.
-                   </p>
-                 </div>
-     
-                 {[
-                   ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
-                   ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
-                   ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
-                 ].map(([title, links], index) => (
-                   <div key={index}>
-                     <h3 className="font-display font-semibold mb-4">{title}</h3>
-     
-                     <ul className="space-y-2.5 text-sm text-white/50">
-                       {links.map((link, i) => (
-                         <li key={i}>
-                           <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                             {link}
-                           </a>
-                         </li>
-                       ))}
-                     </ul>
-                   </div>
-                 ))}
-               </div>
-     
-               <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
-                 <span>© 2026 ReVive Energy. All rights reserved.</span>
-     
-                 <div className="flex flex-wrap justify-center gap-5">
-                   <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                     Privacy Policy
-                   </a>
-                   <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                     Terms of Service
-                   </a>
-                 </div>
-               </div>
-             </div>
-           </footer>
+      <footer id="footer" className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
+                  <Recycle className="w-5 h-5 text-[#9CF06B]" />
+                </div>
+                <span className="font-display text-xl font-semibold">
+                  ReVive Energy
+                </span>
+              </div>
+              <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+                Designing and operating waste-to-energy infrastructure that
+                turns disposal problems into clean energy opportunities.
+              </p>
+            </div>
+
+            {[
+              ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
+              ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
+              ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
+            ].map(([title, links], index) => (
+              <div key={index}>
+                <h3 className="font-display font-semibold mb-4">{title}</h3>
+                <ul className="space-y-2.5 text-sm text-white/50">
+                  {links.map((link, i) => (
+                    <li key={i}>
+                      <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('hero'); }} className="hover:text-[#9CF06B] transition-colors">
+                        {link}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
+            <span>© 2026 ReVive Energy. All rights reserved.</span>
+            <div className="flex flex-wrap justify-center gap-5">
+              <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('hero'); }} className="hover:text-[#9CF06B] transition-colors">
+                Privacy Policy
+              </a>
+              <a href="#" onClick={(e) => { e.preventDefault(); scrollToSection('hero'); }} className="hover:text-[#9CF06B] transition-colors">
+                Terms of Service
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

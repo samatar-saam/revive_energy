@@ -1,3 +1,4 @@
+// src/admin/pages/AdminProfile.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,7 +7,7 @@ import {
   Package, Truck, Zap, Calendar, Award, Edit3,
   Camera, X, Upload, Shield, Trash2,
   Eye, EyeOff, Check, Video,
-  FlipHorizontal, ArrowLeft,Globe,
+  FlipHorizontal, ArrowLeft, Globe,
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -353,7 +354,7 @@ export default function AdminProfile() {
         setOrigProfile(p);
       } catch (e) {
         addToast('error', e.message);
-        // Fallback mock data if endpoint fails
+        // fallback mock
         const mock = {
           full_name: 'Admin User',
           business_name: 'ReVive Energy',

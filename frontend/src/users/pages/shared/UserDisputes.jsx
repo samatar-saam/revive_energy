@@ -172,7 +172,6 @@ const UserDisputes = () => {
     setLoadingPayments(true);
     try {
       const response = await API.get("/payments/my-payments");
-      // Only show payments that are paid/completed and have an amount > 0
       const eligible = (response.data || []).filter(
         (p) => (p.status === "paid" || p.payment_status === "paid") && p.amount > 0
       );
@@ -485,28 +484,34 @@ const UserDisputes = () => {
               )}
             </div>
 
+            {/* ── Reason – NO limit ── */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason <span className="text-red-500">*</span></label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
                 name="reason"
+                rows="3"
                 required
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white resize-y"
                 value={createForm.reason}
                 onChange={handleCreateInputChange}
-                placeholder="e.g., Waste not delivered, Quality issue, Payment dispute"
+                placeholder="Describe the dispute reason in detail..."
+                // No maxLength
               />
             </div>
 
+            {/* ── Description – NO limit ── */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
               <textarea
                 name="description"
-                rows="3"
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white"
+                rows="6"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white resize-y"
                 value={createForm.description}
                 onChange={handleCreateInputChange}
-                placeholder="Provide details about the dispute..."
+                placeholder="Provide full details about the dispute. Include dates, quantities, and any supporting information."
+                // No maxLength
               />
             </div>
 
@@ -712,12 +717,13 @@ const UserDisputes = () => {
                 <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Resolution</h3>
                   <div className="space-y-2">
-                    <input
-                      type="text"
-                      placeholder="Resolution Notes"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
+                    <textarea
+                      placeholder="Resolution Notes – add full details here..."
+                      rows="4"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm resize-y"
                       value={resolutionForm.notes}
                       onChange={(e) => setResolutionForm({ ...resolutionForm, notes: e.target.value })}
+                      // No maxLength
                     />
                     <select
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
@@ -776,6 +782,7 @@ const UserDisputes = () => {
                   placeholder="Type a message..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
+                  // No maxLength
                 />
                 <button type="submit" className="p-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C]">
                   <Send size={20} />
