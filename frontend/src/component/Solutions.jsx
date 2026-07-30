@@ -109,7 +109,7 @@ const ENERGY_PRODUCTS = [
   {
     id: 5,
     title: "Biomass Fuel",
-    // icon: FireIcon,
+    icon: Flame,
     image: biomassFuelImage,
     description: "High-density fuel produced from agricultural and industrial waste, offering clean combustion.",
     uses: ["Boilers", "Industrial energy", "Heating systems", "Power plants"],
@@ -430,75 +430,213 @@ export default function EnergyProductsPage() {
       <motion.div className="fixed top-0 left-0 h-0.5 bg-[#9CF06B] z-50 origin-left"
         style={{ width: progressWidth }} />
 
-      {/* ============ HERO SECTION ============ */}
-      <section className="relative min-h-[60vh] flex items-center bg-white pt-0">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-20 right-10 w-96 h-96 bg-[#9CF06B]/5 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 left-10 w-80 h-80 bg-[#11402D]/5 rounded-full blur-3xl" />
+      {/* ============ HERO SECTION – SHORTER & TWO IMAGES ============ */}
+      <section id="hero" className="relative bg-white pt-6 pb-14 lg:pt-8 lg:pb-16 overflow-hidden">
+        {/* ambient depth */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-24 right-0 w-[36rem] h-[36rem] bg-[#9CF06B]/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 -left-24 w-[28rem] h-[28rem] bg-[#11402D]/8 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-10 lg:py-12">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="grid lg:grid-cols-12 gap-y-6 lg:gap-x-8 items-start">
+
+            {/* ── LEFT: headline & pitch ── */}
             <motion.div
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
+              className="lg:col-span-4"
             >
-              <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl text-[#0E2A1C] leading-[1.1] tracking-tight mb-6">
-                From Waste To
-                <span className="relative inline-block mx-3">
-                  <span className="relative z-10 text-[#11402D]">Valuable</span>
-                </span>
-                Resources
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#11402D]/15 bg-white px-4 py-1.5 mb-6 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#11402D]" />
+                <span className="text-xs font-semibold text-[#11402D]">Natural Waste Technologies</span>
+              </div>
+
+              <h1 className="font-display text-5xl sm:text-6xl leading-[1.05] tracking-tight mb-6">
+                <span className="block text-[#0E2A1C]">From Waste To</span>
+                <span className="block gradient-text">Valuable Energy</span>
+                <span className="block text-[#0E2A1C]">Smart Living</span>
               </h1>
 
-              <p className="text-xl text-[#142019]/65 leading-relaxed max-w-lg mb-8">
-                Discover how ReVive Energy transforms waste into clean energy, fertilizer, recycled materials, and sustainable products that power the circular economy.
-              </p>
+              <div className="flex items-center gap-3 mb-7">
+                {[
+                  { icon: Recycle, label: "Circular by design" },
+                  { icon: Gauge, label: "High efficiency" },
+                  { icon: Shield, label: "Certified process" },
+                ].map((item) => (
+                  <div key={item.label} className="group relative">
+                    <div className="w-12 h-12 rounded-full bg-white border border-[#11402D]/10 shadow-sm flex items-center justify-center hover:border-[#11402D]/30 hover:shadow-md transition-all">
+                      <item.icon className="w-5 h-5 text-[#11402D]" />
+                    </div>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-2 whitespace-nowrap text-[10px] font-medium text-white bg-[#0E2A1C] px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-              <div className="flex flex-wrap gap-4">
+              <div className="flex gap-3 mb-6">
+                <div className="w-8 h-px bg-[#11402D]/25 mt-2.5 flex-shrink-0" />
+                <p className="text-sm text-[#142019]/60 leading-relaxed">
+                  High-efficiency conversion turns organic, agricultural, and municipal waste into biogas, electricity, and fertilizer — with live monitoring at every stage and zero waste sent to landfill.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => scrollToSection('products')}
-                  className="bg-[#11402D] text-white font-bold px-8 py-3 rounded-full text-sm shadow-lg flex items-center gap-2"
+                  className="group bg-[#11402D] text-white font-bold px-7 py-3 rounded-full text-sm shadow-lg shadow-[#11402D]/20 hover:shadow-xl transition-shadow flex items-center gap-2"
                 >
-                  Explore Solutions <ArrowRight className="w-4 h-4" />
+                  Get Started
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => navigateTo('/partners')}
-                  className="border-2 border-[#11402D]/20 text-[#11402D] font-bold px-8 py-3 rounded-full text-sm flex items-center gap-2"
+                  className="border-2 border-[#11402D]/15 text-[#11402D] font-bold px-7 py-3 rounded-full text-sm hover:bg-[#11402D]/[0.04] hover:border-[#11402D]/30 transition-colors"
                 >
-                  Become a Partner
+                  Explore
                 </motion.button>
               </div>
             </motion.div>
 
+            {/* ── CENTER: photo collage ── */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-              className="relative"
+              transition={{ delay: 0.15, duration: 0.6 }}
+              className="lg:col-span-5 relative px-4 sm:px-6"
             >
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl">
-                <img
-                  src={wasteToEnergyImage}
-                  alt="Waste to Energy"
-                  className="w-full h-auto"
+              {/* organic blob accents */}
+              <svg viewBox="0 0 200 200" className="absolute -top-10 -left-8 sm:-top-14 sm:-left-12 w-40 h-40 sm:w-56 sm:h-56 -z-10">
+                <path
+                  fill="#9CF06B"
+                  fillOpacity="0.4"
+                  d="M52.4,-62.3C66.5,-53.5,75.9,-36.6,78.7,-19.1C81.6,-1.6,78.8,16.5,70.1,31.2C61.3,45.9,46.5,57.2,30.4,64.2C14.2,71.2,-3.4,73.9,-20.6,70.4C-37.9,66.9,-54.9,57.2,-65.6,42.7C-76.4,28.2,-80.9,8.9,-77.8,-8.7C-74.7,-26.3,-64,-42.3,-50,-51.6C-36,-60.9,-18,-63.5,0.6,-64.3C19.2,-65.1,38.4,-71,52.4,-62.3Z"
+                  transform="translate(100 100)"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/50 via-transparent to-transparent" />
+              </svg>
+              <svg viewBox="0 0 200 200" className="absolute -bottom-10 -right-6 sm:-bottom-14 sm:-right-10 w-36 h-36 sm:w-48 sm:h-48 -z-10">
+                <path
+                  fill="#11402D"
+                  fillOpacity="0.16"
+                  d="M60.9,-70.7C77.4,-59.6,88,-38.6,89.6,-18.1C91.2,2.5,83.8,22.6,71.6,38.5C59.5,54.4,42.6,66,23.9,72.6C5.2,79.2,-15.4,80.7,-33.4,74.3C-51.4,68,-66.9,53.7,-75.8,36.2C-84.7,18.6,-87,-2.3,-81.1,-20.4C-75.2,-38.6,-61,-54.1,-44.5,-64.9C-28,-75.7,-9.2,-81.9,9.1,-82.3C27.4,-82.8,44.4,-81.7,60.9,-70.7Z"
+                  transform="translate(100 100) scale(0.85)"
+                />
+              </svg>
+
+              {/* shadow */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-2 w-[70%] h-10 bg-[#0E2A1C]/25 blur-2xl rounded-full -z-10" />
+
+              {/* MAIN IMAGE – waste to energy */}
+              <div className="relative rounded-[1.75rem] overflow-hidden aspect-[3/4] sm:aspect-[3/4] shadow-2xl ring-1 ring-black/5">
+                <img src={wasteToEnergyImage} alt="Waste to energy facility" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/70 via-[#0B2417]/10 to-transparent" />
+
+                {/* bottom stat card */}
+                <div className="absolute bottom-6 left-6 right-24 sm:right-28 bg-white/10 backdrop-blur-xl rounded-2xl px-4 py-3.5 border border-white/25 shadow-lg">
+                  <div className="font-display text-2xl font-bold text-white tabular-nums">
+                    <Counter to={125000} suffix="+" />
+                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#9CF06B]">Tons Diverted</div>
+                  <div className="text-[11px] text-white/60 mt-1 leading-snug">Driving a smarter future with clean, reliable energy.</div>
+                </div>
               </div>
-              <div className="absolute -bottom-4 -left-4 bg-white rounded-xl shadow-xl p-4 border border-[#11402D]/5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#11402D] flex items-center justify-center">
-                    <Recycle className="w-5 h-5 text-[#9CF06B]" />
+
+              {/* floating badges */}
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="absolute left-0 sm:-left-4 top-10 bg-white/70 backdrop-blur-xl rounded-full pl-3 pr-4 py-2 flex items-center gap-2 border border-white/60 shadow-xl"
+              >
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34D399] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#34D399]" />
+                </span>
+                <span className="text-xs font-semibold text-[#0E2A1C] whitespace-nowrap">85% Diversion Rate</span>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.52, duration: 0.5 }}
+                className="absolute left-3 sm:-left-1 top-28 bg-white/65 backdrop-blur-xl rounded-full pl-3 pr-4 py-2 flex items-center gap-2 border border-white/60 shadow-xl"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#60A5FA]" />
+                <span className="text-xs font-semibold text-[#0E2A1C] whitespace-nowrap">Live Monitoring</span>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.64, duration: 0.5 }}
+                className="absolute left-6 sm:left-3 top-[11rem] bg-white/60 backdrop-blur-xl rounded-full pl-3 pr-4 py-2 flex items-center gap-2 border border-white/60 shadow-xl"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+                <span className="text-xs font-semibold text-[#0E2A1C] whitespace-nowrap">Certified Process</span>
+              </motion.div>
+
+              {/* pill row */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7, duration: 0.5 }}
+                className="absolute -bottom-4 left-1/2 -translate-x-1/2 flex gap-3"
+              >
+                <span className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-full shadow-xl px-4 py-2 text-xs font-semibold text-[#0E2A1C] flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#11402D]" /> Waste Collection
+                </span>
+                <span className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-full shadow-xl px-4 py-2 text-xs font-semibold text-[#0E2A1C] flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#9CF06B]" /> Clean Energy
+                </span>
+              </motion.div>
+            </motion.div>
+
+            {/* ── RIGHT: journey copy + secondary panel with new image ── */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="lg:col-span-3 flex flex-col gap-4"
+            >
+              <div>
+                <h2 className="font-display text-2xl font-bold text-[#0E2A1C] leading-snug mb-3">
+                  Start Your Journey Here
+                </h2>
+                <p className="text-sm text-[#142019]/55 leading-relaxed">
+                  Take the first step toward a cleaner, smarter future. Discover how waste-to-energy solutions can cut costs, power your community, and support a greener continent — starting today.
+                </p>
+              </div>
+
+              {/* SECONDARY IMAGE – biogas plant (different image) */}
+              <div className="relative rounded-[1.75rem] overflow-hidden shadow-xl ring-1 ring-black/5 aspect-[3/4]">
+                <img
+                  src={biogasImage}
+                  alt="Biogas plant"
+                  className="w-full h-full object-cover"
+                  style={{ objectPosition: "center" }}
+                />
+                <div className="absolute inset-0 bg-[#0E2A1C]/35" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B2417]/80 via-transparent to-transparent" />
+
+                <div className="absolute top-4 left-4 bg-white/60 backdrop-blur-xl border border-white/50 rounded-full shadow-lg px-3 py-1.5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#11402D]" />
+                  <span className="text-[11px] font-semibold text-[#0E2A1C]">Our Network</span>
+                </div>
+                <div className="absolute top-4 right-4 flex gap-1">
+                  {[0, 1, 2].map((d) => (
+                    <span key={d} className={`w-1.5 h-1.5 rounded-full ${d === 0 ? "bg-white" : "bg-white/40"}`} />
+                  ))}
+                </div>
+
+                <div className="absolute bottom-4 left-4 right-4 bg-white/10 backdrop-blur-xl rounded-lg px-3.5 py-3 border border-white/25 shadow-lg">
+                  <div className="font-display text-xl font-bold text-white tabular-nums">
+                    <Counter to={2500} suffix="+" />
                   </div>
-                  <div>
-                    <div className="font-display font-bold text-[#0E2A1C]">100% Circular</div>
-                    <div className="text-xs text-[#5A7060]">Zero waste to landfill</div>
-                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#9CF06B]">Partners Connected</div>
                 </div>
               </div>
             </motion.div>

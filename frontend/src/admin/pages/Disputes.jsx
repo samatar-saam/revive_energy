@@ -1,5 +1,5 @@
 // src/pages/admin/Disputes.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   AlertCircle,
@@ -16,6 +16,10 @@ import {
   HelpCircle,
   TrendingUp,
   Scale,
+  FileText,
+  Send,
+  MessageCircle,
+  Trash2,
 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -28,8 +32,19 @@ export default function AdminDisputes() {
   const [expandedId, setExpandedId] = useState(null);
   const [updating, setUpdating] = useState(null);
 
-  const token = localStorage.getItem("token");
+  // ─── Chat states ──────────────────────────────────────────────
+  const [chatMessages, setChatMessages] = useState({});
+  const [chatInput, setChatInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const chatEndRef = useRef(null);
 
+  const token = localStorage.getItem("token");
+  const currentUser = JSON.parse(localStorage.getItem("user") || '{}');
+  const currentUserId = currentUser.id;
+  const currentUserRole = currentUser.role;
+
+  // ─── Fetch disputes ──────────────────────────────────────────
   const fetchDisputes = async (status = "") => {
     setLoading(true);
     setError(null);
@@ -53,7 +68,75 @@ export default function AdminDisputes() {
     }
   };
 
+  // ─── Fetch chat messages for a specific dispute ─────────────
+  const fetchChatMessages = async (disputeId) => {
+    try {
+      const res = await fetch(`${API_URL}/disputes/${disputeId}/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to load chat");
+      const data = await res.json();
+      setChatMessages((prev) => ({ ...prev, [disputeId]: data }));
+    } catch (err) {
+      console.error("Chat fetch error:", err);
+    }
+  };
+
+  // ─── Send a chat message ─────────────────────────────────────
+  const sendChatMessage = async (disputeId) => {
+    const text = chatInput.trim();
+    if (!text) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${API_URL}/disputes/${disputeId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ message: text }),
+      });
+      if (!res.ok) throw new Error("Failed to send message");
+      const newMsg = await res.json();
+      setChatMessages((prev) => ({
+        ...prev,
+        [disputeId]: [...(prev[disputeId] || []), newMsg],
+      }));
+      setChatInput("");
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // ─── Delete a message ────────────────────────────────────────
+  const deleteMessage = async (disputeId, messageId) => {
+    if (!window.confirm("Delete this message for everyone?")) return;
+    setDeleting(messageId);
+    try {
+      const res = await fetch(`${API_URL}/disputes/${disputeId}/messages/${messageId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      setChatMessages((prev) => ({
+        ...prev,
+        [disputeId]: prev[disputeId].filter((msg) => msg.id !== messageId),
+      }));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  // ─── Update dispute status ──────────────────────────────────
   const updateDisputeStatus = async (id, newStatus) => {
+    if (!window.confirm(`Change dispute #${id} status to "${newStatus}"?`)) return;
     setUpdating(id);
     try {
       const res = await fetch(`${API_URL}/admin/disputes/${id}/status`, {
@@ -64,7 +147,10 @@ export default function AdminDisputes() {
         },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error("Update failed");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Update failed");
+      }
       await fetchDisputes(statusFilter);
     } catch (err) {
       alert(err.message);
@@ -73,10 +159,33 @@ export default function AdminDisputes() {
     }
   };
 
+  // ─── Expand handler – load chat when expanded ─────────────
+  const toggleExpand = (id) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(id);
+      if (!chatMessages[id]) {
+        fetchChatMessages(id);
+      }
+    }
+  };
+
+  // ─── Poll for new messages every 5 seconds when expanded ──
+  useEffect(() => {
+    if (!expandedId) return;
+    const interval = setInterval(() => {
+      fetchChatMessages(expandedId);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [expandedId]);
+
+  // ─── Effects ──────────────────────────────────────────────────
   useEffect(() => {
     fetchDisputes(statusFilter);
   }, [statusFilter]);
 
+  // ─── Helpers ──────────────────────────────────────────────────
   const getStatusBadge = (status) => {
     const styles = {
       open: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -114,7 +223,7 @@ export default function AdminDisputes() {
     };
     return (
       <span className={`px-2 py-0.5 rounded text-xs font-medium ${styles[status] || styles.held}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {status ? status.charAt(0).toUpperCase() + status.slice(1) : "Held"}
       </span>
     );
   };
@@ -128,10 +237,6 @@ export default function AdminDisputes() {
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const toggleExpand = (id) => {
-    setExpandedId(expandedId === id ? null : id);
   };
 
   if (loading && disputes.length === 0) {
@@ -275,6 +380,14 @@ export default function AdminDisputes() {
                       <p className="text-sm text-gray-600 whitespace-pre-wrap">
                         {dispute.reason || "No reason provided"}
                       </p>
+                      {dispute.description && (
+                        <>
+                          <h4 className="text-sm font-semibold text-gray-700 mt-3 mb-2">Description</h4>
+                          <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                            {dispute.description}
+                          </p>
+                        </>
+                      )}
                     </div>
                     <div>
                       <h4 className="text-sm font-semibold text-gray-700 mb-2">Timeline</h4>
@@ -315,7 +428,80 @@ export default function AdminDisputes() {
                     </div>
                   )}
 
-                  {/* Status update */}
+                  {/* ─── CHAT SECTION ────────────────────────────── */}
+                  <div className="mt-5 border-t border-gray-200 pt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <MessageCircle className="w-4 h-4 text-[#11402D]" />
+                      <h4 className="text-sm font-semibold text-gray-700">Live Chat</h4>
+                      <span className="text-xs text-gray-400">
+                        (messages auto-refresh every 5s)
+                      </span>
+                    </div>
+
+                    <div className="bg-white rounded-lg border border-gray-200 p-3 max-h-48 overflow-y-auto space-y-2">
+                      {!chatMessages[dispute.id] || chatMessages[dispute.id].length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center">No messages yet</p>
+                      ) : (
+                        chatMessages[dispute.id].map((msg) => (
+                          <div
+                            key={msg.id}
+                            className={`flex ${msg.is_admin ? "justify-end" : "justify-start"} items-start gap-1`}
+                          >
+                            <div
+                              className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
+                                msg.is_admin
+                                  ? "bg-[#11402D] text-white"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              <p>{msg.message}</p>
+                              <span className="text-[10px] opacity-70">
+                                {msg.sender_name} · {formatDate(msg.created_at)}
+                              </span>
+                            </div>
+                            {(msg.sender_id === currentUserId || currentUserRole === 'admin') && (
+                              <button
+                                onClick={() => deleteMessage(dispute.id, msg.id)}
+                                disabled={deleting === msg.id}
+                                className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                                title="Delete message for everyone"
+                              >
+                                {deleting === msg.id ? (
+                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Trash2 size={14} />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") sendChatMessage(dispute.id);
+                        }}
+                        placeholder="Type a message..."
+                        className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
+                      />
+                      <button
+                        onClick={() => sendChatMessage(dispute.id)}
+                        disabled={sending || !chatInput.trim()}
+                        className="px-4 py-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C] disabled:opacity-50 transition flex items-center gap-1"
+                      >
+                        <Send className="w-4 h-4" />
+                        Send
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ─── Status update ────────────────────────────── */}
                   <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
                     <span className="text-sm font-medium text-gray-700">Update status:</span>
                     <select

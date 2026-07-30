@@ -542,3 +542,4 @@ if __name__ == "__main__":
     app = create_app()
     print("\n🚀 Server running on http://localhost:5000")
     app.run(debug=True, port=5000)
+    

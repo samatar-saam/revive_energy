@@ -39,9 +39,10 @@ import {
   Clock,
   Globe,
   Users,
+  Sparkles,
 } from "lucide-react";
 
-// ─── Import the Forgot Password Modal (same folder) ─────────
+// ─── Import the Forgot Password Modal ─────────────────────────
 import ForgotPasswordModal from "./ForgotPasswordModal";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -449,7 +450,6 @@ function Login() {
     }
   };
 
-  // ─── ★ UPDATED: completeSignup – sends welcome email ★ ────
   const completeSignup = async () => {
     if (!emailVerified) {
       toast.error("Please verify your email first");
@@ -483,7 +483,7 @@ function Login() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Registration failed");
 
-      // ─── ★ Send welcome email (role‑based) ────────────────
+      // ─── Send welcome email ────────────────
       try {
         await fetch(`${API_URL}/send-welcome-email`, {
           method: "POST",
@@ -496,7 +496,6 @@ function Login() {
         });
       } catch (emailErr) {
         console.error("Failed to send welcome email:", emailErr);
-        // Non‑blocking – user still gets account created
       }
 
       toast.update(toastId, {
@@ -1250,6 +1249,154 @@ function Login() {
           .Toastify__progress-bar {
             background: #9CF06B !important;
           }
+
+          /* ── Left panel ── */
+          .left-panel {
+            position: relative;
+            overflow: hidden;
+            border-radius: 2rem;
+            background: linear-gradient(145deg, #0E2A1C 0%, #1a5c3e 100%);
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+          }
+          .left-panel::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 2rem;
+            padding: 2px;
+            background: conic-gradient(from 120deg, #9CF06B, #34D399, #9CF06B, #34D399);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: borderSpin 6s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+          }
+          @keyframes borderSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+
+          .left-panel-inner {
+            position: relative;
+            z-index: 2;
+            padding: 2.5rem 2rem 2rem 2rem;
+            backdrop-filter: blur(2px);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+          }
+
+          /* Blob decoration */
+          .blob-decoration {
+            position: absolute;
+            right: -10%;
+            top: -10%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle at 70% 30%, rgba(156, 240, 107, 0.3), rgba(52, 211, 153, 0.1) 60%, transparent 80%);
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 1;
+            pointer-events: none;
+            animation: blobMove 12s ease-in-out infinite alternate;
+          }
+          @keyframes blobMove {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(10%, 10%) scale(1.3); }
+          }
+
+          /* Additional floating orbs */
+          .orb-1 {
+            position: absolute;
+            bottom: 20%;
+            left: -10%;
+            width: 40%;
+            height: 40%;
+            background: radial-gradient(circle, rgba(156, 240, 107, 0.15), transparent 70%);
+            border-radius: 50%;
+            filter: blur(60px);
+            animation: orbFloat 8s ease-in-out infinite alternate;
+          }
+          .orb-2 {
+            position: absolute;
+            top: 30%;
+            right: -5%;
+            width: 30%;
+            height: 30%;
+            background: radial-gradient(circle, rgba(52, 211, 153, 0.12), transparent 70%);
+            border-radius: 50%;
+            filter: blur(50px);
+            animation: orbFloat 10s ease-in-out infinite alternate-reverse;
+          }
+          @keyframes orbFloat {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(-10%, -10%) scale(1.2); }
+          }
+
+          .glass-stat {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: default;
+          }
+          .glass-stat:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(156, 240, 107, 0.4);
+            box-shadow: 0 8px 30px -8px rgba(156, 240, 107, 0.2);
+          }
+
+          .feature-item {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,0.08);
+            transition: all 0.2s ease;
+          }
+          .feature-item:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(156, 240, 107, 0.3);
+            transform: translateX(4px);
+            box-shadow: 0 4px 20px -8px rgba(156, 240, 107, 0.1);
+          }
+
+          .right-panel {
+            background: white;
+            border-radius: 2rem;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
+          }
+
+          /* Input fields */
+          .input-field {
+            transition: all 0.2s ease;
+          }
+          .input-field:focus-within {
+            border-color: #11402D;
+            box-shadow: 0 0 0 4px rgba(17, 64, 45, 0.1);
+          }
+
+          .btn-primary {
+            background: linear-gradient(135deg, #0E2A1C, #11402D);
+            transition: all 0.3s ease;
+          }
+          .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px -8px rgba(17, 64, 45, 0.4);
+          }
+          .btn-primary:active {
+            transform: translateY(0px);
+          }
+
+          .btn-role {
+            transition: all 0.2s ease;
+          }
+          .btn-role:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px -6px rgba(17, 64, 45, 0.15);
+          }
         `}
       </style>
 
@@ -1266,64 +1413,79 @@ function Login() {
         theme="colored"
       />
 
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100">
-        {/* ─── Left Panel ─────────────────────────────────────── */}
-        <div className="hidden lg:flex relative bg-gradient-to-br from-[#0E2A1C] via-[#11402D] to-[#1a5c3e] p-10 text-white flex-col justify-between">
-          <div>
-            <div className="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm border border-white/20">
-              <Recycle className="w-6 h-6" />
-              <span className="font-display font-semibold text-lg">ReVive Energy</span>
-            </div>
-            <div className="mt-12">
-              <p className="font-mono-cw text-sm uppercase tracking-[0.25em] text-green-200">
-                {showSignup ? `Join as ${currentRole.label}` : "Welcome Back"}
-              </p>
-              <h1 className="font-display mt-4 text-4xl font-bold leading-tight">
-                {showSignup ? "Create Your Account." : "Transform Waste."}
-                <br />
-                <span className="text-[#9CF06B]">
-                  {showSignup ? "Start Making Impact." : "Create Value."}
-                </span>
-              </h1>
-              <p className="mt-5 text-green-200 text-base leading-7 max-w-lg">
-                {showSignup
-                  ? `Join ReVive Energy as a ${currentRole.label} and start making a difference.`
-                  : "Access your account to track waste collections, manage partnerships, and monitor your environmental impact."}
-              </p>
-            </div>
-          </div>
+      <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100/50 right-panel">
+        {/* ─── Left Panel (World‑class design) ─────────────────────── */}
+        <div className="hidden lg:flex left-panel">
+          <div className="left-panel-inner">
+            {/* Decorative blobs */}
+            <div className="blob-decoration" />
+            <div className="orb-1" />
+            <div className="orb-2" />
 
-          <div className="grid grid-cols-2 gap-4 mt-8">
-            <div className="rounded-2xl bg-white/10 p-4 border border-white/20">
-              <p className="font-display text-2xl font-bold">1,200+</p>
-              <p className="text-sm text-green-200">Active Partners</p>
+            {/* Content */}
+            <div>
+              <div className="inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm border border-white/20 relative z-10 transition-all hover:bg-white/15">
+                <Recycle className="w-6 h-6 text-[#9CF06B]" />
+                <span className="font-display font-semibold text-lg text-white">ReVive Energy</span>
+                <Sparkles className="w-4 h-4 text-[#9CF06B] animate-pulse" />
+              </div>
+              <div className="mt-12 relative z-10">
+                <p className="font-mono-cw text-sm uppercase tracking-[0.25em] text-[#9CF06B]">
+                  {showSignup ? `Join as ${currentRole.label}` : "Welcome Back"}
+                </p>
+                <h1 className="font-display mt-4 text-4xl font-bold leading-tight text-white">
+                  {showSignup ? "Create Your Account." : "Transform Waste."}
+                  <br />
+                  <span className="text-[#9CF06B]">
+                    {showSignup ? "Start Making Impact." : "Create Value."}
+                  </span>
+                </h1>
+                <p className="mt-5 text-green-200 text-base leading-7 max-w-lg">
+                  {showSignup
+                    ? `Join ReVive Energy as a ${currentRole.label} and start making a difference.`
+                    : "Access your account to track waste collections, manage partnerships, and monitor your environmental impact."}
+                </p>
+              </div>
             </div>
-            <div className="rounded-2xl bg-white/10 p-4 border border-white/20">
-              <p className="font-display text-2xl font-bold">125K+</p>
-              <p className="text-sm text-green-200">Tons Processed</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-4 border border-white/20">
-              <p className="font-display text-2xl font-bold">85K+</p>
-              <p className="text-sm text-green-200">MWh Generated</p>
-            </div>
-            <div className="rounded-2xl bg-white/10 p-4 border border-white/20">
-              <p className="font-display text-2xl font-bold">24/7</p>
-              <p className="text-sm text-green-200">Support</p>
-            </div>
-          </div>
 
-          <div className="mt-6 space-y-2.5">
-            <div className="flex items-center gap-3 text-sm text-green-200">
-              <Truck className="w-4 h-4" /><span>Free collection for qualified partners</span>
+            {/* Stats grid – glassmorphic */}
+            <div className="grid grid-cols-2 gap-4 mt-8 relative z-10">
+              <div className="glass-stat rounded-2xl p-4 border border-white/20">
+                <p className="font-display text-2xl font-bold text-white">1,200+</p>
+                <p className="text-sm text-[#9CF06B]">Active Partners</p>
+              </div>
+              <div className="glass-stat rounded-2xl p-4 border border-white/20">
+                <p className="font-display text-2xl font-bold text-white">125K+</p>
+                <p className="text-sm text-[#9CF06B]">Tons Processed</p>
+              </div>
+              <div className="glass-stat rounded-2xl p-4 border border-white/20">
+                <p className="font-display text-2xl font-bold text-white">85K+</p>
+                <p className="text-sm text-[#9CF06B]">MWh Generated</p>
+              </div>
+              <div className="glass-stat rounded-2xl p-4 border border-white/20">
+                <p className="font-display text-2xl font-bold text-white">24/7</p>
+                <p className="text-sm text-[#9CF06B]">Support</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3 text-sm text-green-200">
-              <ShieldCheck className="w-4 h-4" /><span>Verified waste streams & processing</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-green-200">
-              <Headphones className="w-4 h-4" /><span>24/7 customer support</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-green-200">
-              <Leaf className="w-4 h-4" /><span>Real‑time carbon impact tracking</span>
+
+            {/* Feature list – glassmorphic */}
+            <div className="mt-6 space-y-2.5 relative z-10">
+              <div className="feature-item flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/90">
+                <Truck className="w-4 h-4 text-[#9CF06B]" />
+                <span>Free collection for qualified partners</span>
+              </div>
+              <div className="feature-item flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/90">
+                <ShieldCheck className="w-4 h-4 text-[#9CF06B]" />
+                <span>Verified waste streams & processing</span>
+              </div>
+              <div className="feature-item flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/90">
+                <Headphones className="w-4 h-4 text-[#9CF06B]" />
+                <span>24/7 customer support</span>
+              </div>
+              <div className="feature-item flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/90">
+                <Leaf className="w-4 h-4 text-[#9CF06B]" />
+                <span>Real‑time carbon impact tracking</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1352,7 +1514,7 @@ function Login() {
                     <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
                       Email Address
                     </label>
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 input-field">
                       <Mail className="w-5 h-5 text-slate-400" />
                       <input
                         type="email"
@@ -1371,7 +1533,7 @@ function Login() {
                     <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
                       Password
                     </label>
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 focus-within:ring-2 focus-within:ring-green-500 transition">
+                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 input-field">
                       <Lock className="w-5 h-5 text-slate-400" />
                       <input
                         type={showPassword ? "text" : "password"}
@@ -1386,7 +1548,7 @@ function Login() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="text-slate-400 hover:text-slate-600"
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
                       >
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
@@ -1395,7 +1557,7 @@ function Login() {
                       <button
                         type="button"
                         onClick={() => setShowForgotPassword(true)}
-                        className="text-sm text-green-600 hover:text-green-700 font-medium"
+                        className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
                       >
                         Forgot password?
                       </button>
@@ -1412,7 +1574,7 @@ function Login() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0E2A1C] to-[#11402D] px-5 py-3.5 font-display font-semibold text-white shadow-lg hover:from-[#1a5c3e] hover:to-[#0E2A1C] transition-all hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl btn-primary px-5 py-3.5 font-display font-semibold text-white shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     {isSubmitting ? (
                       <>
@@ -1433,21 +1595,21 @@ function Login() {
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
                     <button
                       onClick={() => openSignup("waste-supplier")}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D]"
+                      className="btn-role inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D] hover:bg-[#11402D]/5"
                     >
                       <Landmark className="w-4 h-4 text-[#11402D]" />
                       Join as Waste Supplier
                     </button>
                     <button
                       onClick={() => openSignup("energy-producer")}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D]"
+                      className="btn-role inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D] hover:bg-[#11402D]/5"
                     >
                       <Zap className="w-4 h-4 text-[#11402D]" />
                       Join as Energy Producer
                     </button>
                     <button
                       onClick={() => openSignup("transport-partner")}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D]"
+                      className="btn-role inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D] hover:bg-[#11402D]/5"
                     >
                       <Truck className="w-4 h-4 text-[#11402D]" />
                       Join as Transport Partner

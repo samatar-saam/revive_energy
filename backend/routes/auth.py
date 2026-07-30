@@ -794,7 +794,7 @@ def send_welcome_email():
           </div>
 
           <div style="border-top: 1px solid #e0e7ed; margin-top: 30px; padding-top: 20px; text-align: center; font-size: 13px; color: #8a9ba8;">
-            <p style="margin: 0;">Need help? Contact us at <a href="mailto:support@revive.energy" style="color: #11402D; text-decoration: none;">support@revive.energy</a></p>
+            <p style="margin: 0;">Need help? Contact us at <a href="mailto:samatar578@gmail.com" style="color: #11402D; text-decoration: none;">samatar578@gmail.com</a></p>
             <p style="margin-top: 10px;">© 2026 ReVive Energy. All rights reserved.</p>
           </div>
         </div>

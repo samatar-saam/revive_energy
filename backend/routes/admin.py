@@ -2173,38 +2173,24 @@ def complete_withdrawal(withdrawal_id):
 
 # ─── DISPUTES ─────────────────────────────────────────────────────
 
+# ─── DISPUTES (ADMIN) ─────────────────────────────────────────────
+
 @admin_bp.route('/disputes', methods=['GET'])
 @jwt_required()
 @role_required('admin')
-def get_disputes():
+def admin_get_disputes():
+    """
+    Get all disputes with optional status filter.
+    Returns dispute details including producer/supplier names, amount, timeline, evidence.
+    """
     try:
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
-        search = request.args.get('search', '')
         status = request.args.get('status')
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
 
         query = Dispute.query
-        if search:
-            term = f"%{search}%"
-            producer_ids = db.session.query(User.id).filter(
-                User.full_name.ilike(term) | User.email.ilike(term)
-            )
-            supplier_ids = db.session.query(User.id).filter(
-                User.full_name.ilike(term) | User.email.ilike(term)
-            )
-            transporter_ids = db.session.query(User.id).filter(
-                User.full_name.ilike(term) | User.email.ilike(term)
-            )
-            query = query.filter(
-                or_(
-                    cast(Dispute.id, String).ilike(term),
-                    cast(Dispute.payment_id, String).ilike(term),
-                    Dispute.producer_id.in_(producer_ids),
-                    Dispute.supplier_id.in_(supplier_ids),
-                    Dispute.transporter_id.in_(transporter_ids),
-                )
-            )
-        if status and status != 'all':
+
+        if status:
             query = query.filter(Dispute.status == status)
 
         query = query.order_by(Dispute.created_at.desc())
@@ -2212,48 +2198,48 @@ def get_disputes():
 
         result = []
         for d in disputes:
-            payment = db.session.get(Payment, d.payment_id) if d.payment_id else None
-            waste_type = None
-            if payment and payment.listing_id:
-                listing = db.session.get(WasteListing, payment.listing_id)
-                if listing:
-                    waste_type = listing.waste_type
-
-            producer = db.session.get(User, d.producer_id)
-            supplier = db.session.get(User, d.supplier_id)
+            # Fetch related users
+            producer = db.session.get(User, d.producer_id) if d.producer_id else None
+            supplier = db.session.get(User, d.supplier_id) if d.supplier_id else None
             transporter = db.session.get(User, d.transporter_id) if d.transporter_id else None
 
+            # Parse JSON fields if stored as strings
             timeline = []
             evidence = []
             try:
                 if d.timeline:
-                    timeline = json.loads(d.timeline)
+                    timeline = json.loads(d.timeline) if isinstance(d.timeline, str) else d.timeline
             except (json.JSONDecodeError, TypeError):
                 timeline = []
             try:
                 if d.evidence:
-                    evidence = json.loads(d.evidence)
+                    evidence = json.loads(d.evidence) if isinstance(d.evidence, str) else d.evidence
             except (json.JSONDecodeError, TypeError):
                 evidence = []
 
             result.append({
                 'id': d.id,
                 'payment_id': d.payment_id,
+                'amount': float(d.amount) if d.amount is not None else 0.0,
+                'producer_id': d.producer_id,
                 'producer_name': producer.full_name if producer else None,
+                'producer_email': producer.email if producer else None,
+                'supplier_id': d.supplier_id,
                 'supplier_name': supplier.full_name if supplier else None,
+                'transporter_id': d.transporter_id,
                 'transporter_name': transporter.full_name if transporter else None,
-                'waste_type': waste_type,
                 'reason': d.reason,
+                'description': d.description,
                 'status': d.status,
                 'escrow_status': d.escrow_status,
-                'amount': float(d.amount) if d.amount is not None else 0.0,
                 'created_at': d.created_at.isoformat() if d.created_at else None,
+                'updated_at': d.updated_at.isoformat() if d.updated_at else None,
                 'timeline': timeline,
                 'evidence': evidence,
             })
 
         return jsonify({
-            'data': result,
+            'disputes': result,
             'pagination': {
                 'page': page,
                 'per_page': per_page,
@@ -2261,81 +2247,73 @@ def get_disputes():
                 'pages': (total + per_page - 1) // per_page
             }
         }), 200
+
     except Exception as e:
-        print(f"❌ Error in admin get_disputes: {e}")
+        print(f"❌ Error in admin_get_disputes: {e}")
         return jsonify({'message': str(e)}), 500
 
 
-@admin_bp.route('/disputes/<int:dispute_id>/action', methods=['POST'])
+@admin_bp.route('/disputes/<int:dispute_id>/status', methods=['PATCH'])
 @jwt_required()
 @role_required('admin')
-def dispute_action(dispute_id):
+def admin_update_dispute_status(dispute_id):
+    """
+    Update the status of a dispute.
+    Allowed statuses: open, under_investigation, awaiting_response, resolved, closed, refunded.
+    """
     try:
         dispute = db.session.get(Dispute, dispute_id)
         if not dispute:
             return jsonify({'message': 'Dispute not found'}), 404
 
         data = request.get_json() or {}
-        action = data.get('action')
-        if not action:
-            return jsonify({'message': 'Action is required'}), 400
+        new_status = data.get('status')
+        if not new_status:
+            return jsonify({'message': 'Status is required'}), 400
 
+        allowed_statuses = ['open', 'under_investigation', 'awaiting_response', 'resolved', 'closed', 'refunded']
+        if new_status not in allowed_statuses:
+            return jsonify({'message': f'Invalid status. Allowed: {", ".join(allowed_statuses)}'}), 400
+
+        # Update status
+        dispute.status = new_status
+        dispute.updated_at = datetime.utcnow()
+
+        # Append timeline entry
         admin_id = int(get_jwt_identity())
         admin_user = db.session.get(User, admin_id)
-        if not admin_user or admin_user.role != 'admin':
-            return jsonify({'message': 'Admin only'}), 403
-
-        status_map = {
-            'request_more_info': 'awaiting_response',
-            'freeze_escrow': 'under_investigation',
-            'release_escrow': 'open',
-            'refund_producer': 'refunded',
-            'reject': 'closed',
-            'resolve': 'resolved',
-            'close': 'closed',
-        }
-
-        escrow_map = {
-            'freeze_escrow': 'frozen',
-            'release_escrow': 'released',
-            'refund_producer': 'refunded',
-            'resolve': 'released',
-        }
-
-        if action in status_map:
-            dispute.status = status_map[action]
-
-        if action in escrow_map:
-            dispute.escrow_status = escrow_map[action]
-            if action == 'refund_producer':
-                payment = db.session.get(Payment, dispute.payment_id)
-                if payment:
-                    payment.status = 'refunded'
-                    payment.escrow_status = 'refunded'
-
         timeline = json.loads(dispute.timeline) if dispute.timeline else []
         timeline.append({
-            'description': f'Admin {admin_user.full_name} performed "{action}" on dispute #{dispute.id}',
-            'timestamp': datetime.utcnow().isoformat()
+            'description': f'Status changed to "{new_status}" by Admin {admin_user.full_name}',
+            'timestamp': datetime.utcnow().isoformat(),
+            'user': admin_user.full_name,
         })
         dispute.timeline = json.dumps(timeline)
-        dispute.updated_at = datetime.utcnow()
 
         db.session.commit()
 
+        # Log audit
         log_audit(
             user_id=admin_id,
-            event='dispute_action',
-            description=f'Admin {admin_user.full_name} performed {action} on dispute #{dispute.id}',
+            event='dispute_status_updated',
+            description=f'Admin {admin_user.full_name} changed dispute #{dispute.id} status to {new_status}',
             status='success',
             admin_id=admin_id
         )
 
-        return jsonify({'message': f'Action "{action}" completed successfully'}), 200
+        return jsonify({
+            'message': 'Status updated successfully',
+            'dispute': {
+                'id': dispute.id,
+                'status': dispute.status,
+                'updated_at': dispute.updated_at.isoformat() if dispute.updated_at else None,
+            }
+        }), 200
+
     except Exception as e:
         db.session.rollback()
+        print(f"❌ Error in admin_update_dispute_status: {e}")
         return jsonify({'message': str(e)}), 500
-
 
 # ─── SETTINGS HISTORY ────────────────────────────────────────────
 

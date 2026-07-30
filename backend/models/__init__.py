@@ -30,7 +30,7 @@ from .withdrawal import WithdrawalRequest
 from .dispute import Dispute
 from .audit_log import AuditLog
 from .transport_location import TransportLocation
-
+from .dispute import Dispute, DisputeMessage   # or from .your_file_name import ...
 from .partnership_application import PartnershipApplication
 
 # ─── Platform Wallet ────────────────────────────────────────────

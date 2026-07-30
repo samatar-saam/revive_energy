@@ -1,5 +1,5 @@
-// src/users/pages/shared/UserDisputes.jsx
-import React, { useState, useEffect, useCallback } from "react";
+// src/users/pages/shared/UserDisputes.jsx (complete updated file)
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
 import axios from "axios";
 import {
   Search,
@@ -89,7 +89,474 @@ const Skeleton = ({ className }) => (
   <div className={`animate-pulse bg-gray-200 dark:bg-gray-700 rounded ${className}`} />
 );
 
-// ─── Main Component ────────────────────────────────────────────
+// ─── Helper: get status badge ────────────────────────────────
+const getStatusBadge = (status) => {
+  const map = {
+    open: "bg-yellow-100 text-yellow-800",
+    under_review: "bg-blue-100 text-blue-800",
+    awaiting_response: "bg-purple-100 text-purple-800",
+    resolved: "bg-green-100 text-green-800",
+    closed: "bg-gray-100 text-gray-800",
+    refunded: "bg-indigo-100 text-indigo-800",
+  };
+  const label = status?.replace(/_/g, " ")?.toUpperCase() || status;
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${map[status] || "bg-gray-100"}`}>{label}</span>;
+};
+
+const getEscrowBadge = (status) => {
+  const map = {
+    held: "bg-gray-100 text-gray-700",
+    frozen: "bg-red-100 text-red-700",
+    released: "bg-green-100 text-green-700",
+    refunded: "bg-indigo-100 text-indigo-700",
+  };
+  return <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[status] || "bg-gray-100"}`}>{status?.toUpperCase() || "—"}</span>;
+};
+
+/* ─── CREATE DISPUTE MODAL (memoized) ───────────────────────── */
+const CreateDisputeModal = memo(({
+  isOpen,
+  onClose,
+  userPayments,
+  loadingPayments,
+  createForm,
+  onFormChange,
+  onPaymentSelect,
+  onFileChange,
+  onRemoveFile,
+  createPreviewUrls,
+  onSubmit,
+  submitting,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 animate-fadeIn">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create Dispute</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <XCircle size={24} />
+          </button>
+        </div>
+        <form onSubmit={onSubmit}>
+          <div className="space-y-4">
+            {/* Payment selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Select Payment <span className="text-red-500">*</span>
+              </label>
+              {loadingPayments ? (
+                <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                  <RefreshCw className="animate-spin" size={16} />
+                  Loading your payments...
+                </div>
+              ) : userPayments.length === 0 ? (
+                <div className="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                  No eligible payments found. You need a completed payment to create a dispute.
+                  <br />
+                  <a href="/dashboard/marketplace" className="text-[#11402D] font-medium hover:underline">
+                    Go to Marketplace →
+                  </a>
+                </div>
+              ) : (
+                <select
+                  className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white"
+                  value={createForm.paymentId}
+                  onChange={onPaymentSelect}
+                  required
+                >
+                  <option value="">-- Select a payment --</option>
+                  {userPayments.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      #{p.id} - KES {p.amount?.toFixed(2)} ({p.waste_type || "Waste"})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {createForm.paymentId && (
+                <p className="mt-1 text-xs text-green-600">
+                  ✓ Payment #{createForm.paymentId} selected
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="reason"
+                rows="2"
+                required
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white resize-y"
+                value={createForm.reason}
+                onChange={onFormChange}
+                placeholder="e.g., Waste not delivered, Quality issue, Payment dispute – be as detailed as you like."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+              <textarea
+                name="description"
+                rows="5"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white resize-y"
+                value={createForm.description}
+                onChange={onFormChange}
+                placeholder="Provide full details about the dispute. Include dates, quantities, and any supporting information."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
+              <select
+                name="priority"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white"
+                value={createForm.priority}
+                onChange={onFormChange}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Evidence (optional)</label>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                  <Upload size={16} className="mr-2" />
+                  Choose Files
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={onFileChange}
+                  />
+                </label>
+                {createForm.evidence.length > 0 && (
+                  <span className="text-sm text-gray-500">{createForm.evidence.length} file(s) selected</span>
+                )}
+              </div>
+              {createPreviewUrls.length > 0 && (
+                <div className="mt-2 grid grid-cols-4 gap-2">
+                  {createPreviewUrls.map((url, idx) => (
+                    <div key={idx} className="relative group border border-gray-200 rounded-lg overflow-hidden aspect-square">
+                      <img src={url} alt={`preview-${idx}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => onRemoveFile(idx)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition"
+                      >
+                        <XCircle size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end space-x-3">
+            <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+              Cancel
+            </button>
+            <button type="submit" disabled={submitting || !createForm.paymentId} className="px-4 py-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C] disabled:opacity-50 flex items-center">
+              {submitting ? <RefreshCw className="animate-spin mr-2" size={18} /> : <Plus size={18} className="mr-2" />}
+              Create Dispute
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+});
+
+/* ─── VIEW DISPUTE MODAL (memoized) ─────────────────────────── */
+const ViewDisputeModal = memo(({
+  isOpen,
+  onClose,
+  dispute,
+  chatMessages,
+  evidenceFiles,
+  timeline,
+  escrowStatus,
+  resolutionForm,
+  setResolutionForm,
+  chatInput,
+  setChatInput,
+  onSendChat,
+  onEvidenceUpload,
+  onReleaseEscrow,
+  onRefundProducer,
+  onResolutionSave,
+  onDeleteMessage,
+  uploading,
+  isAdmin,
+  currentUserId,
+  currentUserRole,
+}) => {
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [chatMessages, isOpen]);
+
+  if (!isOpen || !dispute) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto p-6 animate-fadeIn">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dispute #{dispute.id}</h2>
+            <div className="flex items-center space-x-2 mt-1">
+              {getStatusBadge(dispute.status)}
+              <span className="text-sm text-gray-500 dark:text-gray-400">{formatDate(dispute.createdAt)}</span>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+            <XCircle size={24} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Payment Details */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Payment Details</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-gray-500">Amount:</span>
+                <span className="font-medium">KES {dispute.amount?.toFixed(2)}</span>
+                <span className="text-gray-500">Producer:</span>
+                <span>{dispute.producer?.name || "—"}</span>
+                <span className="text-gray-500">Supplier:</span>
+                <span>{dispute.supplier?.name || "—"}</span>
+                <span className="text-gray-500">Transporter:</span>
+                <span>{dispute.transporter?.name || "—"}</span>
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Timeline</h3>
+              <div className="relative pl-4 border-l-2 border-[#11402D] dark:border-[#9CF06B] space-y-4">
+                {timeline.map((event, idx) => (
+                  <div key={idx} className="relative">
+                    <div className="absolute -left-2 w-3 h-3 rounded-full bg-[#9CF06B] border-2 border-white dark:border-gray-900" />
+                    <div className="ml-4">
+                      <p className="text-sm text-gray-800 dark:text-gray-200">{event.description}</p>
+                      <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <span>{event.user}</span>
+                        <span className="mx-1">·</span>
+                        <span>{formatDate(event.timestamp)}</span>
+                        {event.icon && <span className="ml-2">{event.icon}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Evidence Gallery */}
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Evidence</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {evidenceFiles.map((file, idx) => (
+                  <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-2 flex items-center justify-between">
+                    <div className="flex items-center">
+                      {file.type?.startsWith("image/") ? <Image size={20} className="text-[#11402D]" /> : <File size={20} className="text-gray-500" />}
+                      <span className="ml-2 text-sm truncate">{file.name}</span>
+                    </div>
+                    <button className="text-gray-500 hover:text-gray-700">
+                      <Download size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {!isAdmin && (
+                <div className="mt-2">
+                  <label className="cursor-pointer inline-flex items-center text-sm text-[#11402D] hover:text-[#0E2A1C]">
+                    <Upload size={16} className="mr-1" />
+                    Upload Evidence
+                    <input type="file" multiple className="hidden" onChange={onEvidenceUpload} />
+                  </label>
+                  {uploading && <RefreshCw className="animate-spin inline ml-2" size={16} />}
+                </div>
+              )}
+            </div>
+
+            {/* Escrow Section */}
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Escrow</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-gray-500">Amount Held:</span>
+                <span>KES {escrowStatus.amountHeld?.toFixed(2) || "0.00"}</span>
+                <span className="text-gray-500">Platform Fee:</span>
+                <span>KES {escrowStatus.platformFee?.toFixed(2) || "0.00"}</span>
+                <span className="text-gray-500">Transport Fee:</span>
+                <span>KES {escrowStatus.transportFee?.toFixed(2) || "0.00"}</span>
+                <span className="text-gray-500">Supplier Amount:</span>
+                <span>KES {escrowStatus.supplierAmount?.toFixed(2) || "0.00"}</span>
+                <span className="text-gray-500">Status:</span>
+                {getEscrowBadge(escrowStatus.status)}
+              </div>
+              {isAdmin && escrowStatus.status === "held" && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={onReleaseEscrow} className="px-3 py-1 bg-[#11402D] text-white rounded-lg text-sm hover:bg-[#0E2A1C]">
+                    Release Payment
+                  </button>
+                  <button onClick={onRefundProducer} className="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">
+                    Refund Producer
+                  </button>
+                </div>
+              )}
+              {!isAdmin && escrowStatus.status === "held" && (
+                <p className="text-sm text-gray-500 mt-2">Escrow is held pending admin review.</p>
+              )}
+            </div>
+
+            {/* Admin Controls (only for admin) */}
+            {isAdmin && (
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Admin Controls</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button className="px-3 py-1 bg-[#11402D] text-white rounded-lg text-sm hover:bg-[#0E2A1C]">Approve</button>
+                  <button className="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Reject</button>
+                  <button className="px-3 py-1 bg-yellow-600 text-white rounded-lg text-sm hover:bg-yellow-700">Escalate</button>
+                  <button className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">Assign Moderator</button>
+                  <button className="px-3 py-1 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700">Freeze</button>
+                  <button className="px-3 py-1 bg-red-800 text-white rounded-lg text-sm hover:bg-red-900">Close</button>
+                </div>
+              </div>
+            )}
+
+            {/* Resolution Section (admin only) */}
+            {isAdmin && (
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Resolution</h3>
+                <div className="space-y-2">
+                  <textarea
+                    placeholder="Resolution Notes – add full details here..."
+                    rows="3"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm resize-y"
+                    value={resolutionForm.notes}
+                    onChange={(e) => setResolutionForm({ ...resolutionForm, notes: e.target.value })}
+                  />
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
+                    value={resolutionForm.decision}
+                    onChange={(e) => setResolutionForm({ ...resolutionForm, decision: e.target.value })}
+                  >
+                    <option value="">Select Decision</option>
+                    <option value="refund">Refund</option>
+                    <option value="release">Release Payment</option>
+                    <option value="partial">Partial</option>
+                  </select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      placeholder="Refund Amount"
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
+                      value={resolutionForm.refundAmount}
+                      onChange={(e) => setResolutionForm({ ...resolutionForm, refundAmount: e.target.value })}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Released Amount"
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
+                      value={resolutionForm.releasedAmount}
+                      onChange={(e) => setResolutionForm({ ...resolutionForm, releasedAmount: e.target.value })}
+                    />
+                  </div>
+                  <button
+                    onClick={onResolutionSave}
+                    className="w-full py-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C] transition"
+                  >
+                    Save Resolution
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ─── Right column: Chat ────────────────────────────────── */}
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 flex flex-col h-[500px]">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Live Chat</h3>
+            <div className="flex-1 overflow-y-auto space-y-2 mb-3">
+              {chatMessages.length === 0 && (
+                <p className="text-sm text-gray-400 text-center">No messages yet</p>
+              )}
+              {chatMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.is_admin ? "justify-end" : "justify-start"} items-start gap-1`}
+                >
+                  <div
+                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${
+                      msg.is_admin
+                        ? "bg-[#11402D] text-white"
+                        : "bg-gray-200 dark:bg-gray-700 dark:text-white"
+                    }`}
+                  >
+                    <p>{msg.message}</p>
+                    <span className="text-xs opacity-70">
+                      {msg.sender_name} · {formatDate(msg.created_at)}
+                    </span>
+                  </div>
+                  {(msg.sender_id === currentUserId || currentUserRole === 'admin') && (
+                    <button
+                      onClick={() => onDeleteMessage(msg.id)}
+                      className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                      title="Delete message for everyone"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+            <form onSubmit={onSendChat} className="flex items-center space-x-2">
+              <input
+                type="text"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
+                placeholder="Type a message..."
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                maxLength={500}
+              />
+              <button type="submit" className="p-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C]">
+                <Send size={20} />
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end space-x-3">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+            Close
+          </button>
+          <button className="px-4 py-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C] flex items-center">
+            <Printer size={16} className="mr-1" />
+            Print
+          </button>
+          <button className="px-4 py-2 bg-[#9CF06B] text-[#0E2A1C] rounded-lg hover:bg-[#86D45E] flex items-center">
+            <Download size={16} className="mr-1" />
+            Download PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   MAIN COMPONENT
+═══════════════════════════════════════════════════════════════ */
 const UserDisputes = () => {
   // ─── State ────────────────────────────────────────────────────
   const [disputes, setDisputes] = useState([]);
@@ -143,6 +610,12 @@ const UserDisputes = () => {
   const [toasts, setToasts] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deletingMessage, setDeletingMessage] = useState(null);
+
+  // ─── Get current user info ──────────────────────────────────
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const currentUserId = currentUser.id;
+  const currentUserRole = currentUser.role;
 
   // ─── API Calls ────────────────────────────────────────────────
   const fetchDisputes = useCallback(async () => {
@@ -168,7 +641,7 @@ const UserDisputes = () => {
     }
   }, [searchTerm, filters, currentPage, pageSize]);
 
-  const fetchMyPayments = async () => {
+  const fetchMyPayments = useCallback(async () => {
     setLoadingPayments(true);
     try {
       const response = await API.get("/payments/my-payments");
@@ -185,19 +658,35 @@ const UserDisputes = () => {
     } finally {
       setLoadingPayments(false);
     }
-  };
+  }, []);
 
-  const fetchDisputeDetails = async (id) => {
+  const fetchDisputeDetails = useCallback(async (id) => {
     try {
-      const response = await API.get(`/disputes/${id}`);
-      return response.data;
+      const disputeRes = await API.get(`/disputes/${id}`);
+      const disputeData = disputeRes.data;
+      const chatRes = await API.get(`/disputes/${id}/messages`);
+      const chatData = chatRes.data;
+      setSelectedDispute(disputeData);
+      setChatMessages(chatData || []);
+      setEvidenceFiles(disputeData.evidence || []);
+      setTimeline(disputeData.timeline || []);
+      setEscrowStatus(disputeData.escrow || {});
+      setResolutionForm({
+        notes: disputeData.resolution?.notes || "",
+        decision: disputeData.resolution?.decision || "",
+        refundAmount: disputeData.resolution?.refundAmount || "",
+        releasedAmount: disputeData.resolution?.releasedAmount || "",
+        finalStatus: disputeData.resolution?.finalStatus || "",
+      });
+      setViewModalOpen(true);
+      return disputeData;
     } catch (err) {
       addToast("error", "Failed to load dispute details");
       return null;
     }
-  };
+  }, []);
 
-  const createDispute = async (data) => {
+  const createDispute = useCallback(async (data) => {
     try {
       const response = await API.post("/disputes", data);
       addToast("success", "Dispute created successfully");
@@ -207,9 +696,9 @@ const UserDisputes = () => {
       addToast("error", msg);
       throw err;
     }
-  };
+  }, []);
 
-  const deleteDispute = async (id) => {
+  const deleteDispute = useCallback(async (id) => {
     if (!window.confirm("Are you sure you want to delete this dispute?")) return;
     try {
       await API.delete(`/disputes/${id}`);
@@ -218,19 +707,38 @@ const UserDisputes = () => {
     } catch (err) {
       addToast("error", "Failed to delete dispute");
     }
-  };
+  }, [fetchDisputes]);
 
-  const sendChatMessage = async (id, message) => {
+  const sendChatMessage = useCallback(async (id, message) => {
     try {
-      const response = await API.post(`/disputes/${id}/chat`, { message });
-      setChatMessages((prev) => [...prev, response.data]);
+      const response = await API.post(`/disputes/${id}/messages`, { message });
+      const newMsg = response.data;
+      setChatMessages((prev) => [...prev, newMsg]);
       addToast("success", "Message sent");
+      setTimeout(() => {
+        const chatContainer = document.querySelector(".chat-messages-container");
+        if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+      }, 100);
     } catch (err) {
       addToast("error", "Failed to send message");
     }
-  };
+  }, []);
 
-  const uploadEvidence = async (id, files) => {
+  const deleteMessage = useCallback(async (messageId) => {
+    if (!window.confirm("Delete this message for everyone?")) return;
+    setDeletingMessage(messageId);
+    try {
+      await API.delete(`/disputes/${selectedDispute.id}/messages/${messageId}`);
+      setChatMessages((prev) => prev.filter((msg) => msg.id !== messageId));
+      addToast("success", "Message deleted");
+    } catch (err) {
+      addToast("error", "Failed to delete message");
+    } finally {
+      setDeletingMessage(null);
+    }
+  }, [selectedDispute]);
+
+  const uploadEvidence = useCallback(async (id, files) => {
     setUploading(true);
     try {
       const formData = new FormData();
@@ -247,20 +755,20 @@ const UserDisputes = () => {
     } finally {
       setUploading(false);
     }
-  };
+  }, []);
 
-  const resolveDispute = async (id, data) => {
+  const resolveDispute = useCallback(async (id, data) => {
     try {
       await API.post(`/disputes/${id}/resolve`, data);
       addToast("success", "Dispute resolved");
       fetchDisputes();
-      if (viewModalOpen) fetchDisputeDetails(id).then(setSelectedDispute);
+      if (viewModalOpen) fetchDisputeDetails(id);
     } catch (err) {
       addToast("error", "Resolution failed");
     }
-  };
+  }, [fetchDisputes, viewModalOpen, fetchDisputeDetails]);
 
-  const releaseEscrow = async (id) => {
+  const releaseEscrow = useCallback(async (id) => {
     try {
       await API.post(`/disputes/${id}/release`);
       addToast("success", "Escrow released");
@@ -268,9 +776,9 @@ const UserDisputes = () => {
     } catch (err) {
       addToast("error", "Release failed");
     }
-  };
+  }, [fetchDisputes]);
 
-  const refundProducer = async (id) => {
+  const refundProducer = useCallback(async (id) => {
     try {
       await API.post(`/disputes/${id}/refund`);
       addToast("success", "Refund processed");
@@ -278,21 +786,20 @@ const UserDisputes = () => {
     } catch (err) {
       addToast("error", "Refund failed");
     }
-  };
+  }, [fetchDisputes]);
 
   // ─── Toast helpers ────────────────────────────────────────────
-  const addToast = (type, message) => {
+  const addToast = useCallback((type, message) => {
     const id = Date.now();
     setToasts((prev) => [...prev, { id, type, message }]);
-  };
-  const removeToast = (id) => setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+  const removeToast = useCallback((id) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
 
   // ─── Effects ──────────────────────────────────────────────────
   useEffect(() => {
     fetchDisputes();
   }, [fetchDisputes]);
 
-  // Cleanup preview URLs
   useEffect(() => {
     return () => {
       createPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -300,27 +807,27 @@ const UserDisputes = () => {
   }, [createPreviewUrls]);
 
   // ─── Handlers ─────────────────────────────────────────────────
-  const handleSearch = (e) => {
+  const handleSearch = useCallback((e) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleFilterChange = (key, value) => {
+  const handleFilterChange = useCallback((key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleCreateInputChange = (e) => {
+  const handleCreateInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setCreateForm((prev) => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handlePaymentSelect = (e) => {
+  const handlePaymentSelect = useCallback((e) => {
     const paymentId = e.target.value;
     setCreateForm((prev) => ({ ...prev, paymentId }));
-  };
+  }, []);
 
-  const handleCreateFileChange = (e) => {
+  const handleCreateFileChange = useCallback((e) => {
     const files = Array.from(e.target.files);
     if (files.length) {
       const urls = files.map((file) => URL.createObjectURL(file));
@@ -331,17 +838,17 @@ const UserDisputes = () => {
       }));
     }
     e.target.value = "";
-  };
+  }, []);
 
-  const removeCreateFile = (index) => {
+  const removeCreateFile = useCallback((index) => {
     setCreateForm((prev) => ({
       ...prev,
       evidence: prev.evidence.filter((_, i) => i !== index),
     }));
     setCreatePreviewUrls((prev) => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
-  const handleCreateSubmit = async (e) => {
+  const handleCreateSubmit = useCallback(async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
@@ -355,461 +862,44 @@ const UserDisputes = () => {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [createDispute, createForm, fetchDisputes]);
 
-  const handleViewDispute = async (id) => {
-    const data = await fetchDisputeDetails(id);
-    if (data) {
-      setSelectedDispute(data);
-      setChatMessages(data.chat || []);
-      setEvidenceFiles(data.evidence || []);
-      setTimeline(data.timeline || []);
-      setEscrowStatus(data.escrow || {});
-      setResolutionForm({
-        notes: data.resolution?.notes || "",
-        decision: data.resolution?.decision || "",
-        refundAmount: data.resolution?.refundAmount || "",
-        releasedAmount: data.resolution?.releasedAmount || "",
-        finalStatus: data.resolution?.finalStatus || "",
-      });
-      setViewModalOpen(true);
-    }
-  };
+  const handleViewDispute = useCallback(async (id) => {
+    await fetchDisputeDetails(id);
+  }, [fetchDisputeDetails]);
 
-  const handleCloseView = () => {
+  const handleCloseView = useCallback(() => {
     setViewModalOpen(false);
     setSelectedDispute(null);
     setChatMessages([]);
     setEvidenceFiles([]);
     setTimeline([]);
-  };
+  }, []);
 
-  const handleSendChat = (e) => {
+  const handleSendChat = useCallback((e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
     sendChatMessage(selectedDispute.id, chatInput);
     setChatInput("");
-  };
+  }, [chatInput, selectedDispute, sendChatMessage]);
 
-  const handleEvidenceUpload = (e) => {
+  const handleEvidenceUpload = useCallback((e) => {
     const files = Array.from(e.target.files);
     if (files.length) uploadEvidence(selectedDispute.id, files);
     e.target.value = "";
-  };
+  }, [selectedDispute, uploadEvidence]);
 
-  const handleResolutionSave = async () => {
+  const handleResolutionSave = useCallback(async () => {
     await resolveDispute(selectedDispute.id, resolutionForm);
-    const data = await fetchDisputeDetails(selectedDispute.id);
-    if (data) setSelectedDispute(data);
-  };
+    await fetchDisputeDetails(selectedDispute.id);
+  }, [selectedDispute, resolutionForm, resolveDispute, fetchDisputeDetails]);
 
-  const openCreateModal = () => {
+  const openCreateModal = useCallback(() => {
     fetchMyPayments();
     setCreateModalOpen(true);
-  };
+  }, [fetchMyPayments]);
 
-  // ─── Render helpers ──────────────────────────────────────────
-  const getStatusBadge = (status) => {
-    const map = {
-      open: "bg-yellow-100 text-yellow-800",
-      under_review: "bg-blue-100 text-blue-800",
-      awaiting_response: "bg-purple-100 text-purple-800",
-      resolved: "bg-green-100 text-green-800",
-      closed: "bg-gray-100 text-gray-800",
-      refunded: "bg-indigo-100 text-indigo-800",
-    };
-    const label = status?.replace(/_/g, " ")?.toUpperCase() || status;
-    return <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${map[status] || "bg-gray-100"}`}>{label}</span>;
-  };
-
-  const getEscrowBadge = (status) => {
-    const map = {
-      held: "bg-gray-100 text-gray-700",
-      frozen: "bg-red-100 text-red-700",
-      released: "bg-green-100 text-green-700",
-      refunded: "bg-indigo-100 text-indigo-700",
-    };
-    return <span className={`px-2 py-0.5 rounded text-xs font-medium ${map[status] || "bg-gray-100"}`}>{status?.toUpperCase() || "—"}</span>;
-  };
-
-  // ─── Modals ────────────────────────────────────────────────────
-  const CreateModal = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-6 animate-fadeIn">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create Dispute</h2>
-          <button onClick={() => setCreateModalOpen(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-            <XCircle size={24} />
-          </button>
-        </div>
-        <form onSubmit={handleCreateSubmit}>
-          <div className="space-y-4">
-            {/* Payment selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Select Payment <span className="text-red-500">*</span>
-              </label>
-              {loadingPayments ? (
-                <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-                  <RefreshCw className="animate-spin" size={16} />
-                  Loading your payments...
-                </div>
-              ) : userPayments.length === 0 ? (
-                <div className="mt-1 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                  No eligible payments found. You need a completed payment to create a dispute.
-                  <br />
-                  <a href="/dashboard/marketplace" className="text-[#11402D] font-medium hover:underline">
-                    Go to Marketplace →
-                  </a>
-                </div>
-              ) : (
-                <select
-                  className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white"
-                  value={createForm.paymentId}
-                  onChange={handlePaymentSelect}
-                  required
-                >
-                  <option value="">-- Select a payment --</option>
-                  {userPayments.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      #{p.id} - KES {p.amount?.toFixed(2)} ({p.waste_type || "Waste"})
-                    </option>
-                  ))}
-                </select>
-              )}
-              {createForm.paymentId && (
-                <p className="mt-1 text-xs text-green-600">
-                  ✓ Payment #{createForm.paymentId} selected
-                </p>
-              )}
-            </div>
-
-            {/* ── Reason – NO limit ── */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Reason <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="reason"
-                rows="3"
-                required
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white resize-y"
-                value={createForm.reason}
-                onChange={handleCreateInputChange}
-                placeholder="Describe the dispute reason in detail..."
-                // No maxLength
-              />
-            </div>
-
-            {/* ── Description – NO limit ── */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-              <textarea
-                name="description"
-                rows="6"
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white resize-y"
-                value={createForm.description}
-                onChange={handleCreateInputChange}
-                placeholder="Provide full details about the dispute. Include dates, quantities, and any supporting information."
-                // No maxLength
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Priority</label>
-              <select
-                name="priority"
-                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[#9CF06B] dark:bg-gray-800 dark:text-white"
-                value={createForm.priority}
-                onChange={handleCreateInputChange}
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Evidence (optional)</label>
-              <div className="flex items-center gap-2">
-                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                  <Upload size={16} className="mr-2" />
-                  Choose Files
-                  <input
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={handleCreateFileChange}
-                  />
-                </label>
-                {createForm.evidence.length > 0 && (
-                  <span className="text-sm text-gray-500">{createForm.evidence.length} file(s) selected</span>
-                )}
-              </div>
-              {createPreviewUrls.length > 0 && (
-                <div className="mt-2 grid grid-cols-4 gap-2">
-                  {createPreviewUrls.map((url, idx) => (
-                    <div key={idx} className="relative group border border-gray-200 rounded-lg overflow-hidden aspect-square">
-                      <img src={url} alt={`preview-${idx}`} className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeCreateFile(idx)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition"
-                      >
-                        <XCircle size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end space-x-3">
-            <button type="button" onClick={() => setCreateModalOpen(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-              Cancel
-            </button>
-            <button type="submit" disabled={submitting || !createForm.paymentId} className="px-4 py-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C] disabled:opacity-50 flex items-center">
-              {submitting ? <RefreshCw className="animate-spin mr-2" size={18} /> : <Plus size={18} className="mr-2" />}
-              Create Dispute
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-
-  // ─── View Modal ──────────────────────────────────────────────────
-  const ViewModal = () => {
-    if (!selectedDispute) return null;
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const isAdmin = user.role === "admin";
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto p-6 animate-fadeIn">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dispute #{selectedDispute.id}</h2>
-              <div className="flex items-center space-x-2 mt-1">
-                {getStatusBadge(selectedDispute.status)}
-                <span className="text-sm text-gray-500 dark:text-gray-400">{formatDate(selectedDispute.createdAt)}</span>
-              </div>
-            </div>
-            <button onClick={handleCloseView} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-              <XCircle size={24} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              {/* Payment Details */}
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Payment Details</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-gray-500">Amount:</span>
-                  <span className="font-medium">KES {selectedDispute.amount?.toFixed(2)}</span>
-                  <span className="text-gray-500">Producer:</span>
-                  <span>{selectedDispute.producer?.name || "—"}</span>
-                  <span className="text-gray-500">Supplier:</span>
-                  <span>{selectedDispute.supplier?.name || "—"}</span>
-                  <span className="text-gray-500">Transporter:</span>
-                  <span>{selectedDispute.transporter?.name || "—"}</span>
-                </div>
-              </div>
-
-              {/* Timeline */}
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Timeline</h3>
-                <div className="relative pl-4 border-l-2 border-[#11402D] dark:border-[#9CF06B] space-y-4">
-                  {timeline.map((event, idx) => (
-                    <div key={idx} className="relative">
-                      <div className="absolute -left-2 w-3 h-3 rounded-full bg-[#9CF06B] border-2 border-white dark:border-gray-900" />
-                      <div className="ml-4">
-                        <p className="text-sm text-gray-800 dark:text-gray-200">{event.description}</p>
-                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          <span>{event.user}</span>
-                          <span className="mx-1">·</span>
-                          <span>{formatDate(event.timestamp)}</span>
-                          {event.icon && <span className="ml-2">{event.icon}</span>}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Evidence Gallery */}
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Evidence</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {evidenceFiles.map((file, idx) => (
-                    <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-2 flex items-center justify-between">
-                      <div className="flex items-center">
-                        {file.type?.startsWith("image/") ? <Image size={20} className="text-[#11402D]" /> : <File size={20} className="text-gray-500" />}
-                        <span className="ml-2 text-sm truncate">{file.name}</span>
-                      </div>
-                      <button className="text-gray-500 hover:text-gray-700">
-                        <Download size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {selectedDispute && (
-                  <div className="mt-2">
-                    <label className="cursor-pointer inline-flex items-center text-sm text-[#11402D] hover:text-[#0E2A1C]">
-                      <Upload size={16} className="mr-1" />
-                      Upload Evidence
-                      <input type="file" multiple className="hidden" onChange={handleEvidenceUpload} />
-                    </label>
-                    {uploading && <RefreshCw className="animate-spin inline ml-2" size={16} />}
-                  </div>
-                )}
-              </div>
-
-              {/* Escrow Section */}
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Escrow</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-gray-500">Amount Held:</span>
-                  <span>KES {escrowStatus.amountHeld?.toFixed(2) || "0.00"}</span>
-                  <span className="text-gray-500">Platform Fee:</span>
-                  <span>KES {escrowStatus.platformFee?.toFixed(2) || "0.00"}</span>
-                  <span className="text-gray-500">Transport Fee:</span>
-                  <span>KES {escrowStatus.transportFee?.toFixed(2) || "0.00"}</span>
-                  <span className="text-gray-500">Supplier Amount:</span>
-                  <span>KES {escrowStatus.supplierAmount?.toFixed(2) || "0.00"}</span>
-                  <span className="text-gray-500">Status:</span>
-                  {getEscrowBadge(escrowStatus.status)}
-                </div>
-                {isAdmin && escrowStatus.status === "held" && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button onClick={() => releaseEscrow(selectedDispute.id)} className="px-3 py-1 bg-[#11402D] text-white rounded-lg text-sm hover:bg-[#0E2A1C]">
-                      Release Payment
-                    </button>
-                    <button onClick={() => refundProducer(selectedDispute.id)} className="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">
-                      Refund Producer
-                    </button>
-                  </div>
-                )}
-                {!isAdmin && escrowStatus.status === "held" && (
-                  <p className="text-sm text-gray-500 mt-2">Escrow is held pending admin review.</p>
-                )}
-              </div>
-
-              {/* Admin Controls (only for admin) */}
-              {isAdmin && (
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Admin Controls</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button className="px-3 py-1 bg-[#11402D] text-white rounded-lg text-sm hover:bg-[#0E2A1C]">Approve</button>
-                    <button className="px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700">Reject</button>
-                    <button className="px-3 py-1 bg-yellow-600 text-white rounded-lg text-sm hover:bg-yellow-700">Escalate</button>
-                    <button className="px-3 py-1 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700">Assign Moderator</button>
-                    <button className="px-3 py-1 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700">Freeze</button>
-                    <button className="px-3 py-1 bg-red-800 text-white rounded-lg text-sm hover:bg-red-900">Close</button>
-                  </div>
-                </div>
-              )}
-
-              {/* Resolution Section (admin only) */}
-              {isAdmin && (
-                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Resolution</h3>
-                  <div className="space-y-2">
-                    <textarea
-                      placeholder="Resolution Notes – add full details here..."
-                      rows="4"
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm resize-y"
-                      value={resolutionForm.notes}
-                      onChange={(e) => setResolutionForm({ ...resolutionForm, notes: e.target.value })}
-                      // No maxLength
-                    />
-                    <select
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
-                      value={resolutionForm.decision}
-                      onChange={(e) => setResolutionForm({ ...resolutionForm, decision: e.target.value })}
-                    >
-                      <option value="">Select Decision</option>
-                      <option value="refund">Refund</option>
-                      <option value="release">Release Payment</option>
-                      <option value="partial">Partial</option>
-                    </select>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        placeholder="Refund Amount"
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
-                        value={resolutionForm.refundAmount}
-                        onChange={(e) => setResolutionForm({ ...resolutionForm, refundAmount: e.target.value })}
-                      />
-                      <input
-                        type="number"
-                        placeholder="Released Amount"
-                        className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
-                        value={resolutionForm.releasedAmount}
-                        onChange={(e) => setResolutionForm({ ...resolutionForm, releasedAmount: e.target.value })}
-                      />
-                    </div>
-                    <button
-                      onClick={handleResolutionSave}
-                      className="w-full py-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C] transition"
-                    >
-                      Save Resolution
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Right column: Chat */}
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 flex flex-col h-[500px]">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Live Chat</h3>
-              <div className="flex-1 overflow-y-auto space-y-2 mb-3">
-                {chatMessages.map((msg, idx) => (
-                  <div key={idx} className={`flex ${msg.sender === "me" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[80%] rounded-lg px-3 py-2 text-sm ${msg.sender === "me" ? "bg-[#11402D] text-white" : "bg-gray-200 dark:bg-gray-700 dark:text-white"}`}>
-                      <p>{msg.message}</p>
-                      <span className="text-xs opacity-70">{formatDate(msg.timestamp)}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <form onSubmit={handleSendChat} className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg dark:bg-gray-900 dark:text-white text-sm"
-                  placeholder="Type a message..."
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  // No maxLength
-                />
-                <button type="submit" className="p-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C]">
-                  <Send size={20} />
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end space-x-3">
-            <button onClick={handleCloseView} className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
-              Close
-            </button>
-            <button className="px-4 py-2 bg-[#11402D] text-white rounded-lg hover:bg-[#0E2A1C] flex items-center">
-              <Printer size={16} className="mr-1" />
-              Print
-            </button>
-            <button className="px-4 py-2 bg-[#9CF06B] text-[#0E2A1C] rounded-lg hover:bg-[#86D45E] flex items-center">
-              <Download size={16} className="mr-1" />
-              Download PDF
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ─── Main Render ──────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────
   if (loading && !disputes.length) {
     return (
       <div className="min-h-screen bg-[#F6F8F4] dark:bg-gray-950 p-6">
@@ -827,6 +917,8 @@ const UserDisputes = () => {
       </div>
     );
   }
+
+  const isAdmin = currentUserRole === 'admin';
 
   return (
     <div className="min-h-screen bg-[#F6F8F4] dark:bg-gray-950 p-4 md:p-6 font-sans">
@@ -991,8 +1083,46 @@ const UserDisputes = () => {
         </div>
       </div>
 
-      {createModalOpen && <CreateModal />}
-      {viewModalOpen && <ViewModal />}
+      {/* ─── Create Modal ─── */}
+      <CreateDisputeModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        userPayments={userPayments}
+        loadingPayments={loadingPayments}
+        createForm={createForm}
+        onFormChange={handleCreateInputChange}
+        onPaymentSelect={handlePaymentSelect}
+        onFileChange={handleCreateFileChange}
+        onRemoveFile={removeCreateFile}
+        createPreviewUrls={createPreviewUrls}
+        onSubmit={handleCreateSubmit}
+        submitting={submitting}
+      />
+
+      {/* ─── View Modal ─── */}
+      <ViewDisputeModal
+        isOpen={viewModalOpen}
+        onClose={handleCloseView}
+        dispute={selectedDispute}
+        chatMessages={chatMessages}
+        evidenceFiles={evidenceFiles}
+        timeline={timeline}
+        escrowStatus={escrowStatus}
+        resolutionForm={resolutionForm}
+        setResolutionForm={setResolutionForm}
+        chatInput={chatInput}
+        setChatInput={setChatInput}
+        onSendChat={handleSendChat}
+        onEvidenceUpload={handleEvidenceUpload}
+        onReleaseEscrow={() => releaseEscrow(selectedDispute?.id)}
+        onRefundProducer={() => refundProducer(selectedDispute?.id)}
+        onResolutionSave={handleResolutionSave}
+        onDeleteMessage={deleteMessage}
+        uploading={uploading}
+        isAdmin={isAdmin}
+        currentUserId={currentUserId}
+        currentUserRole={currentUserRole}
+      />
     </div>
   );
 };

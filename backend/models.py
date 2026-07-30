@@ -602,49 +602,58 @@ class Message(db.Model):
 # ========== DISPUTE ==========
 class Dispute(db.Model):
     __tablename__ = 'disputes'
-
     id = db.Column(db.Integer, primary_key=True)
-    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=False)
-    producer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    supplier_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    transporter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-
-    reason = db.Column(db.Text, nullable=False)
-    status = db.Column(db.String(30), default='open')  # open, under_investigation, awaiting_response, resolved, closed, refunded
-    escrow_status = db.Column(db.String(30), default='held')  # held, frozen, released, refunded
-    evidence = db.Column(db.Text)  # JSON array of file URLs or metadata
-    timeline = db.Column(db.Text)  # JSON array of { description, timestamp }
-
+    payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'))
+    producer_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    supplier_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    transporter_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    amount = db.Column(db.Numeric(10,2), default=0.0)
+    reason = db.Column(db.Text)
+    description = db.Column(db.Text)
+    status = db.Column(db.String(50), default='open')
+    escrow_status = db.Column(db.String(50), default='held')
+    timeline = db.Column(db.Text)          # JSON string
+    evidence = db.Column(db.Text)          # JSON string (list of file URLs)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # relationships
-    payment = db.relationship('Payment', backref='disputes')
-    producer = db.relationship('User', foreign_keys=[producer_id])
-    supplier = db.relationship('User', foreign_keys=[supplier_id])
-    transporter = db.relationship('User', foreign_keys=[transporter_id])
 
     def to_dict(self):
         return {
             'id': self.id,
             'payment_id': self.payment_id,
+            'amount': float(self.amount) if self.amount else 0.0,
             'producer_id': self.producer_id,
-            'producer_name': self.producer.full_name if self.producer else None,
             'supplier_id': self.supplier_id,
-            'supplier_name': self.supplier.full_name if self.supplier else None,
             'transporter_id': self.transporter_id,
-            'transporter_name': self.transporter.full_name if self.transporter else None,
             'reason': self.reason,
+            'description': self.description,
             'status': self.status,
             'escrow_status': self.escrow_status,
-            'evidence': json.loads(self.evidence) if self.evidence else [],
-            'timeline': json.loads(self.timeline) if self.timeline else [],
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'amount': self.payment.amount if self.payment else 0,
-            'waste_type': self.payment.waste_type if self.payment else None,
         }
+class DisputeMessage(db.Model):
+    __tablename__ = 'dispute_messages'
+    id = db.Column(db.Integer, primary_key=True)
+    dispute_id = db.Column(db.Integer, db.ForeignKey('disputes.id'), nullable=False)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)   # true if sent by admin
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    dispute = db.relationship('Dispute', backref=db.backref('messages', lazy='dynamic'))
+    sender = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'dispute_id': self.dispute_id,
+            'sender_id': self.sender_id,
+            'sender_name': self.sender.full_name if self.sender else 'Unknown',
+            'message': self.message,
+            'is_admin': self.is_admin,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
 
 # ========== AUDIT LOG ==========
 class AuditLog(db.Model):

@@ -1,12 +1,13 @@
-# routes/disputes.py
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_cors import CORS
 from database import db
-from models import Dispute, User, Payment
+from models import Dispute, DisputeMessage, User, Payment
 from datetime import datetime
 import json
 
 disputes_bp = Blueprint('disputes', __name__, url_prefix='/api/disputes')
+CORS(disputes_bp, origins=["http://localhost:5173"], supports_credentials=True)
 
 # ─── Helpers ────────────────────────────────────────────────
 def get_current_user():
@@ -18,7 +19,7 @@ def user_involved_in_dispute(dispute, user_id):
             dispute.supplier_id == user_id or
             dispute.transporter_id == user_id)
 
-# ─── GET all disputes (with pagination & filters) ──────────
+# ─── GET all disputes ──────────────────────────────────────
 @disputes_bp.route('', methods=['GET'])
 @jwt_required()
 def get_disputes():
@@ -183,7 +184,6 @@ def create_dispute():
     if not payment:
         return jsonify({'message': 'Payment not found'}), 404
 
-    # Build timeline as JSON string
     timeline_entry = [{
         'description': 'Dispute created',
         'user': user.full_name,
@@ -258,7 +258,7 @@ def delete_dispute(dispute_id):
     db.session.commit()
     return jsonify({'message': 'Dispute deleted'}), 200
 
-# ─── POST chat message ──────────────────────────────────
+# ─── POST chat message (legacy) ──────────────────────────
 @disputes_bp.route('/<int:dispute_id>/chat', methods=['POST'])
 @jwt_required()
 def add_chat_message(dispute_id):
@@ -429,3 +429,67 @@ def refund_dispute(dispute_id):
     dispute.timeline = json.dumps(timeline)
     db.session.commit()
     return jsonify({'message': 'Refund processed'}), 200
+
+# ─── GET /messages (NEW) ──────────────────────────────────
+@disputes_bp.route('/<int:dispute_id>/messages', methods=['GET'])
+@jwt_required()
+def get_dispute_messages(dispute_id):
+    user_id = int(get_jwt_identity())
+    dispute = Dispute.query.get(dispute_id)
+    if not dispute:
+        return jsonify({'message': 'Dispute not found'}), 404
+
+    user = User.query.get(user_id)
+    if not (user.role == 'admin' or user.id in [dispute.producer_id, dispute.supplier_id, dispute.transporter_id]):
+        return jsonify({'message': 'Unauthorized'}), 403
+
+    messages = dispute.messages.filter(DisputeMessage.deleted == False).order_by(DisputeMessage.created_at.asc()).all()
+    return jsonify([m.to_dict() for m in messages]), 200
+
+# ─── POST /messages (NEW) ──────────────────────────────────
+@disputes_bp.route('/<int:dispute_id>/messages', methods=['POST'])
+@jwt_required()
+def send_dispute_message(dispute_id):
+    user_id = int(get_jwt_identity())
+    data = request.get_json() or {}
+    message_text = data.get('message', '').strip()
+    if not message_text:
+        return jsonify({'message': 'Message is required'}), 400
+
+    dispute = Dispute.query.get(dispute_id)
+    if not dispute:
+        return jsonify({'message': 'Dispute not found'}), 404
+
+    user = User.query.get(user_id)
+    if not (user.role == 'admin' or user.id in [dispute.producer_id, dispute.supplier_id, dispute.transporter_id]):
+        return jsonify({'message': 'Unauthorized'}), 403
+
+    new_msg = DisputeMessage(
+        dispute_id=dispute.id,
+        sender_id=user_id,
+        message=message_text,
+        is_admin=(user.role == 'admin')
+    )
+    db.session.add(new_msg)
+    db.session.commit()
+
+    return jsonify(new_msg.to_dict()), 201
+
+# ─── DELETE /messages (NEW) ──────────────────────────────────
+@disputes_bp.route('/<int:dispute_id>/messages/<int:message_id>', methods=['DELETE'])
+@jwt_required()
+def delete_dispute_message(dispute_id, message_id):
+    user_id = int(get_jwt_identity())
+    user = User.query.get(user_id)
+    message = DisputeMessage.query.get(message_id)
+    if not message:
+        return jsonify({'message': 'Message not found'}), 404
+    if message.dispute_id != dispute_id:
+        return jsonify({'message': 'Message does not belong to this dispute'}), 400
+    # Allow sender or admin to delete
+    if user.role != 'admin' and message.sender_id != user_id:
+        return jsonify({'message': 'Unauthorized'}), 403
+    # Soft delete
+    message.deleted = True
+    db.session.commit()
+    return jsonify({'message': 'Message deleted'}), 200
