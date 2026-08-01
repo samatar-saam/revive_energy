@@ -4,7 +4,6 @@ from datetime import datetime
 
 class Dispute(db.Model):
     __tablename__ = 'disputes'
-    # ... (your existing Dispute fields, keep them)
     id = db.Column(db.Integer, primary_key=True)
     payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'))
     producer_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -32,8 +31,20 @@ class Dispute(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
-        # ... keep your existing method
-        pass
+        return {
+            'id': self.id,
+            'payment_id': self.payment_id,
+            'amount': float(self.amount) if self.amount else 0.0,
+            'producer_id': self.producer_id,
+            'supplier_id': self.supplier_id,
+            'transporter_id': self.transporter_id,
+            'reason': self.reason,
+            'description': self.description,
+            'status': self.status,
+            'escrow_status': self.escrow_status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
 
 
 class DisputeMessage(db.Model):
@@ -43,6 +54,7 @@ class DisputeMessage(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     message = db.Column(db.Text, nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
+    deleted = db.Column(db.Boolean, default=False)          # ← soft‑delete flag
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     dispute = db.relationship('Dispute', backref=db.backref('messages', lazy='dynamic'))
@@ -56,5 +68,6 @@ class DisputeMessage(db.Model):
             'sender_name': self.sender.full_name if self.sender else 'Unknown',
             'message': self.message,
             'is_admin': self.is_admin,
+            'deleted': self.deleted,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }

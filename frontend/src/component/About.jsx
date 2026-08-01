@@ -1,11 +1,48 @@
+// src/pages/About.jsx
 import { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, CheckCircle2, Globe, Leaf, Recycle, Zap, Users, 
-  Award, Heart, Target, Eye, TrendingUp, Shield, Truck, Factory,
-  Wind, Droplets, Sun, Building2, MapPin, Clock, Star, Quote,
-  Play, ChevronRight, 
+  ArrowRight,
+  CheckCircle2,
+  Globe,
+  Leaf,
+  Recycle,
+  Zap,
+  Users,
+  Award,
+  Heart,
+  Target,
+  Eye,
+  TrendingUp,
+  Shield,
+  Truck,
+  Factory,
+  Wind,
+  Droplets,
+  Sun,
+  Building2,
+  MapPin,
+  Clock,
+  Star,
+  Quote,
+  Play,
+  ChevronRight,
+  BookOpen,
+  Briefcase,
+  Handshake,
+  Megaphone,
+  Sparkles,
+  HeartHandshake,
+  GraduationCap,
+  Gift,
 } from "lucide-react";
+
+// ─── ★ IMPORT YOUR TEAM IMAGES ★ ──────────────────────────────
+// Make sure these files exist in your assets folder
+import samatarImage from '../assets/samatar.jpg';
+import abdiazizImage from '../assets/abdiaziz.jpg';
+import zakariyaImage from '../assets/zakariya.jpg'; // kept for Qasim
+import anabImage from '../assets/anab.jpg';
 
 /* ─── ANIMATED COUNTER ─── */
 function Counter({ to, decimals = 0, prefix = "", suffix = "" }) {
@@ -37,32 +74,82 @@ function Counter({ to, decimals = 0, prefix = "", suffix = "" }) {
   return <span ref={nodeRef}>{prefix}{val}{suffix}</span>;
 }
 
-/* ─── TEAM MEMBERS ─── */
+/* ─── ★ UPDATED: TEAM MEMBERS WITH LOCAL IMAGES ★ ────────────── */
 const TEAM = [
-  { name: "Dr. Sarah Mbeki", role: "CEO & Co-Founder", image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=400&q=80", bio: "Former UNEP advisor with 15+ years in circular economy" },
-  { name: "James Ochieng", role: "CTO & Co-Founder", image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=400&q=80", bio: "Ex-Tesla energy systems engineer, waste-to-energy specialist" },
-  { name: "Dr. Amina Diallo", role: "Head of Impact", image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=400&q=80", bio: "PhD in Environmental Economics, carbon markets expert" },
-  { name: "Michael Njoroge", role: "Director of Operations", image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=400&q=80", bio: "20 years logistics experience across East Africa" },
+  {
+    name: "Samatar Mohamed",
+    role: "CEO & Co-Founder",
+    image: samatarImage,
+    bio: "Passionate about building sustainable energy solutions for Africa.",
+  },
+  {
+    name: "Abdiaziz Jamac",
+    role: "CTO & Co-Founder",
+    image: abdiazizImage,
+    bio: "Expert in renewable energy systems and waste-to-energy technology.",
+  },
+  {
+    name: "Qasim Abdi", // ← updated name
+    role: "Head of Operations",
+    image: zakariyaImage, // ← using existing image (rename file if needed)
+    bio: "Over 10 years of experience in logistics and supply chain management.",
+  },
+  {
+    name: "Anab Ali",
+    role: "Head of Impact & Community",
+    image: anabImage,
+    bio: "Driven to create positive social and environmental change across Kenya.",
+  },
 ];
 
 /* ─── MILESTONES ─── */
 const MILESTONES = [
-  { year: "2020", title: "Company Founded", desc: "ReVive Energy launched in Nairobi, Kenya", icon: Star },
-  { year: "2021", title: "First Facility", desc: "Opened first waste-to-energy plant in Thika", icon: Factory },
-  { year: "2022", title: "Regional Expansion", desc: "Expanded to Uganda and Tanzania", icon: Globe },
-  { year: "2023", title: "Carbon Credits", desc: "Issued first verified carbon credits", icon: Leaf },
-  { year: "2024", title: "1M Tonnes", desc: "Surpassed 1 million tonnes recovered", icon: Award },
-  { year: "2025", title: "Global Recognition", desc: "Named Africa's Green Energy Leader", icon: Trophy },
+  { year: "2026", title: "Company Founded", desc: "ReVive Energy launched in Nairobi, Kenya", icon: Star },
+  { year: "2026", title: "First Facility", desc: "Opened first waste-to-energy plant in Thika", icon: Factory },
+  { year: "2026", title: "Regional Expansion", desc: "Expanded to Uganda and Tanzania", icon: Globe },
+  { year: "2026", title: "Carbon Credits", desc: "Issued first verified carbon credits", icon: Leaf },
+  { year: "2026", title: "1M Tonnes", desc: "Surpassed 1 million tonnes recovered", icon: Award },
+  { year: "2026", title: "Global Recognition", desc: "Named Africa's Green Energy Leader", icon: Award },
 ];
 
 /* ─── VALUES ─── */
 const VALUES = [
-  { icon: Leaf, title: "Sustainability First", desc: "Every decision prioritizes environmental impact alongside business growth.", color: "#34D399" },
-  { icon: Users, title: "Community Centered", desc: "We work with local communities to create shared value and opportunity.", color: "#60A5FA" },
-  { icon: Shield, title: "Radical Transparency", desc: "All impact data is verified and publicly available quarterly.", color: "#9CF06B" },
-  { icon: Zap, title: "Innovation Driven", desc: "We constantly push the boundaries of waste-to-energy technology.", color: "#F59E0B" },
-  { icon: Heart, title: "People First", desc: "Our team's safety and growth are foundational to our success.", color: "#E879F9" },
-  { icon: Globe, title: "Systems Thinking", desc: "We see waste as part of a larger ecosystem, not an endpoint.", color: "#38BDF8" },
+  {
+    icon: Leaf,
+    title: "Sustainability First",
+    desc: "Every decision prioritises environmental impact alongside business growth.",
+    color: "#34D399",
+  },
+  {
+    icon: Users,
+    title: "Community Centered",
+    desc: "We work with local communities to create shared value and opportunity.",
+    color: "#60A5FA",
+  },
+  {
+    icon: Shield,
+    title: "Radical Transparency",
+    desc: "All impact data is verified and publicly available quarterly.",
+    color: "#9CF06B",
+  },
+  {
+    icon: Zap,
+    title: "Innovation Driven",
+    desc: "We constantly push the boundaries of waste-to-energy technology.",
+    color: "#F59E0B",
+  },
+  {
+    icon: Heart,
+    title: "People First",
+    desc: "Our team's safety and growth are foundational to our success.",
+    color: "#E879F9",
+  },
+  {
+    icon: Globe,
+    title: "Systems Thinking",
+    desc: "We see waste as part of a larger ecosystem, not an endpoint.",
+    color: "#38BDF8",
+  },
 ];
 
 /* ─── PARTNERS ─── */
@@ -75,18 +162,61 @@ const PARTNERS = [
   "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Google_2015_logo.svg/2560px-Google_2015_logo.svg.png",
 ];
 
-function Trophy() {
-  return <Award className="w-6 h-6" />;
-}
+/* ─── OUR FUNCTIONS ────────────────────────────────────────────── */
+const FUNCTIONS = [
+  {
+    icon: BookOpen,
+    title: "Education & Awareness",
+    desc: "Deliver educational programs that empower individuals and organisations to understand the value of waste as a resource.",
+  },
+  {
+    icon: HeartHandshake,
+    title: "Community Engagement",
+    desc: "Promote circular economy practices by providing access to knowledge, tools, and support for all community members.",
+  },
+  {
+    icon: Users,
+    title: "Local Partnerships",
+    desc: "Build resilient communities by working alongside local leaders, volunteers, and partner organisations across Kenya.",
+  },
+  {
+    icon: Megaphone,
+    title: "Outreach & Advocacy",
+    desc: "Conduct community outreach, bringing waste management awareness and sustainable solutions directly into schools, markets, and public spaces.",
+  },
+  {
+    icon: Sparkles,
+    title: "Stigma Reduction",
+    desc: "Break the stigma around waste by providing coaching, workshops, and education that challenge harmful beliefs and stereotypes.",
+  },
+  {
+    icon: Shield,
+    title: "Safe Environments",
+    desc: "Create safe, supportive environments where every individual — especially the youth — feels valued, heard, and empowered to grow.",
+  },
+  {
+    icon: GraduationCap,
+    title: "Training & Capacity Building",
+    desc: "Train and support community waste management advocates, volunteers, and professionals who can extend our reach across Kenya.",
+  },
+  {
+    icon: Gift,
+    title: "Resource Mobilisation",
+    desc: "Mobilise resources and partnerships that enable us to provide free or subsidised waste management services to those who need it most.",
+  },
+];
 
 /* ─── MAIN ABOUT PAGE ─── */
 export default function AboutPage() {
   const { scrollYProgress } = useScroll();
   const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
   const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.95]);
-  
+
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div
+      className="min-h-screen bg-white overflow-x-hidden"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
@@ -107,49 +237,63 @@ export default function AboutPage() {
         .slow-spin { animation: slow-spin 30s linear infinite; }
       `}</style>
 
-      {/* ============ HERO SECTION - NO BACKGROUND, MOVED UP ============ */}
+      {/* ============ HERO ============ */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white pt-0">
-        {/* Animated background elements - subtle */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-20 left-10 w-72 h-72 bg-[#9CF06B]/5 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#11402D]/5 rounded-full blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-[#9CF06B]/5 rounded-full slow-spin" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-[#11402D]/5 rounded-full slow-spin" style={{ animationDirection: "reverse", animationDuration: "40s" }} />
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-[#11402D]/5 rounded-full slow-spin"
+            style={{ animationDirection: "reverse", animationDuration: "40s" }}
+          />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-12 py-12 lg:py-16">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.22, 0.61, 0.36, 1] }}
             className="text-center max-w-4xl mx-auto"
           >
-            {/* Main Headline */}
             <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl xl:text-8xl text-[#0E2A1C] leading-[1.1] tracking-tight mb-6">
               Turning Africa's waste into
               <span className="relative inline-block mx-3">
-                <span className="relative z-10" style={{ color: "#11402D" }}>Africa's power.</span>
-                <svg className="absolute -bottom-2 left-0 w-full" height="12" viewBox="0 0 400 12" preserveAspectRatio="none">
-                  <path d="M2 6C80 2 320 2 398 6" stroke="#9CF06B" strokeWidth="6" strokeLinecap="round" fill="none" />
+                <span className="relative z-10" style={{ color: "#11402D" }}>
+                  Africa's power.
+                </span>
+                <svg
+                  className="absolute -bottom-2 left-0 w-full"
+                  height="12"
+                  viewBox="0 0 400 12"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M2 6C80 2 320 2 398 6"
+                    stroke="#9CF06B"
+                    strokeWidth="6"
+                    strokeLinecap="round"
+                    fill="none"
+                  />
                 </svg>
               </span>
             </h1>
 
-            {/* Subtitle */}
             <p className="text-xl sm:text-2xl text-[#142019]/65 leading-relaxed max-w-2xl mx-auto mb-10">
-              We're on a mission to build the most advanced waste-to-energy network in emerging markets — creating value from what others discard.
+              We're on a mission to build the most advanced waste-to-energy
+              network in emerging markets  creating value from what others
+              discard.
             </p>
 
-            {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4 justify-center mb-16">
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
                 className="inline-flex items-center gap-2 bg-[#11402D] text-white font-display font-black px-8 py-4 rounded-full text-sm hover:bg-[#0C2F20] transition-colors shadow-xl"
               >
                 Our Mission <ArrowRight className="w-4 h-4" />
               </motion.button>
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
                 className="inline-flex items-center gap-2 border-2 border-[#11402D]/20 text-[#11402D] font-display font-black px-8 py-4 rounded-full text-sm hover:border-[#11402D] hover:bg-[#11402D]/5 transition-all"
@@ -158,7 +302,6 @@ export default function AboutPage() {
               </motion.button>
             </div>
 
-            {/* Stats Row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 pt-8 border-t border-[#142019]/10">
               {[
                 { val: 5, suffix: "+", label: "Years of Impact", prefix: "" },
@@ -166,7 +309,7 @@ export default function AboutPage() {
                 { val: 850, suffix: " GWh", label: "Clean Energy", prefix: "" },
                 { val: 2500, suffix: "+", label: "Jobs Created", prefix: "" },
               ].map((stat, i) => (
-                <motion.div 
+                <motion.div
                   key={i}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -176,21 +319,24 @@ export default function AboutPage() {
                   <div className="font-display text-3xl md:text-4xl font-bold text-[#11402D]">
                     <Counter to={stat.val} suffix={stat.suffix} prefix={stat.prefix} />
                   </div>
-                  <div className="font-mono-cw text-xs text-[#142019]/55 font-medium mt-1 uppercase tracking-wide">{stat.label}</div>
+                  <div className="font-mono-cw text-xs text-[#142019]/55 font-medium mt-1 uppercase tracking-wide">
+                    {stat.label}
+                  </div>
                 </motion.div>
               ))}
             </div>
           </motion.div>
         </div>
 
-        {/* Scroll indicator */}
-        <motion.div 
+        <motion.div
           style={{ opacity }}
           className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
         >
-          <span className="font-mono-cw text-[10px] text-[#142019]/55 uppercase tracking-widest font-bold">Scroll to explore</span>
+          <span className="font-mono-cw text-[10px] text-[#142019]/55 uppercase tracking-widest font-bold">
+            Scroll to explore
+          </span>
           <div className="w-6 h-10 border-2 border-[#11402D]/20 rounded-full flex justify-center">
-            <motion.div 
+            <motion.div
               animate={{ y: [0, 12, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}
               className="w-1.5 h-1.5 bg-[#11402D] rounded-full mt-2"
@@ -199,12 +345,11 @@ export default function AboutPage() {
         </motion.div>
       </section>
 
-      {/* ============ MISSION & VISION SECTION ============ */}
+      {/* ============ MISSION & VISION ============ */}
       <section className="py-24 lg:py-32 bg-gradient-to-b from-white to-[#F6F8F4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20">
-            {/* Mission */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -216,9 +361,14 @@ export default function AboutPage() {
                 <div className="w-16 h-16 rounded-2xl bg-[#11402D] flex items-center justify-center mb-6">
                   <Target className="w-8 h-8 text-[#9CF06B]" />
                 </div>
-                <h2 className="font-display text-3xl lg:text-4xl text-[#0E2A1C] mb-4">Our Mission</h2>
+                <h2 className="font-display text-3xl lg:text-4xl text-[#0E2A1C] mb-4">
+                  Our Mission
+                </h2>
                 <p className="text-lg text-[#142019]/65 leading-relaxed mb-6">
-                  To transform waste management across Africa by building world-class infrastructure that converts discarded materials into clean energy, creating economic opportunity and environmental restoration.
+                  To transform waste management across Africa by building
+                  world-class infrastructure that converts discarded materials
+                  into clean energy, creating economic opportunity and
+                  environmental restoration.
                 </p>
                 <div className="flex items-center gap-2 text-[#11402D] font-display font-semibold">
                   <CheckCircle2 className="w-5 h-5" />
@@ -227,8 +377,7 @@ export default function AboutPage() {
               </div>
             </motion.div>
 
-            {/* Vision */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
@@ -240,9 +389,14 @@ export default function AboutPage() {
                 <div className="w-16 h-16 rounded-2xl bg-[#9CF06B] flex items-center justify-center mb-6">
                   <Eye className="w-8 h-8 text-[#0E2A1C]" />
                 </div>
-                <h2 className="font-display text-3xl lg:text-4xl text-white mb-4">Our Vision</h2>
+                <h2 className="font-display text-3xl lg:text-4xl text-white mb-4">
+                  Our Vision
+                </h2>
                 <p className="text-lg text-white/60 leading-relaxed mb-6">
-                  A future where no waste goes to landfill — where every discarded resource becomes a source of energy, jobs, and sustainable prosperity for communities across Africa and beyond.
+                  A future where no waste goes to landfill — where every
+                  discarded resource becomes a source of energy, jobs, and
+                  sustainable prosperity for communities across Africa and
+                  beyond.
                 </p>
                 <div className="flex items-center gap-2 text-[#9CF06B] font-display font-semibold">
                   <Globe className="w-5 h-5" />
@@ -250,6 +404,55 @@ export default function AboutPage() {
                 </div>
               </div>
             </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ OUR FUNCTIONS ============ */}
+      <section className="py-24 lg:py-32 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
+            <div className="inline-flex items-center gap-2 bg-[#11402D]/5 rounded-full px-4 py-2 mb-6">
+              <Target className="w-4 h-4 text-[#11402D]" />
+              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">
+                Our Functions
+              </span>
+            </div>
+            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">
+              How We Deliver Impact
+            </h2>
+            <p className="text-lg text-[#142019]/65">
+              Eight core functions that guide our work every day.
+            </p>
+          </motion.div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {FUNCTIONS.map((fn, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05, duration: 0.5 }}
+                whileHover={{ y: -4 }}
+                className="bg-[#F6F8F4] rounded-2xl p-6 transition-all duration-300 hover:shadow-lg hover:bg-white border border-transparent hover:border-[#11402D]/10 group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-[#11402D]/10 flex items-center justify-center mb-4 group-hover:bg-[#11402D]/20 transition-colors">
+                  <fn.icon className="w-6 h-6 text-[#11402D]" />
+                </div>
+                <h3 className="font-display font-bold text-lg text-[#0E2A1C] mb-2">
+                  {fn.title}
+                </h3>
+                <p className="text-sm text-[#142019]/65 leading-relaxed">
+                  {fn.desc}
+                </p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -271,7 +474,11 @@ export default function AboutPage() {
                 transition={{ delay: i * 0.15, duration: 0.6 }}
                 className="relative overflow-hidden rounded-2xl group cursor-pointer"
               >
-                <img src={img} alt="Impact" className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-700" />
+                <img
+                  src={img}
+                  alt="Impact"
+                  className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-700"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0E2A1C] via-transparent to-transparent opacity-60" />
               </motion.div>
             ))}
@@ -282,7 +489,7 @@ export default function AboutPage() {
       {/* ============ OUR VALUES ============ */}
       <section className="py-24 lg:py-32 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -290,10 +497,16 @@ export default function AboutPage() {
           >
             <div className="inline-flex items-center gap-2 bg-[#11402D]/5 rounded-full px-4 py-2 mb-6">
               <Heart className="w-4 h-4 text-[#11402D]" />
-              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">What We Believe</span>
+              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">
+                What We Believe
+              </span>
             </div>
-            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">Our Core Values</h2>
-            <p className="text-lg text-[#142019]/65">The principles that guide every decision we make.</p>
+            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">
+              Our Core Values
+            </h2>
+            <p className="text-lg text-[#142019]/65">
+              The principles that guide every decision we make.
+            </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -307,10 +520,15 @@ export default function AboutPage() {
                 whileHover={{ y: -8 }}
                 className="bg-[#F6F8F4] rounded-2xl p-8 transition-all duration-300 hover:shadow-xl"
               >
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-5" style={{ background: `${value.color}15` }}>
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
+                  style={{ background: `${value.color}15` }}
+                >
                   <value.icon className="w-6 h-6" style={{ color: value.color }} />
                 </div>
-                <h3 className="font-display font-bold text-xl text-[#0E2A1C] mb-3">{value.title}</h3>
+                <h3 className="font-display font-bold text-xl text-[#0E2A1C] mb-3">
+                  {value.title}
+                </h3>
                 <p className="text-[#142019]/65 leading-relaxed">{value.desc}</p>
               </motion.div>
             ))}
@@ -321,7 +539,7 @@ export default function AboutPage() {
       {/* ============ MILESTONES TIMELINE ============ */}
       <section className="py-24 lg:py-32 bg-[#F6F8F4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -329,16 +547,21 @@ export default function AboutPage() {
           >
             <div className="inline-flex items-center gap-2 bg-white rounded-full px-4 py-2 mb-6 shadow-sm">
               <Award className="w-4 h-4 text-[#11402D]" />
-              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">Our Journey</span>
+              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">
+                Our Journey
+              </span>
             </div>
-            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">Key Milestones</h2>
-            <p className="text-lg text-[#142019]/65">From startup to industry leader — our path to impact.</p>
+            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">
+              Key Milestones
+            </h2>
+            <p className="text-lg text-[#142019]/65">
+              From startup to industry leader — our path to impact.
+            </p>
           </motion.div>
 
           <div className="relative">
-            {/* Timeline line */}
             <div className="absolute left-0 lg:left-1/2 top-0 bottom-0 w-px bg-[#11402D]/10 lg:transform lg:-translate-x-px" />
-            
+
             <div className="space-y-12">
               {MILESTONES.map((milestone, i) => (
                 <motion.div
@@ -348,20 +571,26 @@ export default function AboutPage() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.5 }}
                   className={`relative flex flex-col lg:flex-row items-start gap-6 ${
-                    i % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'
+                    i % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"
                   }`}
                 >
-                  {/* Timeline dot */}
                   <div className="absolute left-0 lg:left-1/2 w-4 h-4 rounded-full bg-[#9CF06B] border-4 border-white shadow-lg transform -translate-x-2 lg:-translate-x-1/2" />
-                  
-                  {/* Content */}
-                  <div className={`w-full lg:w-[calc(50%-40px)] ${i % 2 === 0 ? 'lg:pr-12' : 'lg:pl-12 lg:ml-auto'}`}>
+
+                  <div
+                    className={`w-full lg:w-[calc(50%-40px)] ${
+                      i % 2 === 0 ? "lg:pr-12" : "lg:pl-12 lg:ml-auto"
+                    }`}
+                  >
                     <div className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex items-center gap-3 mb-3">
-                        <span className="font-display text-3xl font-bold text-[#9CF06B]">{milestone.year}</span>
+                        <span className="font-display text-3xl font-bold text-[#9CF06B]">
+                          {milestone.year}
+                        </span>
                         <milestone.icon className="w-5 h-5 text-[#11402D]" />
                       </div>
-                      <h3 className="font-display font-bold text-lg text-[#0E2A1C] mb-2">{milestone.title}</h3>
+                      <h3 className="font-display font-bold text-lg text-[#0E2A1C] mb-2">
+                        {milestone.title}
+                      </h3>
                       <p className="text-[#142019]/55 text-sm">{milestone.desc}</p>
                     </div>
                   </div>
@@ -372,10 +601,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ============ TEAM SECTION ============ */}
+      {/* ============ ★ TEAM SECTION WITH LOCAL IMAGES ★ ============ */}
       <section className="py-24 lg:py-32 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -383,10 +612,16 @@ export default function AboutPage() {
           >
             <div className="inline-flex items-center gap-2 bg-[#11402D]/5 rounded-full px-4 py-2 mb-6">
               <Users className="w-4 h-4 text-[#11402D]" />
-              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">Leadership</span>
+              <span className="font-mono-cw text-xs font-black tracking-wider text-[#11402D] uppercase">
+                Leadership
+              </span>
             </div>
-            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">Meet Our Team</h2>
-            <p className="text-lg text-[#142019]/65">Passionate experts driving change across the continent.</p>
+            <h2 className="font-display text-4xl lg:text-5xl text-[#0E2A1C] mb-4">
+              Meet Our Team
+            </h2>
+            <p className="text-lg text-[#142019]/65">
+              Passionate experts driving change across the continent.
+            </p>
           </motion.div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -401,30 +636,40 @@ export default function AboutPage() {
                 className="group"
               >
                 <div className="relative overflow-hidden rounded-2xl mb-4">
-                  <img src={member.image} alt={member.name} className="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    className="w-full aspect-square object-cover group-hover:scale-105 transition-transform duration-700"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0E2A1C]/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute bottom-4 left-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <p className="text-white text-xs leading-relaxed">{member.bio}</p>
                   </div>
                 </div>
-                <h3 className="font-display font-bold text-[#0E2A1C] text-lg">{member.name}</h3>
-                <p className="text-[#11402D] text-sm font-display font-semibold">{member.role}</p>
+                <h3 className="font-display font-bold text-[#0E2A1C] text-lg">
+                  {member.name}
+                </h3>
+                <p className="text-[#11402D] text-sm font-display font-semibold">
+                  {member.role}
+                </p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ============ PARTNERS SECTION ============ */}
+      {/* ============ PARTNERS ============ */}
       <section className="py-16 bg-[#F6F8F4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <h3 className="font-display font-bold text-xl text-[#142019]/55 uppercase tracking-wider">Trusted by Industry Leaders</h3>
+            <h3 className="font-display font-bold text-xl text-[#142019]/55 uppercase tracking-wider">
+              Trusted by Industry Leaders
+            </h3>
           </motion.div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 items-center">
@@ -444,10 +689,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* ============ CTA SECTION ============ */}
+      {/* ============ CTA ============ */}
       <section className="py-24 lg:py-32 bg-[#0E2A1C]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -460,17 +705,18 @@ export default function AboutPage() {
               Join us in building<br />a circular future.
             </h2>
             <p className="text-xl text-white/50 leading-relaxed mb-10 max-w-2xl mx-auto">
-              Whether you're a waste producer, energy buyer, or investor — there's a place for you in our ecosystem.
+              Whether you're a waste producer, energy buyer, or investor —
+              there's a place for you in our ecosystem.
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
                 className="inline-flex items-center gap-2 bg-[#9CF06B] text-[#0E2A1C] font-display font-black px-8 py-4 rounded-full text-sm hover:bg-[#8AE05A] transition-colors"
               >
                 Become a Partner <ArrowRight className="w-4 h-4" />
               </motion.button>
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
                 className="inline-flex items-center gap-2 border-2 border-white/20 text-white font-display font-black px-8 py-4 rounded-full text-sm hover:bg-white/10 transition-all"
@@ -482,61 +728,55 @@ export default function AboutPage() {
         </div>
       </section>
 
-    <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
-                <div className="lg:col-span-2">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
-                      <Recycle className="w-5 h-5 text-[#9CF06B]" />
-                    </div>
-    
-                    <span className="font-display text-xl font-semibold">
-                      ReVive Energy
-                    </span>
-                  </div>
-    
-                  <p className="text-white/50 text-sm leading-relaxed max-w-sm">
-                    Designing and operating waste-to-energy infrastructure that
-                    turns disposal problems into clean energy opportunities.
-                  </p>
+      <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">
+                  <Recycle className="w-5 h-5 text-[#9CF06B]" />
                 </div>
-    
-                {[
-                  ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
-                  ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
-                  ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
-                ].map(([title, links], index) => (
-                  <div key={index}>
-                    <h3 className="font-display font-semibold mb-4">{title}</h3>
-    
-                    <ul className="space-y-2.5 text-sm text-white/50">
-                      {links.map((link, i) => (
-                        <li key={i}>
-                          <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                            {link}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+                <span className="font-display text-xl font-semibold">ReVive Energy</span>
               </div>
-    
-              <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
-                <span>© 2026 ReVive Energy. All rights reserved.</span>
-    
-                <div className="flex flex-wrap justify-center gap-5">
-                  <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                    Privacy Policy
-                  </a>
-                  <a href="#" className="hover:text-[#9CF06B] transition-colors">
-                    Terms of Service
-                  </a>
-                </div>
-              </div>
+              <p className="text-white/50 text-sm leading-relaxed max-w-sm">
+                Designing and operating waste-to-energy infrastructure that turns
+                disposal problems into clean energy opportunities.
+              </p>
             </div>
-          </footer>
+
+            {[
+              ["Company", ["About", "Careers", "Newsroom", "ESG Reports"]],
+              ["Solutions", ["Thermal Conversion", "Anaerobic Digestion", "Landfill Gas", "Hybrid Sites"]],
+              ["Resources", ["Case Studies", "White Papers", "Community Data", "Investor Center"]],
+            ].map(([title, links], index) => (
+              <div key={index}>
+                <h3 className="font-display font-semibold mb-4">{title}</h3>
+                <ul className="space-y-2.5 text-sm text-white/50">
+                  {links.map((link, i) => (
+                    <li key={i}>
+                      <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                        {link}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-white/40 text-center sm:text-left">
+            <span>© 2026 ReVive Energy. All rights reserved.</span>
+            <div className="flex flex-wrap justify-center gap-5">
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                Privacy Policy
+              </a>
+              <a href="#" className="hover:text-[#9CF06B] transition-colors">
+                Terms of Service
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

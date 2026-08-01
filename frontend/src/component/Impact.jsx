@@ -1,3 +1,4 @@
+// src/admin/pages/Impact.jsx
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
@@ -49,6 +50,7 @@ const Impact = () => {
     const fetchImpactData = async () => {
       try {
         const token = localStorage.getItem("token");
+        // ✅ No query parameter – the endpoint doesn't accept one
         const res = await fetch(`${API_URL}/admin/impact/data`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -56,11 +58,11 @@ const Impact = () => {
         });
         if (!res.ok) throw new Error("Failed to fetch impact data");
         const data = await res.json();
-        setImpactData(data);
+        setImpactData(data); // data has { stats, chartData }
       } catch (err) {
         console.error("Impact fetch error:", err);
         setError(err.message);
-        // Fallback: use hardcoded data if API fails
+        // ─── Fallback: hardcoded data ──────────────────────────
         setImpactData({
           stats: {
             totalUsers: 1200,
@@ -71,11 +73,13 @@ const Impact = () => {
             activePartners: 1200,
           },
           chartData: [
-            { month: "2026-01", users: 50, waste: 150, energy: 50 },
-            { month: "2026-07", users: 120, waste: 320, energy: 120 },
-            { month: "2026-01", users: 250, waste: 580, energy: 220 },
-            { month: "2026-07", users: 400, waste: 820, energy: 380 },
-            { month: "2026-01", users: 600, waste: 1200, energy: 560 },
+            { month: "Jan 2026", users: 50, waste: 150, energy: 50 },
+            { month: "Feb 2026", users: 80, waste: 220, energy: 80 },
+            { month: "Mar 2026", users: 120, waste: 320, energy: 120 },
+            { month: "Apr 2026", users: 180, waste: 450, energy: 180 },
+            { month: "May 2026", users: 250, waste: 580, energy: 220 },
+            { month: "Jun 2026", users: 320, waste: 680, energy: 280 },
+            { month: "Jul 2026", users: 400, waste: 820, energy: 380 },
           ],
         });
       } finally {
@@ -217,35 +221,35 @@ const Impact = () => {
         .shadow-card { box-shadow: 0 4px 20px -6px rgba(0,0,0,0.06), 0 2px 8px -4px rgba(0,0,0,0.02); }
       `}</style>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16 space-y-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16 space-y-12 sm:space-y-16">
         {/* ─── Hero ────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center space-y-4"
+          className="text-center space-y-3 sm:space-y-4"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#11402D]/10 text-[#11402D] text-sm font-semibold">
             <Leaf className="w-4 h-4" />
             Our Impact
           </div>
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold text-[#0A1A0F] tracking-tight">
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-[#0A1A0F] tracking-tight">
             Turning Waste Into <span className="text-[#11402D]">Change</span>
           </h1>
-          <p className="text-[#5A7060] max-w-2xl mx-auto text-base sm:text-lg leading-relaxed">
+          <p className="text-[#5A7060] max-w-2xl mx-auto text-sm sm:text-base lg:text-lg leading-relaxed px-4 sm:px-0">
             Every tonne of waste we process creates clean energy, reduces emissions, and builds a more sustainable future.
             Here's how we're making a difference.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
             <Link
               to="/signup"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#11402D] text-white font-bold hover:bg-[#0E2A1C] transition shadow-lg shadow-[#11402D]/20"
+              className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full bg-[#11402D] text-white font-bold text-sm hover:bg-[#0E2A1C] transition shadow-lg shadow-[#11402D]/20"
             >
               Join Us <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               to="/solutions"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-[#E5EDE8] bg-white text-[#0A1A0F] font-medium hover:bg-[#F6F8F4] transition shadow-soft"
+              className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full border border-[#E5EDE8] bg-white text-[#0A1A0F] font-medium text-sm hover:bg-[#F6F8F4] transition shadow-soft"
             >
               Explore Solutions
             </Link>
@@ -257,7 +261,7 @@ const Impact = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4"
         >
           {impactStats.map((stat, index) => {
             const Icon = stat.icon;
@@ -267,13 +271,13 @@ const Impact = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, delay: index * 0.08 }}
-                className="bg-white rounded-2xl border border-[#E5EDE8] p-4 shadow-soft text-center hover:shadow-card transition-all duration-300"
+                className="bg-white rounded-xl sm:rounded-2xl border border-[#E5EDE8] p-3 sm:p-4 shadow-soft text-center hover:shadow-card transition-all duration-300"
               >
-                <div className={`w-10 h-10 rounded-xl ${stat.color} flex items-center justify-center mx-auto mb-2`}>
-                  <Icon className="w-5 h-5" />
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl ${stat.color} flex items-center justify-center mx-auto mb-1.5 sm:mb-2`}>
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <p className="font-display text-2xl font-bold text-[#0A1A0F]">{stat.value}</p>
-                <p className="text-xs text-[#5A7060] mt-1 leading-tight">{stat.label}</p>
+                <p className="font-display text-base sm:text-2xl font-bold text-[#0A1A0F]">{stat.value}</p>
+                <p className="text-[10px] sm:text-xs text-[#5A7060] mt-0.5 sm:mt-1 leading-tight">{stat.label}</p>
               </motion.div>
             );
           })}
@@ -289,26 +293,26 @@ const Impact = () => {
           className="space-y-6"
         >
           <div className="text-center">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#0A1A0F]">
+            <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-[#0A1A0F]">
               Our Four Pillars of Impact
             </h2>
-            <p className="text-[#5A7060] max-w-xl mx-auto mt-2">
+            <p className="text-[#5A7060] max-w-xl mx-auto mt-2 text-sm sm:text-base">
               We focus on waste diversion, clean energy, carbon reduction, and community development.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {categories.map((category, index) => {
               const Icon = category.icon;
               return (
                 <motion.div
                   key={index}
                   variants={fadeInUp}
-                  className="bg-white rounded-2xl border border-[#E5EDE8] p-6 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1"
+                  className="bg-white rounded-xl sm:rounded-2xl border border-[#E5EDE8] p-5 sm:p-6 shadow-soft hover:shadow-card transition-all duration-300 hover:-translate-y-1"
                 >
-                  <div className={`w-12 h-12 rounded-2xl ${category.color} flex items-center justify-center mb-4`}>
-                    <Icon className="w-6 h-6" />
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl ${category.color} flex items-center justify-center mb-3 sm:mb-4`}>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <h3 className="font-display font-bold text-lg text-[#0A1A0F]">{category.title}</h3>
+                  <h3 className="font-display font-bold text-base sm:text-lg text-[#0A1A0F]">{category.title}</h3>
                   <p className="text-sm text-[#5A7060] mt-2 leading-relaxed">{category.description}</p>
                 </motion.div>
               );
@@ -321,49 +325,52 @@ const Impact = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="bg-white rounded-3xl border border-[#E5EDE8] p-6 sm:p-8 shadow-card"
+          className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5EDE8] p-4 sm:p-6 lg:p-8 shadow-card"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
             <div>
-              <h3 className="font-display text-2xl font-bold text-[#0A1A0F]">Our Growth</h3>
-              <p className="text-sm text-[#5A7060]">Monthly new users, waste diverted (tonnes), and energy generated (GWh)</p>
+              <h3 className="font-display text-xl sm:text-2xl font-bold text-[#0A1A0F]">Our Growth</h3>
+              <p className="text-xs sm:text-sm text-[#5A7060]">Monthly new users, waste diverted (tonnes), and energy generated (GWh)</p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex flex-wrap items-center gap-3 text-[10px] sm:text-xs">
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-[#11402D]" /> Users
+                <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#11402D]" /> Users
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-[#9CF06B]" /> Waste (t)
+                <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#9CF06B]" /> Waste (t)
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-[#F59E0B]" /> Energy (GWh)
+                <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#F59E0B]" /> Energy (GWh)
               </span>
             </div>
           </div>
 
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={chartData}
-              margin={{ top: 10, right: 30, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "white",
-                  border: "1px solid #E5EDE8",
-                  borderRadius: "8px",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                }}
-              />
-              <Legend />
-              <Bar dataKey="users" name="New Users" fill="#11402D" radius={[4,4,0,0]} />
-              <Bar dataKey="waste" name="Waste (tonnes)" fill="#9CF06B" radius={[4,4,0,0]} />
-              <Bar dataKey="energy" name="Energy (GWh)" fill="#F59E0B" radius={[4,4,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <div className="mt-4 text-center text-xs text-[#5A7060]">
+          <div className="h-[250px] sm:h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={chartData}
+                margin={{ top: 10, right: 20, left: 0, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 9 }} />
+                <YAxis tick={{ fontSize: 9 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #E5EDE8",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                    fontSize: "12px",
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: "11px" }} />
+                <Bar dataKey="users" name="New Users" fill="#11402D" radius={[4,4,0,0]} />
+                <Bar dataKey="waste" name="Waste (tonnes)" fill="#9CF06B" radius={[4,4,0,0]} />
+                <Bar dataKey="energy" name="Energy (GWh)" fill="#F59E0B" radius={[4,4,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-3 sm:mt-4 text-center text-[10px] sm:text-xs text-[#5A7060]">
             📊 Data updated in real-time from the platform
           </div>
         </motion.section>
@@ -376,14 +383,14 @@ const Impact = () => {
           className="space-y-6"
         >
           <div className="text-center">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold text-[#0A1A0F]">
+            <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-[#0A1A0F]">
               Why Impact Matters
             </h2>
-            <p className="text-[#5A7060] max-w-xl mx-auto mt-2">
+            <p className="text-[#5A7060] max-w-xl mx-auto mt-2 text-sm sm:text-base">
               Our work goes beyond numbers – it's about building a cleaner, healthier planet.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {benefits.map((benefit, index) => {
               const Icon = benefit.icon;
               return (
@@ -392,12 +399,12 @@ const Impact = () => {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
-                  className="bg-white rounded-2xl border border-[#E5EDE8] p-6 shadow-soft text-center hover:shadow-card transition-all duration-300"
+                  className="bg-white rounded-xl sm:rounded-2xl border border-[#E5EDE8] p-5 sm:p-6 shadow-soft text-center hover:shadow-card transition-all duration-300"
                 >
-                  <div className="w-12 h-12 rounded-full bg-[#9CF06B]/20 flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-5 h-5 text-[#11402D]" />
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#9CF06B]/20 flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-[#11402D]" />
                   </div>
-                  <h3 className="font-display font-bold text-[#0A1A0F]">{benefit.title}</h3>
+                  <h3 className="font-display font-bold text-base sm:text-lg text-[#0A1A0F]">{benefit.title}</h3>
                   <p className="text-sm text-[#5A7060] mt-2 leading-relaxed">{benefit.description}</p>
                 </motion.div>
               );
@@ -410,22 +417,22 @@ const Impact = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.8 }}
-          className="bg-white rounded-3xl border border-[#E5EDE8] p-6 sm:p-8 shadow-card"
+          className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5EDE8] p-5 sm:p-6 lg:p-8 shadow-card"
         >
-          <h3 className="font-display text-2xl font-bold text-[#0A1A0F] text-center mb-6">Our Journey</h3>
+          <h3 className="font-display text-xl sm:text-2xl font-bold text-[#0A1A0F] text-center mb-6">Our Journey</h3>
           <div className="relative">
             <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-[#11402D]/20" />
-            <div className="space-y-6">
+            <div className="space-y-5 sm:space-y-6">
               {milestones.map((milestone, index) => (
-                <div key={index} className="flex items-start gap-6">
+                <div key={index} className="flex items-start gap-4 sm:gap-6">
                   <div className="relative z-10">
-                    <div className="w-10 h-10 rounded-full bg-[#11402D] flex items-center justify-center text-white font-bold text-xs">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#11402D] flex items-center justify-center text-white font-bold text-[10px] sm:text-xs">
                       {milestone.year.slice(2)}
                     </div>
                   </div>
                   <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="font-display font-bold text-lg text-[#0A1A0F]">{milestone.year}</span>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <span className="font-display font-bold text-base sm:text-lg text-[#0A1A0F]">{milestone.year}</span>
                       <span className="text-sm text-[#5A7060]">{milestone.event}</span>
                     </div>
                   </div>
@@ -440,32 +447,32 @@ const Impact = () => {
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 1 }}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] p-8 sm:p-12 text-white shadow-2xl border border-white/10"
+          className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] p-6 sm:p-8 lg:p-12 text-white shadow-2xl border border-white/10"
         >
-          <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl pointer-events-none" style={{ background: '#9CF06B0A' }} />
-          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full blur-2xl pointer-events-none" style={{ background: '#11402D40' }} />
+          <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 rounded-full blur-3xl pointer-events-none" style={{ background: '#9CF06B0A' }} />
+          <div className="absolute bottom-0 left-0 w-36 sm:w-48 h-36 sm:h-48 rounded-full blur-2xl pointer-events-none" style={{ background: '#11402D40' }} />
 
-          <div className="relative max-w-3xl mx-auto text-center space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-semibold border border-white/10">
-              <Globe className="w-4 h-4" />
+          <div className="relative max-w-3xl mx-auto text-center space-y-4 sm:space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white/10 text-white text-xs sm:text-sm font-semibold border border-white/10">
+              <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               Make a Difference
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
+            <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight">
               Join the <span className="text-[#9CF06B]">Movement</span> for a Cleaner World
             </h2>
-            <p className="text-white/70 text-base sm:text-lg max-w-lg mx-auto">
+            <p className="text-white/70 text-sm sm:text-base lg:text-lg max-w-lg mx-auto">
               Every partner, every tonne, every watt makes a difference. Start your journey with ReVive Energy today.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2 sm:pt-4">
               <Link
                 to="/signup"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-[#9CF06B] text-[#0A1A0F] font-bold text-sm sm:text-base hover:bg-[#8CE05A] transition-all shadow-lg shadow-[#9CF06B]/30"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-2.5 sm:py-4 rounded-full bg-[#9CF06B] text-[#0A1A0F] font-bold text-sm sm:text-base hover:bg-[#8CE05A] transition-all shadow-lg shadow-[#9CF06B]/30"
               >
                 Get Started <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
                 to="/contact"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-full border border-white/30 text-white font-semibold text-sm sm:text-base hover:bg-white/10 transition-all"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-2.5 sm:py-4 rounded-full border border-white/30 text-white font-semibold text-sm sm:text-base hover:bg-white/10 transition-all"
               >
                 Contact Us
               </Link>
@@ -474,9 +481,9 @@ const Impact = () => {
         </motion.section>
       </div>
 
-      <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
+      <footer className="bg-[#0E2A1C] text-white pt-12 sm:pt-14 lg:pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 sm:gap-10 pb-10 sm:pb-12 border-b border-white/10">
             <div className="lg:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-[#9CF06B]/15 flex items-center justify-center">

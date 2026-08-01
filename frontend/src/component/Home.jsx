@@ -1,3 +1,4 @@
+// src/pages/ReViveEnergyHomepage.jsx
 import React, { useState, useEffect, useRef } from "react";
 import energyFacilityImage from "../assets/energy-facility.jpg";
 import renewableFieldImage from "../assets/renewable-field.jpg";
@@ -25,7 +26,7 @@ import {
   Calculator,
   Plus,
   X,
-  Star, // ← added for testimonials
+  Star,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -42,11 +43,7 @@ const WhatsAppIcon = ({ className, color = "#25D366" }) => (
   </svg>
 );
 
-/* ══════════════════════════════════════════════════════════════
-   ANIMATED TRUCK SVGs — one unique truck per stage
-   Each SVG shows: the truck body + its unique cargo bed
-══════════════════════════════════════════════════════════════ */
-
+/* ─── ANIMATED TRUCK SVGs ────────────────────────────────────── */
 /* Stage 0 — Household: truck loaded with household waste bags */
 const TruckHousehold = ({ size = 80 }) => (
   <svg width={size} height={size * 0.65} viewBox="0 0 120 78" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -420,7 +417,6 @@ function ReViveRoute() {
 }
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────
-
 export default function ReViveEnergyHomepage() {
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
@@ -512,7 +508,6 @@ export default function ReViveEnergyHomepage() {
     },
   ];
 
-  // ─── NEW: Testimonials data ──────────────────────────────────
   const testimonials = [
     {
       quote:
@@ -573,7 +568,7 @@ export default function ReViveEnergyHomepage() {
         }
       `}</style>
 
-      {/* HERO */}
+      {/* ─── HERO ────────────────────────────────────────────────── */}
       <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 pt-0 sm:pt-0 lg:pt-0 pb-14 sm:pb-16 lg:pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
           <div className="lg:col-span-6">
@@ -717,7 +712,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* IMPACT STATS */}
+      {/* ─── IMPACT STATS ────────────────────────────────────────── */}
       <section id="impact" className="bg-[#0E2A1C] text-white py-16 sm:py-20 lg:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
           <div className="max-w-xl">
@@ -743,7 +738,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* MARQUEE */}
+      {/* ─── ★ UPDATED MARQUEE ★ ──────────────────────────────────── */}
       <section className="bg-[#F6F8F4] py-12 sm:py-16 lg:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
           <div className="text-center mb-10">
@@ -754,14 +749,22 @@ export default function ReViveEnergyHomepage() {
               Transforming waste into clean energy, sustainable products, and a circular economy.
             </p>
           </div>
-          <div className="relative overflow-hidden">
-            <div className="absolute left-0 top-0 h-full w-20 bg-gradient-to-r from-[#F6F8F4] to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 h-full w-20 bg-gradient-to-l from-[#F6F8F4] to-transparent z-10 pointer-events-none" />
-            <div className="marquee-track flex items-center gap-12">
+
+          <div className="relative overflow-hidden border-t border-b border-[#E5EDE8]">
+            {/* Gradient fades (matches ASAL iLab) */}
+            <div className="absolute left-0 top-0 bottom-0 w-20 z-10 bg-gradient-to-r from-[#F6F8F4] to-transparent pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-20 z-10 bg-gradient-to-l from-[#F6F8F4] to-transparent pointer-events-none" />
+
+            <div className="marquee-track flex items-center">
               {[...marqueeItems, ...marqueeItems].map((item, index) => (
-                <div key={index} className="flex-shrink-0 flex items-center gap-3 text-[#0E2A1C]">
-                  <span className="text-5xl sm:text-6xl">{item.icon}</span>
-                  <span className="font-display font-semibold text-base sm:text-lg whitespace-nowrap">
+                <div
+                  key={index}
+                  className="flex-shrink-0 flex items-center gap-4 px-10 py-8 border-r border-[#E5EDE8] last:border-r-0 group"
+                >
+                  <span className="text-5xl sm:text-6xl transition-all duration-500 group-hover:scale-110">
+                    {item.icon}
+                  </span>
+                  <span className="font-display font-semibold text-base sm:text-lg whitespace-nowrap text-[#0E2A1C] opacity-60 group-hover:opacity-100 transition-all duration-500">
                     {item.label}
                   </span>
                 </div>
@@ -771,7 +774,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* PROCESS - The ReVive Route */}
+      {/* ─── PROCESS ────────────────────────────────────────────── */}
       <section id="process" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-12 lg:py-16">
         <div className="mb-8">
           <p className="text-sm font-mono-cw uppercase tracking-wider text-[#11402D]/80 mb-3">
@@ -805,11 +808,11 @@ export default function ReViveEnergyHomepage() {
           ))}
         </div>
 
-        {/* ── REPLACE THE STATIC MAP WITH THE ANIMATED ROUTE ── */}
+        {/* ── ReViveRoute ── */}
         <ReViveRoute />
       </section>
 
-      {/* SOLUTIONS */}
+      {/* ─── SOLUTIONS ───────────────────────────────────────────── */}
       <section id="solutions" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
           <div className="max-w-xl">
@@ -845,7 +848,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* SUSTAINABILITY */}
+      {/* ─── SUSTAINABILITY ──────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-16 lg:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div className="relative rounded-3xl overflow-hidden h-[300px] sm:h-[380px] lg:h-[430px] order-2 lg:order-1">
@@ -900,7 +903,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* GLOBAL */}
+      {/* ─── GLOBAL ──────────────────────────────────────────────── */}
       <section id="global" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-28">
         <div className="bg-[#11402D] rounded-3xl px-6 sm:px-10 lg:px-14 py-12 sm:py-16 lg:py-20 text-white relative overflow-hidden">
           <div className="absolute -right-24 -top-24 w-80 h-80 rounded-full border border-white/10" />
@@ -937,7 +940,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* ─── ★ NEW TESTIMONIALS SECTION ★ ────────────────────── */}
+      {/* ─── TESTIMONIALS ────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-16 sm:py-20 lg:py-24 bg-white">
         <div className="text-center mb-12">
           <p className="text-sm font-mono-cw uppercase tracking-wider text-[#11402D]/60 mb-3 flex items-center justify-center gap-2">
@@ -969,7 +972,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* ─── ORIGINAL TESTIMONIAL (kept unchanged) ────────────── */}
+      {/* ─── ORIGINAL TESTIMONIAL ──────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-16 lg:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-5 relative rounded-3xl overflow-hidden h-[260px] sm:h-[340px] lg:h-[370px]">
@@ -1000,7 +1003,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* ─── CTA ──────────────────────────────────────────────────── */}
       <section id="contact" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-14 sm:py-16 lg:py-24">
         <div className="rounded-3xl bg-[#0E2A1C] px-6 sm:px-10 lg:px-16 py-12 sm:py-16 lg:py-20 text-center">
           <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-white max-w-3xl mx-auto leading-tight">
@@ -1028,7 +1031,7 @@ export default function ReViveEnergyHomepage() {
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* ─── FOOTER ────────────────────────────────────────────────── */}
       <footer className="bg-[#0E2A1C] text-white pt-14 sm:pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-white/10">
@@ -1077,5 +1080,5 @@ export default function ReViveEnergyHomepage() {
         </div>
       </footer>
     </div>
-  );                      
+  );
 }

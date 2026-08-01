@@ -7,9 +7,11 @@ from datetime import datetime
 import json
 
 disputes_bp = Blueprint('disputes', __name__, url_prefix='/api/disputes')
+
+# ─── ★ CORS – apply to this blueprint ★ ──────────────────────────
 CORS(disputes_bp, origins=["http://localhost:5173"], supports_credentials=True)
 
-# ─── Helpers ────────────────────────────────────────────────
+# ─── Helpers ──────────────────────────────────────────────────────
 def get_current_user():
     user_id = get_jwt_identity()
     return User.query.get(int(user_id))
@@ -19,7 +21,7 @@ def user_involved_in_dispute(dispute, user_id):
             dispute.supplier_id == user_id or
             dispute.transporter_id == user_id)
 
-# ─── GET all disputes ──────────────────────────────────────
+# ─── GET all disputes (with pagination & filters) ──────────────
 @disputes_bp.route('', methods=['GET'])
 @jwt_required()
 def get_disputes():
@@ -110,7 +112,7 @@ def get_disputes():
         'total': total
     }), 200
 
-# ─── GET single dispute ──────────────────────────────────
+# ─── GET single dispute ──────────────────────────────────────────
 @disputes_bp.route('/<int:dispute_id>', methods=['GET'])
 @jwt_required()
 def get_dispute(dispute_id):
@@ -163,7 +165,7 @@ def get_dispute(dispute_id):
         }
     }), 200
 
-# ─── POST create dispute ──────────────────────────────────
+# ─── POST create dispute ─────────────────────────────────────────
 @disputes_bp.route('', methods=['POST'])
 @jwt_required()
 def create_dispute():
@@ -221,7 +223,7 @@ def create_dispute():
 
     return jsonify({'message': 'Dispute created', 'id': dispute.id}), 201
 
-# ─── PUT update dispute ──────────────────────────────────
+# ─── PUT update dispute ──────────────────────────────────────────
 @disputes_bp.route('/<int:dispute_id>', methods=['PUT'])
 @jwt_required()
 def update_dispute(dispute_id):
@@ -242,7 +244,7 @@ def update_dispute(dispute_id):
     db.session.commit()
     return jsonify({'message': 'Dispute updated'}), 200
 
-# ─── DELETE dispute ──────────────────────────────────────
+# ─── DELETE dispute ──────────────────────────────────────────────
 @disputes_bp.route('/<int:dispute_id>', methods=['DELETE'])
 @jwt_required()
 def delete_dispute(dispute_id):
@@ -258,7 +260,7 @@ def delete_dispute(dispute_id):
     db.session.commit()
     return jsonify({'message': 'Dispute deleted'}), 200
 
-# ─── POST chat message (legacy) ──────────────────────────
+# ─── POST chat message (legacy, using the `chat` field) ─────────
 @disputes_bp.route('/<int:dispute_id>/chat', methods=['POST'])
 @jwt_required()
 def add_chat_message(dispute_id):
@@ -294,7 +296,7 @@ def add_chat_message(dispute_id):
         'sender_role': user.role,
     }), 201
 
-# ─── POST upload evidence ──────────────────────────────
+# ─── POST upload evidence ────────────────────────────────────────
 @disputes_bp.route('/<int:dispute_id>/evidence', methods=['POST'])
 @jwt_required()
 def upload_evidence(dispute_id):
@@ -326,7 +328,7 @@ def upload_evidence(dispute_id):
 
     return jsonify({'files': evidence_list}), 201
 
-# ─── POST resolve dispute ──────────────────────────────
+# ─── POST resolve dispute ────────────────────────────────────────
 @disputes_bp.route('/<int:dispute_id>/resolve', methods=['POST'])
 @jwt_required()
 def resolve_dispute(dispute_id):
@@ -375,7 +377,7 @@ def resolve_dispute(dispute_id):
 
     return jsonify({'message': 'Dispute resolved'}), 200
 
-# ─── POST release escrow ────────────────────────────────
+# ─── POST release escrow ─────────────────────────────────────────
 @disputes_bp.route('/<int:dispute_id>/release', methods=['POST'])
 @jwt_required()
 def release_escrow(dispute_id):
@@ -402,7 +404,7 @@ def release_escrow(dispute_id):
     db.session.commit()
     return jsonify({'message': 'Escrow released'}), 200
 
-# ─── POST refund producer ──────────────────────────────
+# ─── POST refund producer ────────────────────────────────────────
 @disputes_bp.route('/<int:dispute_id>/refund', methods=['POST'])
 @jwt_required()
 def refund_dispute(dispute_id):
@@ -430,7 +432,7 @@ def refund_dispute(dispute_id):
     db.session.commit()
     return jsonify({'message': 'Refund processed'}), 200
 
-# ─── GET /messages (NEW) ──────────────────────────────────
+# ─── GET messages (new, using `DisputeMessage` table) ───────────
 @disputes_bp.route('/<int:dispute_id>/messages', methods=['GET'])
 @jwt_required()
 def get_dispute_messages(dispute_id):
@@ -446,7 +448,7 @@ def get_dispute_messages(dispute_id):
     messages = dispute.messages.filter(DisputeMessage.deleted == False).order_by(DisputeMessage.created_at.asc()).all()
     return jsonify([m.to_dict() for m in messages]), 200
 
-# ─── POST /messages (NEW) ──────────────────────────────────
+# ─── POST message (new, using `DisputeMessage` table) ───────────
 @disputes_bp.route('/<int:dispute_id>/messages', methods=['POST'])
 @jwt_required()
 def send_dispute_message(dispute_id):
@@ -475,7 +477,7 @@ def send_dispute_message(dispute_id):
 
     return jsonify(new_msg.to_dict()), 201
 
-# ─── DELETE /messages (NEW) ──────────────────────────────────
+# ─── DELETE message (soft‑delete) ───────────────────────────────
 @disputes_bp.route('/<int:dispute_id>/messages/<int:message_id>', methods=['DELETE'])
 @jwt_required()
 def delete_dispute_message(dispute_id, message_id):

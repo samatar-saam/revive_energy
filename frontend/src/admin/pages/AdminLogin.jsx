@@ -120,16 +120,17 @@ function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-10 relative">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-start sm:items-center justify-center px-4 py-10 overflow-y-auto relative">
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
           .font-display { font-family: 'Space Grotesk', sans-serif; }
           .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
 
-          .hide-scrollbar::-webkit-scrollbar { display: none; }
-          .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          .admin-scroll { max-height: 90vh; overflow-y: auto; scroll-behavior: smooth; }
+          /* Was capped at max-height:90vh with a hidden scrollbar, which silently
+             clipped content on shorter screens. Now it just grows naturally and
+             the page itself scrolls (see the min-h-screen wrapper above). */
+          .admin-scroll { scroll-behavior: smooth; }
 
           .Toastify__toast {
             font-family: 'Inter', sans-serif !important;
@@ -183,7 +184,7 @@ function AdminLogin() {
           .left-panel-inner {
             position: relative;
             z-index: 2;
-            padding: 2.5rem 2rem 2rem 2rem;
+            padding: 2rem 1.75rem 1.75rem 1.75rem;
             backdrop-filter: blur(2px);
             height: 100%;
             display: flex;
@@ -269,32 +270,40 @@ function AdminLogin() {
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
           }
 
+          /* Form fields — professional, understated, matches the main Login page */
           .input-field {
-            transition: all 0.2s ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+          }
+          .input-field:hover {
+            border-color: #CBD5E1;
           }
           .input-field:focus-within {
             border-color: #11402D;
-            box-shadow: 0 0 0 4px rgba(17, 64, 45, 0.1);
+            box-shadow: 0 0 0 3px rgba(17, 64, 45, 0.08);
+          }
+          .input-field:focus-within:hover {
+            border-color: #11402D;
           }
 
           .btn-primary {
-            background: linear-gradient(135deg, #0E2A1C, #11402D);
-            transition: all 0.3s ease;
+            background: #11402D;
+            transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
           }
-          .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px -8px rgba(17, 64, 45, 0.4);
+          .btn-primary:hover:not(:disabled) {
+            background: #0E2A1C;
+            box-shadow: 0 4px 14px -4px rgba(17, 64, 45, 0.35);
           }
-          .btn-primary:active {
-            transform: translateY(0px);
+          .btn-primary:active:not(:disabled) {
+            background: #0A2115;
+            transform: scale(0.99);
           }
-
-          .btn-role {
-            transition: all 0.2s ease;
+          .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
           }
-          .btn-role:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px -6px rgba(17, 64, 45, 0.15);
+          .btn-primary:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(17, 64, 45, 0.25);
           }
         `}
       </style>
@@ -312,11 +321,10 @@ function AdminLogin() {
         theme="colored"
       />
 
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100/50 right-panel">
-        {/* ─── Left Brand Section (World‑class design) ────────── */}
+      <div className="w-full max-w-5xl grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100/50 right-panel">
+        {/* ─── Left Brand Section ── */}
         <div className="hidden lg:flex left-panel">
           <div className="left-panel-inner">
-            {/* Decorative blobs */}
             <div className="blob-decoration" />
             <div className="orb-1" />
             <div className="orb-2" />
@@ -327,9 +335,9 @@ function AdminLogin() {
                 <span className="font-display font-semibold text-lg text-white">Admin Portal</span>
                 <Sparkles className="w-4 h-4 text-[#9CF06B] animate-pulse" />
               </div>
-              <div className="mt-12">
+              <div className="mt-8">
                 <p className="font-mono-cw text-sm uppercase tracking-[0.25em] text-[#9CF06B]">Secure Access</p>
-                <h1 className="font-display mt-4 text-4xl font-bold leading-tight text-white">
+                <h1 className="font-display mt-3 text-3xl font-bold leading-tight text-white">
                   Admin<br /><span className="text-[#9CF06B]">Dashboard</span>
                 </h1>
                 <p className="mt-5 text-green-200 text-base leading-7 max-w-lg">
@@ -339,7 +347,7 @@ function AdminLogin() {
               </div>
             </div>
 
-            <div className="relative z-10 grid grid-cols-2 gap-4 mt-8">
+            <div className="relative z-10 grid grid-cols-2 gap-3 mt-6">
               <div className="glass-stat rounded-2xl p-4 border border-white/20">
                 <p className="font-display text-2xl font-bold text-white">1,240+</p>
                 <p className="text-sm text-[#9CF06B]">Total Users</p>
@@ -358,7 +366,7 @@ function AdminLogin() {
               </div>
             </div>
 
-            <div className="relative z-10 mt-6 space-y-2.5">
+            <div className="relative z-10 mt-4 space-y-2">
               <div className="feature-item flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/90">
                 <Shield className="w-4 h-4 text-[#9CF06B]" />
                 <span>Two‑factor authentication</span>
@@ -379,8 +387,8 @@ function AdminLogin() {
           </div>
         </div>
 
-        {/* ─── Right Login Form ────────────────────────────────── */}
-        <div className="p-6 sm:p-10 lg:p-14 flex items-center admin-scroll hide-scrollbar">
+        {/* ─── Right Login Form ── */}
+        <div className="p-6 sm:p-8 lg:p-10 flex items-center admin-scroll">
           <div className="w-full max-w-md mx-auto">
             <div className="lg:hidden mb-6 text-center">
               <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] flex items-center justify-center text-white shadow-lg">
@@ -390,15 +398,17 @@ function AdminLogin() {
               <p className="font-mono-cw text-xs text-green-600 mt-1 tracking-wider">SECURE ACCESS</p>
             </div>
 
-            <p className="font-mono-cw text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">Admin Login</p>
-            <h2 className="font-display mt-2 text-3xl font-bold text-slate-900">Welcome back!</h2>
-            <p className="mt-2 text-slate-500 leading-6">Enter your admin credentials to access the dashboard.</p>
+            <p className="text-xs font-semibold tracking-[0.2em] text-[#11402D] uppercase">Admin Login</p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900">Welcome back</h2>
+            <p className="mt-1.5 text-sm text-slate-500 leading-6">Enter your admin credentials to access the dashboard.</p>
 
             <form onSubmit={handleLogin} className="mt-6 space-y-4">
               <div>
-                <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">Admin Email</label>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 input-field">
-                  <Mail className="w-5 h-5 text-slate-400" />
+                <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
+                  Admin Email
+                </label>
+                <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+                  <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <input
                     type="email"
                     name="email"
@@ -407,15 +417,22 @@ function AdminLogin() {
                     onChange={handleChange}
                     required
                     autoComplete="off"
-                    className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                    className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 input-field">
-                  <Lock className="w-5 h-5 text-slate-400" />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Password
+                  </label>
+                  <Link to="/admin/forgot-password" className="text-xs font-semibold text-[#11402D] hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+                  <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
@@ -424,25 +441,20 @@ function AdminLogin() {
                     onChange={handleChange}
                     required
                     autoComplete="new-password"
-                    className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                    className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                    className="text-slate-400 hover:text-slate-600 flex-shrink-0"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
-                </div>
-                <div className="mt-2 text-right">
-                  <Link to="/admin/forgot-password" className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors">
-                    Forgot password?
-                  </Link>
                 </div>
               </div>
 
               {error && (
-                <div className="flex items-center gap-2 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+                <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
                   {error}
                 </div>
@@ -451,11 +463,11 @@ function AdminLogin() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl btn-primary px-5 py-3.5 font-display font-semibold text-white shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg btn-primary px-5 py-3 text-sm font-semibold text-white"
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
                     Verifying...
                   </>
                 ) : (
@@ -468,7 +480,7 @@ function AdminLogin() {
             </form>
 
             <p className="mt-6 text-sm text-slate-600 text-center">
-              <Link to="/" className="font-semibold text-green-600 hover:text-green-700 inline-flex items-center gap-1 transition-colors">
+              <Link to="/" className="font-semibold text-[#11402D] hover:underline inline-flex items-center gap-1 transition-colors">
                 <Recycle className="w-4 h-4" />
                 Back to ReVive Energy
               </Link>

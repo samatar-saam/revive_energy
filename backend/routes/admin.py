@@ -1429,6 +1429,9 @@ def get_impact_data():
 @jwt_required()
 @role_required('admin')
 def get_impact_metrics():
+    # ✅ Accept the range parameter (ignored) to avoid 422 errors
+    range_param = request.args.get('range', '30days')
+    # Optionally you can use it for filtering, but currently we return full year data
     try:
         from sqlalchemy import func, extract
 

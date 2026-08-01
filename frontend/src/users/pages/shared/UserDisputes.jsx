@@ -1,5 +1,5 @@
-// src/users/pages/shared/UserDisputes.jsx (complete updated file)
-import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
+// src/users/pages/shared/UserDisputes.jsx
+import React, { useState, useEffect, useCallback, memo, useRef } from "react";
 import axios from "axios";
 import {
   Search,

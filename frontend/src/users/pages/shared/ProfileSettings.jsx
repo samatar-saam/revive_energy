@@ -32,6 +32,12 @@ const ROLE_META = {
 
 const raw = r => ROLE_META[r] || { label: r || 'User', Icon: User, pill:'bg-gray-50 text-gray-600 border-gray-200' };
 
+/* Avatars are cached client-side for snappy loads, but the cache key must be
+   scoped to the logged-in user — otherwise a new user signing in on the same
+   browser would inherit whatever photo the previous user saved. We scope by
+   email since that's always present on the /user response. */
+const avatarKey = email => `profile_avatar:${email}`;
+
 /* ─── TOAST ────────────────────────────────────────────────── */
 const TOAST = {
   success: { bar:'bg-[#11402D]', icon:<CheckCircle  className="w-4 h-4 text-[#11402D]"/> },
@@ -320,12 +326,11 @@ export default function ProfileSettings() {
   const addToast = (type, message) => setToasts(p => [...p, { id:Date.now(), type, message }]);
   const removeToast = id => setToasts(p => p.filter(t => t.id !== id));
 
-  /* ── Load ── */
-  useEffect(() => {
-    const saved = localStorage.getItem('profile_avatar');
-    if (saved) setProfile(p => ({ ...p, avatar:saved }));
-  }, []);
-
+  /* ── Load ──
+     Note: there's no un-scoped early read of localStorage here anymore.
+     We only look up a cached avatar once we know *which* user is logged in,
+     via avatarKey(email) below — otherwise a new user could briefly flash
+     the previous user's photo before their own profile data arrives. */
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -335,7 +340,7 @@ export default function ProfileSettings() {
         const r = await fetch(`${API_URL}/user`, { headers:{ Authorization:`Bearer ${token}` } });
         const d = await r.json();
         if (!r.ok) throw new Error(d.message || 'Failed');
-        const saved = localStorage.getItem('profile_avatar');
+        const saved = d.email ? localStorage.getItem(avatarKey(d.email)) : null;
         const p = {
           full_name: d.full_name||'', business_name: d.business_name||'',
           business_type: d.business_type||'', email: d.email||'',
@@ -415,9 +420,9 @@ export default function ProfileSettings() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message);
-      if (avatarChanged) {
-        if (tempAvatar) localStorage.setItem('profile_avatar', tempAvatar);
-        else            localStorage.removeItem('profile_avatar');
+      if (avatarChanged && profile.email) {
+        if (tempAvatar) localStorage.setItem(avatarKey(profile.email), tempAvatar);
+        else            localStorage.removeItem(avatarKey(profile.email));
         setProfile(p => ({ ...p, avatar: tempAvatar||'' }));
       }
       localStorage.setItem('user', JSON.stringify({ ...JSON.parse(localStorage.getItem('user')||'{}'), ...body }));

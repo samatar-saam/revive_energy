@@ -615,7 +615,7 @@ function Login() {
     if (selectedRole === "waste-supplier") {
       return (
         <>
-          <label className="font-display block text-sm font-semibold text-slate-700 mb-3">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2.5">
             Select Waste Types *
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -627,25 +627,25 @@ function Login() {
                   key={type.id}
                   type="button"
                   onClick={() => toggleSelection("wasteTypes", type.id)}
-                  className={`p-3 rounded-xl text-center transition-all border-2 ${
+                  className={`chip-option relative flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center ${
                     selected
-                      ? "border-[#11402D] bg-[#11402D]/5"
-                      : "border-slate-200 bg-white hover:border-[#11402D]/30"
+                      ? "border-[#11402D] bg-[#11402D]/[0.04]"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <Icon
-                    className={`w-5 h-5 mx-auto mb-1 ${
-                      selected ? "text-[#11402D]" : "text-slate-400"
-                    }`}
+                    className={`w-4 h-4 ${selected ? "text-[#11402D]" : "text-slate-400"}`}
                   />
-                  <div
-                    className={`font-display text-[10px] font-bold ${
+                  <span
+                    className={`text-xs font-medium leading-tight ${
                       selected ? "text-[#11402D]" : "text-slate-600"
                     }`}
                   >
                     {type.label}
-                  </div>
-                  {selected && <Check className="w-3 h-3 mx-auto mt-1 text-[#34D399]" />}
+                  </span>
+                  {selected && (
+                    <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-[#11402D]" />
+                  )}
                 </button>
               );
             })}
@@ -657,7 +657,7 @@ function Login() {
     if (selectedRole === "energy-producer") {
       return (
         <>
-          <label className="font-display block text-sm font-semibold text-slate-700 mb-3">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2.5">
             Select Energy Types *
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -669,35 +669,35 @@ function Login() {
                   key={type.id}
                   type="button"
                   onClick={() => toggleSelection("energyTypes", type.id)}
-                  className={`p-3 rounded-xl text-center transition-all border-2 ${
+                  className={`chip-option relative flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center ${
                     selected
-                      ? "border-[#11402D] bg-[#11402D]/5"
-                      : "border-slate-200 bg-white hover:border-[#11402D]/30"
+                      ? "border-[#11402D] bg-[#11402D]/[0.04]"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <Icon
-                    className={`w-5 h-5 mx-auto mb-1 ${
-                      selected ? "text-[#11402D]" : "text-slate-400"
-                    }`}
+                    className={`w-4 h-4 ${selected ? "text-[#11402D]" : "text-slate-400"}`}
                   />
-                  <div
-                    className={`font-display text-[10px] font-bold ${
+                  <span
+                    className={`text-xs font-medium leading-tight ${
                       selected ? "text-[#11402D]" : "text-slate-600"
                     }`}
                   >
                     {type.label}
-                  </div>
-                  {selected && <Check className="w-3 h-3 mx-auto mt-1 text-[#34D399]" />}
+                  </span>
+                  {selected && (
+                    <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-[#11402D]" />
+                  )}
                 </button>
               );
             })}
           </div>
-          <div className="mt-4">
-            <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+          <div className="mt-5">
+            <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
               Facility Capacity
             </label>
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-              <Gauge className="w-4 h-4 text-slate-400" />
+            <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+              <Gauge className="w-4 h-4 text-slate-400 flex-shrink-0" />
               <select
                 name="capacity"
                 value={signupData.capacity}
@@ -719,17 +719,17 @@ function Login() {
 
     return (
       <>
-        <div className="mb-4">
-          <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <div className="mb-5">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
             Fleet Size
           </label>
-          <div className="relative">
-            <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+            <Gauge className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <select
               name="fleetSize"
               value={signupData.fleetSize}
               onChange={handleSignupChange}
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-green-500 transition appearance-none"
+              className="w-full bg-transparent outline-none text-slate-700 text-sm"
             >
               <option value="">Select fleet size</option>
               {fleetSizeOptions.map((option) => (
@@ -741,7 +741,7 @@ function Login() {
           </div>
         </div>
 
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-3">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-2.5">
           Vehicle Types *
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -753,60 +753,60 @@ function Login() {
                 key={type.id}
                 type="button"
                 onClick={() => toggleSelection("vehicleTypes", type.id)}
-                className={`p-3 rounded-xl text-center transition-all border-2 ${
+                className={`chip-option relative flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center ${
                   selected
-                    ? "border-[#11402D] bg-[#11402D]/5"
-                    : "border-slate-200 bg-white hover:border-[#11402D]/30"
+                    ? "border-[#11402D] bg-[#11402D]/[0.04]"
+                    : "border-slate-200 bg-white hover:border-slate-300"
                 }`}
               >
                 <Icon
-                  className={`w-5 h-5 mx-auto mb-1 ${
-                    selected ? "text-[#11402D]" : "text-slate-400"
-                  }`}
+                  className={`w-4 h-4 ${selected ? "text-[#11402D]" : "text-slate-400"}`}
                 />
-                <div
-                  className={`font-display text-[10px] font-bold ${
+                <span
+                  className={`text-xs font-medium leading-tight ${
                     selected ? "text-[#11402D]" : "text-slate-600"
                   }`}
                 >
                   {type.label}
-                </div>
-                {selected && <Check className="w-3 h-3 mx-auto mt-1 text-[#34D399]" />}
+                </span>
+                {selected && (
+                  <Check className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-[#11402D]" />
+                )}
               </button>
             );
           })}
         </div>
 
-        <div className="mt-4">
-          <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <div className="mt-5">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
             Coverage Area
           </label>
-          <div className="relative">
-            <Navigation className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+            <Navigation className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <input
               type="text"
               name="coverageArea"
               value={signupData.coverageArea}
               onChange={handleSignupChange}
               placeholder="e.g. Nairobi, Mombasa, Garissa"
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-green-500 transition"
+              className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
             />
           </div>
         </div>
 
-        <div className="mt-4">
-          <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <div className="mt-5">
+          <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
             License / Permit Number
           </label>
-          <div className="relative">
-            <Award className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+            <Award className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <input
               type="text"
               name="licenseNumber"
               value={signupData.licenseNumber}
               onChange={handleSignupChange}
               placeholder="Enter license number"
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-green-500 transition"
+              className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
             />
           </div>
         </div>
@@ -817,11 +817,11 @@ function Login() {
   const Step1 = () => (
     <div className="space-y-4">
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Full Name *
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <User className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <User className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
             type="text"
             name="full_name"
@@ -835,11 +835,11 @@ function Login() {
       </div>
 
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Business / Organization Name *
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <Building2 className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <Building2 className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
             type="text"
             name="business_name"
@@ -853,11 +853,11 @@ function Login() {
       </div>
 
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Business Type *
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <Briefcase className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <Briefcase className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <select
             name="business_type"
             value={signupData.business_type}
@@ -875,11 +875,11 @@ function Login() {
       </div>
 
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Country *
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <Globe className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <Globe className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <select
             name="country"
             value={signupData.country}
@@ -896,11 +896,11 @@ function Login() {
       </div>
 
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Location
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <MapPin className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
             type="text"
             name="location"
@@ -916,9 +916,9 @@ function Login() {
       <button
         type="button"
         onClick={nextStep}
-        className="w-full py-3 rounded-xl bg-[#11402D] text-white font-display font-bold text-sm hover:bg-[#0E2A1C] transition-all"
+        className="w-full inline-flex items-center justify-center gap-2 rounded-lg btn-primary px-5 py-3 text-sm font-semibold text-white"
       >
-        Continue <ArrowRight className="w-4 h-4 inline" />
+        Continue <ArrowRight className="w-4 h-4" />
       </button>
     </div>
   );
@@ -926,18 +926,18 @@ function Login() {
   const Step2 = () => (
     <div>
       {renderRoleSpecificFields()}
-      <div className="flex gap-3 mt-4">
+      <div className="flex gap-3 mt-6">
         <button
           type="button"
           onClick={prevStep}
-          className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-display font-bold text-sm hover:bg-slate-50 transition-all"
+          className="btn-secondary flex-1 py-3 rounded-lg border border-slate-300 text-slate-600 text-sm font-semibold"
         >
           Back
         </button>
         <button
           type="button"
           onClick={nextStep}
-          className="flex-1 py-3 rounded-xl bg-[#11402D] text-white font-display font-bold text-sm hover:bg-[#0E2A1C] transition-all"
+          className="flex-1 py-3 rounded-lg btn-primary text-sm font-semibold text-white"
         >
           Continue
         </button>
@@ -948,11 +948,11 @@ function Login() {
   const Step3 = () => (
     <div className="space-y-4">
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Email Address *
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <Mail className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
             type="email"
             name="email"
@@ -966,11 +966,11 @@ function Login() {
       </div>
 
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Phone Number *
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <Phone className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
             type="tel"
             name="phone"
@@ -984,11 +984,11 @@ function Login() {
       </div>
 
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Password *
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <Lock className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
             type={showPassword ? "text" : "password"}
             name="password"
@@ -1002,7 +1002,7 @@ function Login() {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="text-slate-400 hover:text-slate-600"
+            className="text-slate-400 hover:text-slate-600 flex-shrink-0"
           >
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -1010,11 +1010,11 @@ function Login() {
       </div>
 
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Confirm Password *
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <Lock className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
             type={showPassword ? "text" : "password"}
             name="confirmPassword"
@@ -1028,11 +1028,11 @@ function Login() {
       </div>
 
       <div>
-        <label className="font-display block text-sm font-semibold text-slate-700 mb-1">
+        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
           Referral Code (optional)
         </label>
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 focus-within:ring-2 focus-within:ring-green-500 transition">
-          <Users className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+          <Users className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
             type="text"
             name="referralCode"
@@ -1049,14 +1049,14 @@ function Login() {
         <button
           type="button"
           onClick={prevStep}
-          className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-display font-bold text-sm hover:bg-slate-50 transition-all"
+          className="btn-secondary flex-1 py-3 rounded-lg border border-slate-300 text-slate-600 text-sm font-semibold"
         >
           Back
         </button>
         <button
           type="button"
           onClick={nextStep}
-          className="flex-1 py-3 rounded-xl bg-[#11402D] text-white font-display font-bold text-sm hover:bg-[#0E2A1C] transition-all"
+          className="flex-1 py-3 rounded-lg btn-primary text-sm font-semibold text-white"
         >
           Continue
         </button>
@@ -1066,22 +1066,22 @@ function Login() {
 
   const Step4 = () => (
     <div className="space-y-4">
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3.5">
         <input
           type="checkbox"
           name="termsAccepted"
           checked={signupData.termsAccepted}
           onChange={handleSignupChange}
-          className="mt-1 w-4 h-4 rounded border-slate-300 text-[#11402D] focus:ring-[#11402D]"
+          className="mt-0.5 w-4 h-4 rounded border-slate-300 text-[#11402D] focus:ring-[#11402D] flex-shrink-0"
         />
         <div>
-          <label className="font-display text-sm text-slate-700">
+          <label className="text-sm leading-relaxed text-slate-700">
             I agree to the{" "}
-            <a href="/terms" className="text-[#11402D] hover:underline" target="_blank" rel="noopener noreferrer">
+            <a href="/terms" className="font-medium text-[#11402D] hover:underline" target="_blank" rel="noopener noreferrer">
               Terms & Conditions
             </a>{" "}
             and{" "}
-            <a href="/privacy" className="text-[#11402D] hover:underline" target="_blank" rel="noopener noreferrer">
+            <a href="/privacy" className="font-medium text-[#11402D] hover:underline" target="_blank" rel="noopener noreferrer">
               Privacy Policy
             </a>
           </label>
@@ -1092,14 +1092,14 @@ function Login() {
         <button
           type="button"
           onClick={prevStep}
-          className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-display font-bold text-sm hover:bg-slate-50 transition-all"
+          className="btn-secondary flex-1 py-3 rounded-lg border border-slate-300 text-slate-600 text-sm font-semibold"
         >
           Back
         </button>
         <button
           type="button"
           onClick={nextStep}
-          className="flex-1 py-3 rounded-xl bg-[#11402D] text-white font-display font-bold text-sm hover:bg-[#0E2A1C] transition-all"
+          className="flex-1 py-3 rounded-lg btn-primary text-sm font-semibold text-white"
         >
           Continue
         </button>
@@ -1110,17 +1110,20 @@ function Login() {
   const Step5 = () => (
     <div className="space-y-4 text-center">
       <div className="flex justify-center">
-        <Mail className="w-16 h-16 text-[#11402D] bg-green-50 p-3 rounded-full" />
+        <div className="w-14 h-14 rounded-full bg-[#11402D]/[0.06] flex items-center justify-center">
+          <Mail className="w-6 h-6 text-[#11402D]" />
+        </div>
       </div>
 
-      <h3 className="font-display text-xl font-bold">Verify Your Email</h3>
-
-      <p className="text-slate-500 text-sm">
-        We will send a 6‑digit code to <strong>{signupData.email}</strong>
-      </p>
+      <div>
+        <h3 className="text-lg font-bold text-slate-900">Verify Your Email</h3>
+        <p className="text-slate-500 text-sm mt-1">
+          We will send a 6‑digit code to <span className="font-semibold text-slate-700">{signupData.email}</span>
+        </p>
+      </div>
 
       {emailCodeSent && (
-        <div className="flex justify-center gap-2 my-4">
+        <div className="flex justify-center gap-2">
           {[...Array(6)].map((_, index) => (
             <input
               key={index}
@@ -1131,15 +1134,15 @@ function Login() {
               onChange={(e) => handleOtpChange(e, index)}
               onKeyDown={(e) => handleOtpKeyDown(e, index)}
               autoComplete="off"
-              className="w-12 h-14 text-center text-2xl font-bold border border-slate-200 rounded-xl bg-slate-50 focus:ring-2 focus:ring-green-500 focus:outline-none"
+              className="otp-box w-12 h-14 text-center text-xl font-semibold border border-slate-300 rounded-lg bg-white focus:outline-none"
             />
           ))}
         </div>
       )}
 
       {emailCodeSent && (
-        <div className="flex justify-center items-center gap-2 text-sm text-slate-500">
-          <Clock className="w-4 h-4" />
+        <div className="flex justify-center items-center gap-1.5 text-xs font-medium text-slate-500">
+          <Clock className="w-3.5 h-3.5" />
           <span>
             Code expires in {Math.floor(emailTimer / 60)}:
             {(emailTimer % 60).toString().padStart(2, "0")}
@@ -1158,17 +1161,17 @@ function Login() {
             }
           }}
           disabled={isSendingEmail || emailVerified}
-          className={`flex-1 py-3 rounded-xl font-display font-bold text-sm transition-all ${
+          className={`flex-1 inline-flex items-center justify-center py-3 rounded-lg text-sm font-semibold transition-colors ${
             isSendingEmail
-              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              ? "bg-slate-200 text-slate-500 cursor-not-allowed"
               : emailVerified
-              ? "bg-green-600 text-white"
-              : "bg-[#11402D] text-white hover:bg-[#0E2A1C]"
+              ? "bg-emerald-600 text-white"
+              : "btn-primary text-white"
           }`}
         >
           {isSendingEmail ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline mr-2" />
+              <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin mr-2" />
               Sending...
             </>
           ) : !emailCodeSent ? (
@@ -1185,7 +1188,7 @@ function Login() {
             type="button"
             disabled={resendEmailDisabled || isSendingEmail}
             onClick={sendEmailCode}
-            className="py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-display font-bold text-sm hover:bg-slate-50 transition-all disabled:opacity-50"
+            className="btn-secondary py-3 px-4 rounded-lg border border-slate-300 text-slate-600 text-sm font-semibold disabled:opacity-50"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -1197,11 +1200,11 @@ function Login() {
           type="button"
           onClick={completeSignup}
           disabled={isSigningUp}
-          className="w-full py-3 rounded-xl bg-green-600 text-white font-display font-bold text-sm hover:bg-green-700 transition-all disabled:opacity-70"
+          className="w-full inline-flex items-center justify-center py-3 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-70"
         >
           {isSigningUp ? (
             <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline mr-2" />
+              <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin mr-2" />
               Creating...
             </>
           ) : (
@@ -1214,7 +1217,7 @@ function Login() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-center justify-center px-4 py-8 relative"
+      className="min-h-screen bg-gradient-to-br from-green-50 via-white to-emerald-50 flex items-start sm:items-center justify-center px-4 py-8 overflow-y-auto relative"
       style={{ fontFamily: "'Inter', sans-serif" }}
     >
       <style>
@@ -1226,7 +1229,10 @@ function Login() {
 
           .hide-scrollbar::-webkit-scrollbar { display: none; }
           .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          .signup-scroll { max-height: 90vh; overflow-y: auto; scroll-behavior: smooth; }
+          /* Was capped at max-height:90vh with a hidden scrollbar, which silently
+             clipped content on shorter screens. Now it just grows naturally and
+             the page itself scrolls (see the min-h-screen wrapper below). */
+          .signup-scroll { scroll-behavior: smooth; }
 
           /* ── Toastify styling ── */
           .Toastify__toast {
@@ -1281,7 +1287,7 @@ function Login() {
           .left-panel-inner {
             position: relative;
             z-index: 2;
-            padding: 2.5rem 2rem 2rem 2rem;
+            padding: 2rem 1.75rem 1.75rem 1.75rem;
             backdrop-filter: blur(2px);
             height: 100%;
             display: flex;
@@ -1369,33 +1375,95 @@ function Login() {
             box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);
           }
 
-          /* Input fields */
+          /* Form fields — professional, understated */
           .input-field {
-            transition: all 0.2s ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+          }
+          .input-field:hover {
+            border-color: #CBD5E1;
           }
           .input-field:focus-within {
             border-color: #11402D;
-            box-shadow: 0 0 0 4px rgba(17, 64, 45, 0.1);
+            box-shadow: 0 0 0 3px rgba(17, 64, 45, 0.08);
+          }
+          .input-field:focus-within:hover {
+            border-color: #11402D;
           }
 
+          /* Custom select arrow so dropdowns match the rest of the form
+             instead of falling back to the OS-default arrow. */
+          .right-panel select {
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2394A3B8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.125rem center;
+            background-size: 1rem;
+            padding-right: 1.5rem;
+          }
+          .right-panel select::-ms-expand { display: none; }
+
           .btn-primary {
-            background: linear-gradient(135deg, #0E2A1C, #11402D);
-            transition: all 0.3s ease;
+            background: #11402D;
+            transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
           }
-          .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 30px -8px rgba(17, 64, 45, 0.4);
+          .btn-primary:hover:not(:disabled) {
+            background: #0E2A1C;
+            box-shadow: 0 4px 14px -4px rgba(17, 64, 45, 0.35);
           }
-          .btn-primary:active {
-            transform: translateY(0px);
+          .btn-primary:active:not(:disabled) {
+            background: #0A2115;
+            transform: scale(0.99);
+          }
+          .btn-primary:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+          }
+          .btn-primary:focus-visible,
+          .btn-secondary:focus-visible,
+          .btn-role:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(17, 64, 45, 0.25);
+          }
+
+          .btn-secondary {
+            transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+          }
+          .btn-secondary:hover {
+            border-color: #CBD5E1;
+            background: #F8FAFC;
+          }
+          .btn-secondary:active {
+            transform: scale(0.99);
           }
 
           .btn-role {
-            transition: all 0.2s ease;
+            transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
           }
           .btn-role:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px -6px rgba(17, 64, 45, 0.15);
+            border-color: #11402D;
+            background: rgba(17, 64, 45, 0.04);
+          }
+          .btn-role:active {
+            transform: scale(0.99);
+          }
+
+          .chip-option {
+            transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
+          }
+          .chip-option:hover {
+            border-color: #CBD5E1;
+          }
+          .chip-option:active {
+            transform: scale(0.98);
+          }
+
+          .otp-box {
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+          }
+          .otp-box:focus {
+            border-color: #11402D;
+            box-shadow: 0 0 0 3px rgba(17, 64, 45, 0.1);
           }
         `}
       </style>
@@ -1413,7 +1481,7 @@ function Login() {
         theme="colored"
       />
 
-      <div className="w-full max-w-6xl grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100/50 right-panel">
+      <div className="w-full max-w-5xl grid lg:grid-cols-2 bg-white rounded-3xl shadow-2xl overflow-hidden border border-green-100/50 right-panel">
         {/* ─── Left Panel (World‑class design) ─────────────────────── */}
         <div className="hidden lg:flex left-panel">
           <div className="left-panel-inner">
@@ -1429,11 +1497,11 @@ function Login() {
                 <span className="font-display font-semibold text-lg text-white">ReVive Energy</span>
                 <Sparkles className="w-4 h-4 text-[#9CF06B] animate-pulse" />
               </div>
-              <div className="mt-12 relative z-10">
+              <div className="mt-8 relative z-10">
                 <p className="font-mono-cw text-sm uppercase tracking-[0.25em] text-[#9CF06B]">
                   {showSignup ? `Join as ${currentRole.label}` : "Welcome Back"}
                 </p>
-                <h1 className="font-display mt-4 text-4xl font-bold leading-tight text-white">
+                <h1 className="font-display mt-3 text-3xl font-bold leading-tight text-white">
                   {showSignup ? "Create Your Account." : "Transform Waste."}
                   <br />
                   <span className="text-[#9CF06B]">
@@ -1449,7 +1517,7 @@ function Login() {
             </div>
 
             {/* Stats grid – glassmorphic */}
-            <div className="grid grid-cols-2 gap-4 mt-8 relative z-10">
+            <div className="grid grid-cols-2 gap-3 mt-6 relative z-10">
               <div className="glass-stat rounded-2xl p-4 border border-white/20">
                 <p className="font-display text-2xl font-bold text-white">1,200+</p>
                 <p className="text-sm text-[#9CF06B]">Active Partners</p>
@@ -1469,7 +1537,7 @@ function Login() {
             </div>
 
             {/* Feature list – glassmorphic */}
-            <div className="mt-6 space-y-2.5 relative z-10">
+            <div className="mt-4 space-y-2 relative z-10">
               <div className="feature-item flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-white/90">
                 <Truck className="w-4 h-4 text-[#9CF06B]" />
                 <span>Free collection for qualified partners</span>
@@ -1491,7 +1559,7 @@ function Login() {
         </div>
 
         {/* ─── Right Panel ────────────────────────────────────── */}
-        <div className="p-6 sm:p-10 lg:p-14 flex items-center signup-scroll hide-scrollbar">
+        <div className="p-6 sm:p-8 lg:p-10 flex items-center signup-scroll">
           <div className="w-full max-w-md mx-auto">
             <div className="lg:hidden mb-6 text-center">
               <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0E2A1C] to-[#11402D] flex items-center justify-center text-white shadow-lg">
@@ -1505,17 +1573,17 @@ function Login() {
 
             {!showSignup ? (
               <>
-                <p className="font-mono-cw text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">Login</p>
-                <h2 className="font-display mt-2 text-3xl font-bold text-slate-900">Welcome back!</h2>
-                <p className="mt-2 text-slate-500 leading-6">Please enter your details to access your account.</p>
+                <p className="text-xs font-semibold tracking-[0.2em] text-[#11402D] uppercase">Login</p>
+                <h2 className="mt-2 text-2xl font-bold text-slate-900">Welcome back</h2>
+                <p className="mt-1.5 text-sm text-slate-500 leading-6">Please enter your details to access your account.</p>
 
                 <form onSubmit={handleLogin} autoComplete="off" className="mt-6 space-y-4">
                   <div>
-                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600 mb-1.5">
                       Email Address
                     </label>
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 input-field">
-                      <Mail className="w-5 h-5 text-slate-400" />
+                    <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+                      <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
                       <input
                         type="email"
                         name="email"
@@ -1524,17 +1592,26 @@ function Login() {
                         onChange={handleLoginChange}
                         required
                         autoComplete="off"
-                        className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                        className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="font-display block text-sm font-semibold text-slate-700 mb-1.5">
-                      Password
-                    </label>
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 input-field">
-                      <Lock className="w-5 h-5 text-slate-400" />
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        Password
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-xs font-semibold text-[#11402D] hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 input-field">
+                      <Lock className="w-4 h-4 text-slate-400 flex-shrink-0" />
                       <input
                         type={showPassword ? "text" : "password"}
                         name="password"
@@ -1543,29 +1620,20 @@ function Login() {
                         onChange={handleLoginChange}
                         required
                         autoComplete="new-password"
-                        className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400"
+                        className="w-full bg-transparent outline-none text-slate-700 placeholder:text-slate-400 text-sm"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                        className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0"
                       >
-                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                    <div className="mt-2 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setShowForgotPassword(true)}
-                        className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
-                      >
-                        Forgot password?
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
 
                   {loginError && (
-                    <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 flex items-center gap-2">
+                    <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 flex-shrink-0" />
                       {loginError}
                     </div>
@@ -1574,11 +1642,11 @@ function Login() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full inline-flex items-center justify-center gap-2 rounded-2xl btn-primary px-5 py-3.5 font-display font-semibold text-white shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-lg btn-primary px-5 py-3 text-sm font-semibold text-white"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
                         Verifying...
                       </>
                     ) : (
@@ -1590,28 +1658,34 @@ function Login() {
                   </button>
                 </form>
 
-                <div className="mt-6 space-y-3">
-                  <p className="font-display text-sm text-slate-600 text-center">Don't have an account?</p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 flex-wrap">
+                <div className="mt-7">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="h-px flex-1 bg-slate-200" />
+                    <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                      Don't have an account?
+                    </p>
+                    <div className="h-px flex-1 bg-slate-200" />
+                  </div>
+                  <div className="grid gap-2.5">
                     <button
                       onClick={() => openSignup("waste-supplier")}
-                      className="btn-role inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D] hover:bg-[#11402D]/5"
+                      className="btn-role flex items-center gap-3 text-sm font-medium text-slate-700 px-4 py-3 rounded-lg border border-slate-200"
                     >
-                      <Landmark className="w-4 h-4 text-[#11402D]" />
+                      <Landmark className="w-4 h-4 text-[#11402D] flex-shrink-0" />
                       Join as Waste Supplier
                     </button>
                     <button
                       onClick={() => openSignup("energy-producer")}
-                      className="btn-role inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D] hover:bg-[#11402D]/5"
+                      className="btn-role flex items-center gap-3 text-sm font-medium text-slate-700 px-4 py-3 rounded-lg border border-slate-200"
                     >
-                      <Zap className="w-4 h-4 text-[#11402D]" />
+                      <Zap className="w-4 h-4 text-[#11402D] flex-shrink-0" />
                       Join as Energy Producer
                     </button>
                     <button
                       onClick={() => openSignup("transport-partner")}
-                      className="btn-role inline-flex items-center gap-2 text-sm font-medium text-[#11402D] hover:text-[#0E2A1C] transition-colors group px-4 py-2 rounded-xl border border-[#11402D]/20 hover:border-[#11402D] hover:bg-[#11402D]/5"
+                      className="btn-role flex items-center gap-3 text-sm font-medium text-slate-700 px-4 py-3 rounded-lg border border-slate-200"
                     >
-                      <Truck className="w-4 h-4 text-[#11402D]" />
+                      <Truck className="w-4 h-4 text-[#11402D] flex-shrink-0" />
                       Join as Transport Partner
                     </button>
                   </div>
@@ -1619,19 +1693,19 @@ function Login() {
               </>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-5">
                   <div>
-                    <p className="font-mono-cw text-sm font-semibold tracking-[0.2em] text-green-600 uppercase">
+                    <p className="text-xs font-semibold tracking-[0.2em] text-[#11402D] uppercase">
                       Step {step} of 5
                     </p>
-                    <h2 className="font-display text-2xl font-bold text-slate-900">
+                    <h2 className="text-xl font-bold text-slate-900 mt-1">
                       {step === 1 ? "Business Details" :
                        step === 2 ? "Specialization" :
                        step === 3 ? "Account Setup" :
                        step === 4 ? "Terms & Conditions" :
                        "Email Verification"}
                     </h2>
-                    <p className="text-slate-500 text-sm">
+                    <p className="text-slate-500 text-sm mt-0.5">
                       {step === 1 ? "Tell us about your business" :
                        step === 2 ? "Select your specialty" :
                        step === 3 ? "Create your credentials" :
@@ -1639,24 +1713,24 @@ function Login() {
                        "Verify your email address"}
                     </p>
                   </div>
-                  <button onClick={closeSignup} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-                    <X className="w-5 h-5 text-slate-500" />
+                  <button onClick={closeSignup} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors flex-shrink-0">
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="flex gap-2 mb-6">
+                <div className="flex gap-1.5 mb-6">
                   {[1,2,3,4,5].map((item) => (
                     <div
                       key={item}
-                      className={`h-1 rounded-full flex-1 transition-all ${
-                        item <= step ? "bg-[#11402D]" : "bg-gray-200"
+                      className={`h-1 rounded-full flex-1 transition-colors ${
+                        item <= step ? "bg-[#11402D]" : "bg-slate-200"
                       }`}
                     />
                   ))}
                 </div>
 
                 {signupError && (
-                  <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-600 flex items-center gap-2 mb-4">
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-600 flex items-center gap-2 mb-5">
                     <AlertCircle className="w-4 h-4 flex-shrink-0" />
                     {signupError}
                   </div>

@@ -375,12 +375,22 @@ class Conversation(db.Model):
             is_read=False
         ).count()
 
+        # created_at/created columns are naive UTC (datetime.utcnow()), so a
+        # bare isoformat() has no timezone marker and the frontend's
+        # `new Date(timestamp)` can misinterpret it as local time. Appending
+        # "Z" tells JS this is UTC, and it converts to the viewer's local
+        # time correctly when displayed.
+        if last_msg:
+            timestamp = last_msg.created_at.isoformat() + "Z" if last_msg.created_at else None
+        else:
+            timestamp = self.created_at.isoformat() + "Z" if self.created_at else None
+
         return {
             "id": self.id,
             "participant": participant_dict,
             "last_message": last_msg.message if last_msg else None,
             "unread_count": unread_count,
-            "timestamp": last_msg.created_at.isoformat() if last_msg else self.created_at.isoformat(),
+            "timestamp": timestamp,
         }
 
 
@@ -395,7 +405,19 @@ class Message(db.Model):
     receiver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     message = db.Column(db.Text, nullable=False)
+
+    # ─── Attachments (files, images, voice notes) ────────────
     attachment_url = db.Column(db.String(255), nullable=True)
+    attachment_name = db.Column(db.String(255), nullable=True)
+    attachment_type = db.Column(db.String(100), nullable=True)
+
+    # ─── Deletion ("delete for everyone" redacts, doesn't drop the row) ──
+    is_deleted = db.Column(db.Boolean, default=False, nullable=False)
+
+    # ─── Call logs (missed / completed / declined) ───────────
+    message_type = db.Column(db.String(20), default="text", nullable=False)  # 'text' | 'call'
+    call_type = db.Column(db.String(10), nullable=True)                      # 'audio' | 'video'
+    call_status = db.Column(db.String(20), nullable=True)                    # 'missed' | 'completed' | 'declined'
 
     is_read = db.Column(db.Boolean, default=False)
 
@@ -404,10 +426,19 @@ class Message(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "conversation_id": self.conversation_id,
             "sender_id": self.sender_id,
             "receiver_id": self.receiver_id,
             "message": self.message,
             "attachment_url": self.attachment_url,
+            "attachment_name": self.attachment_name,
+            "attachment_type": self.attachment_type,
+            "is_deleted": self.is_deleted,
+            "message_type": self.message_type,
+            "call_type": self.call_type,
+            "call_status": self.call_status,
             "is_read": self.is_read,
-            "created_at": self.created_at.isoformat(),
+            # See note in Conversation.to_dict(): "Z" marks this as UTC so
+            # the frontend converts to the viewer's local time correctly.
+            "created_at": (self.created_at.isoformat() + "Z") if self.created_at else None,
         }
