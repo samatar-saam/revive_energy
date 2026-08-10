@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_mail import Message
 from database import db
 from models import User, WasteListing, WasteRequest, TransportJob, Notification, Collection
 from utils.decorators import role_required
 import logging
+import threading
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -23,81 +25,53 @@ def supplier_dashboard():
         user_id = current_user_id()
         current_app.logger.info(f"📊 Supplier dashboard requested for user_id: {user_id}")
 
-        # ─── Listings Stats ──────────────────────────────────────
         total_listings = WasteListing.query.filter_by(supplier_id=user_id).count()
-        
         active_statuses = ["available", "requested", "assigned", "collected"]
         active_listings = WasteListing.query.filter(
             WasteListing.supplier_id == user_id,
             WasteListing.status.in_(active_statuses)
         ).count()
-        
         completed_listings = WasteListing.query.filter(
             WasteListing.supplier_id == user_id,
             WasteListing.status == "completed"
         ).count()
 
-        # ─── Collection Requests (WasteRequest) ─────────────────
         pending_requests = WasteRequest.query.join(WasteListing).filter(
             WasteListing.supplier_id == user_id,
             WasteRequest.status == "pending"
         ).count()
-        
         approved_requests = WasteRequest.query.join(WasteListing).filter(
             WasteListing.supplier_id == user_id,
             WasteRequest.status == "approved"
         ).count()
 
-        # ─── Transport Jobs (Collections) ────────────────────────
-        # All transport jobs for this supplier
         all_transport_jobs = TransportJob.query.filter_by(supplier_id=user_id).count()
-        
-        # Pending collections (open or accepted)
         pending_collections = TransportJob.query.filter(
             TransportJob.supplier_id == user_id,
             TransportJob.status.in_(["open", "accepted"])
         ).count()
-        
-        # In progress collections (picked_up, in_transit)
         in_progress_collections = TransportJob.query.filter(
             TransportJob.supplier_id == user_id,
             TransportJob.status.in_(["picked_up", "in_transit"])
         ).count()
-        
-        # Completed collections
         completed_collections = TransportJob.query.filter(
             TransportJob.supplier_id == user_id,
             TransportJob.status.in_(["delivered", "completed"])
         ).count()
 
-        # ─── Recent Data ──────────────────────────────────────────
         recent_listings = WasteListing.query.filter_by(
             supplier_id=user_id
-        ).order_by(
-            WasteListing.created_at.desc()
-        ).limit(5).all()
+        ).order_by(WasteListing.created_at.desc()).limit(5).all()
 
         upcoming_pickups = TransportJob.query.filter(
             TransportJob.supplier_id == user_id,
             TransportJob.status.in_(["open", "accepted", "picked_up", "in_transit"])
-        ).order_by(
-            TransportJob.created_at.asc()
-        ).limit(5).all()
+        ).order_by(TransportJob.created_at.asc()).limit(5).all()
 
         notifications = Notification.query.filter_by(
             user_id=user_id,
             is_read=False
-        ).order_by(
-            Notification.created_at.desc()
-        ).limit(5).all()
-
-        # ─── Logging ──────────────────────────────────────────────
-        current_app.logger.info(f"📋 Total listings: {total_listings}")
-        current_app.logger.info(f"📋 Active listings: {active_listings}")
-        current_app.logger.info(f"📩 Pending requests: {pending_requests}")
-        current_app.logger.info(f"🚚 All transport jobs: {all_transport_jobs}")
-        current_app.logger.info(f"🚚 Pending collections: {pending_collections}")
-        current_app.logger.info(f"🚚 Completed collections: {completed_collections}")
+        ).order_by(Notification.created_at.desc()).limit(5).all()
 
         return jsonify({
             "stats": {
@@ -161,9 +135,7 @@ def create_listing():
         user_id = current_user_id()
         data = request.get_json() or {}
 
-        # ─── Required fields ──────────────────────────────────
         required_fields = ["waste_type", "quantity", "location"]
-
         for field in required_fields:
             if not data.get(field):
                 return jsonify({"message": f"Missing required field: {field}"}), 400
@@ -179,7 +151,6 @@ def create_listing():
             description=data.get("description"),
             image_url=data.get("image_url"),
             status="available",
-            # ─── Auto-pricing will be set by the platform ──
             price_per_unit=0.0,
             transport_rate_per_unit=0.0,
             waste_value=0.0,
@@ -191,8 +162,135 @@ def create_listing():
         db.session.add(listing)
         db.session.commit()
 
+        # ─── Send email notifications to all producers ──────
+        app = current_app._get_current_object()
+
+        def send_emails():
+            with app.app_context():
+                try:
+                    mail = app.extensions.get('mail')
+                    if not mail:
+                        app.logger.error("❌ Mail extension not found in app.extensions!")
+                        return
+
+                    producers = User.query.filter_by(
+                        role='producer',
+                        account_status='verified'
+                    ).all()
+                    app.logger.info(f"📧 Found {len(producers)} active producers.")
+
+                    if not producers:
+                        app.logger.info("No producers to notify.")
+                        return
+
+                    marketplace_url = "http://localhost:5173/dashboard/marketplace"
+                    subject = f"New Waste Available: {listing.waste_type}"
+
+                    # ─── HTML email content (professional template) ───
+                    html_content = f"""
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>New Waste Listing</title>
+                    </head>
+                    <body style="font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0;">
+                        <table width="100%" cellpadding="0" cellspacing="0" style="background: #f8fafc; padding: 20px;">
+                            <tr>
+                                <td align="center">
+                                    <table width="600" cellpadding="0" cellspacing="0" style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <!-- Header -->
+                                        <tr>
+                                            <td style="background: #11402D; padding: 30px; text-align: center; border-radius: 12px 12px 0 0;">
+                                                <h1 style="color: white; margin: 0; font-size: 28px;">♻️ ReVive Energy</h1>
+                                                <p style="color: #a7f3d0; margin: 5px 0;">Waste‑to‑Energy Marketplace</p>
+                                            </td>
+                                        </tr>
+                                        <!-- Content -->
+                                        <tr>
+                                            <td style="padding: 30px;">
+                                                <h2 style="color: #11402D; margin-top: 0;">New Waste Listing Available</h2>
+                                                <p style="color: #4b5563;">A supplier has posted a new waste listing that may interest you:</p>
+                                                <ul style="color: #4b5563; font-size: 15px; line-height: 1.8;">
+                                                    <li><strong>Type:</strong> {listing.waste_type}</li>
+                                                    <li><strong>Quantity:</strong> {listing.quantity} {listing.unit}</li>
+                                                    <li><strong>Location:</strong> {listing.location}</li>
+                                                    <li><strong>Pickup Address:</strong> {listing.pickup_address or "Not specified"}</li>
+                                                    <li><strong>Description:</strong> {listing.description or "No description provided"}</li>
+                                                </ul>
+                                                <div style="text-align: center; margin: 30px 0;">
+                                                    <a href="{marketplace_url}" style="background: #11402D; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View in Marketplace</a>
+                                                </div>
+                                                <p style="color: #6b7280; font-size: 14px;">Don't miss out – request this waste before it's gone!</p>
+                                            </td>
+                                        </tr>
+                                        <!-- Footer -->
+                                        <tr>
+                                            <td style="padding: 20px; text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb;">
+                                                <p>&copy; 2026 ReVive Energy. All rights reserved.</p>
+                                                <p style="font-size: 11px; color: #d1d5db;">You received this because you are a registered producer.</p>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </body>
+                    </html>
+                    """
+
+                    # ─── Plain‑text version ──────────────────────────
+                    plain_text = f"""
+                    ReVive Energy – New Waste Listing
+
+                    A supplier has posted a new waste listing:
+
+                    Type: {listing.waste_type}
+                    Quantity: {listing.quantity} {listing.unit}
+                    Location: {listing.location}
+                    Pickup Address: {listing.pickup_address or "Not specified"}
+                    Description: {listing.description or "No description provided"}
+
+                    View it here: {marketplace_url}
+
+                    © 2026 ReVive Energy
+                    """
+
+                    # ─── Build and send message ─────────────────────
+                    for producer in producers:
+                        if not producer.email:
+                            app.logger.warning(f"Producer {producer.id} has no email, skipping.")
+                            continue
+
+                        msg = Message(
+                            subject=subject,
+                            recipients=[producer.email],
+                            html=html_content,
+                            body=plain_text,
+                            sender=('ReVive Energy', app.config.get('MAIL_DEFAULT_SENDER')),
+                            reply_to=app.config.get('MAIL_DEFAULT_SENDER'),
+                            extra_headers={
+                                'List-Unsubscribe': f'<mailto:{app.config.get("MAIL_DEFAULT_SENDER")}?subject=unsubscribe>',
+                                'X-Mailer': 'ReVive Energy Platform',
+                                'X-Priority': '3 (Normal)',
+                                'X-MSMail-Priority': 'Normal',
+                                'Importance': 'Normal',
+                                'X-Auto-Response-Suppress': 'OOF, DR, RN, NRN, AutoReply',
+                                'X-Report-Abuse': f'Please report abuse to {app.config.get("MAIL_DEFAULT_SENDER")}'
+                            }
+                        )
+                        mail.send(msg)
+                        app.logger.info(f"✅ Email sent to {producer.email}")
+
+                except Exception as e:
+                    app.logger.error(f"❌ Email sending error: {e}", exc_info=True)
+
+        thread = threading.Thread(target=send_emails)
+        thread.start()
+
         return jsonify({
-            "message": "Listing created successfully",
+            "message": "Listing created successfully. Producers will be notified via email.",
             "id": listing.id,
             "listing": {
                 "id": listing.id,
@@ -215,7 +313,6 @@ def create_listing():
 @role_required("supplier")
 def get_listings():
     user_id = current_user_id()
-
     listings = WasteListing.query.filter_by(
         supplier_id=user_id
     ).order_by(WasteListing.created_at.desc()).all()
@@ -243,7 +340,6 @@ def get_listings():
 @role_required("supplier")
 def update_listing(listing_id):
     user_id = current_user_id()
-
     listing = WasteListing.query.get_or_404(listing_id)
 
     if int(listing.supplier_id) != user_id:
@@ -288,7 +384,6 @@ def update_listing(listing_id):
 @role_required("supplier")
 def delete_listing(listing_id):
     user_id = current_user_id()
-
     listing = WasteListing.query.get_or_404(listing_id)
 
     if int(listing.supplier_id) != user_id:
@@ -308,7 +403,6 @@ def delete_listing(listing_id):
 @role_required("supplier")
 def get_requests():
     user_id = current_user_id()
-
     requests = WasteRequest.query.join(WasteListing).filter(
         WasteListing.supplier_id == user_id
     ).order_by(WasteRequest.created_at.desc()).all()
@@ -334,7 +428,6 @@ def get_requests():
 @role_required("supplier")
 def approve_request(request_id):
     user_id = current_user_id()
-
     waste_request = WasteRequest.query.get_or_404(request_id)
     listing = WasteListing.query.get_or_404(waste_request.listing_id)
 
@@ -377,7 +470,6 @@ def approve_request(request_id):
 @role_required("supplier")
 def reject_request(request_id):
     user_id = current_user_id()
-
     waste_request = WasteRequest.query.get_or_404(request_id)
     listing = WasteListing.query.get_or_404(waste_request.listing_id)
 
@@ -417,7 +509,6 @@ def reject_request(request_id):
 @role_required("supplier")
 def get_supplier_collections():
     user_id = current_user_id()
-
     jobs = TransportJob.query.filter_by(
         supplier_id=user_id
     ).order_by(TransportJob.created_at.desc()).all()
@@ -425,8 +516,6 @@ def get_supplier_collections():
     result = []
     for job in jobs:
         transporter = job.transporter if job.transporter_id else None
-
-        # ─── Extract transporter details ──────────────────────────
         transporter_name = transporter.full_name if transporter else None
         transporter_phone = transporter.phone if transporter else None
         vehicle_type = transporter.vehicle_types if transporter else None
@@ -453,7 +542,6 @@ def get_supplier_collections():
     return jsonify(result), 200
 
 
-# ─── NEW: Approve Pickup for Transport Job ──────────────────────
 @supplier_bp.route('/supplier/transport-jobs/<int:job_id>/approve-pickup', methods=['PATCH'])
 @jwt_required()
 @role_required('supplier')
@@ -471,7 +559,6 @@ def approve_pickup(job_id):
         job.status = 'approved_for_pickup'
         db.session.commit()
 
-        # Notify transporter that pickup is approved
         if job.transporter_id:
             notification = Notification(
                 user_id=job.transporter_id,

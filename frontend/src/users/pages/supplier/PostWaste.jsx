@@ -238,7 +238,8 @@ export default function PostWaste() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Failed to create waste listing.");
 
-      setSuccess("✅ Waste listing created successfully! Redirecting...");
+      // ✅ UPDATED: success message confirms email notifications
+      setSuccess("✅ Waste listing created successfully! All producers have been notified by email.");
       setTimeout(() => navigate("/dashboard/listings"), 1500);
     } catch (err) {
       setError(err.message || "Something went wrong.");
@@ -552,6 +553,15 @@ export default function PostWaste() {
 
           {step === 3 && (
             <div className="space-y-5">
+              {/* ─── NEW INFO BOX ───────────────────────────── */}
+              <div className="rounded-xl bg-blue-50 p-4 text-sm text-blue-800">
+                <p className="font-medium">📧 Producer Notifications</p>
+                <p className="mt-1 text-xs leading-relaxed">
+                  Once you post this listing, all registered <strong>energy producers</strong> will receive an email notification with the details.
+                  They can then request your waste directly from the marketplace.
+                </p>
+              </div>
+
               {/* Description */}
               <Field label="Description">
                 <textarea

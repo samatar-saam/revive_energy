@@ -693,3 +693,26 @@ def get_receipt(payment_id):
         "payment": payment_to_dict(payment),
         "receipt": receipt.to_dict(),
     }), 200
+
+
+# ─── PUBLIC RECEIPT LOOKUP (for QR code scans) ──────────────────
+# Deliberately has NO @jwt_required() — a QR code scanned by a phone
+# camera has no login session, so this has to work unauthenticated.
+# Safe to expose because receipt_number isn't a guessable sequential ID
+# (it's "REV-<timestamp>-<uuid hex>"), so only someone who actually
+# scanned (or was given) this specific receipt's QR code can reach it —
+# the same trust model M-Pesa/Uber/etc. receipt links use.
+@payments_bp.route("/receipt/public/<receipt_number>", methods=["GET"])
+def get_receipt_public(receipt_number):
+    receipt = Receipt.query.filter_by(receipt_number=receipt_number).first()
+    if not receipt:
+        return jsonify({"message": "Receipt not found"}), 404
+
+    payment = db.session.get(Payment, receipt.payment_id)
+    if not payment:
+        return jsonify({"message": "Payment not found"}), 404
+
+    return jsonify({
+        "payment": payment_to_dict(payment),
+        "receipt": receipt.to_dict(),
+    }), 200

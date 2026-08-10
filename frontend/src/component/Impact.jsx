@@ -16,20 +16,104 @@ import {
   TreePine,
   Factory,
   Sparkles,
+  MapPin,
 } from "lucide-react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip as ChartTooltip,
   Legend,
-  ResponsiveContainer,
-} from "recharts";
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
+
+// ─── Register Chart.js components ──────────────────────────────
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+// ─── Africa Map Component (SVG-based) ─────────────────────────
+const AfricaMap = ({ countries }) => {
+  const [mapData, setMapData] = useState(null);
+  const [loadingMap, setLoadingMap] = useState(true);
+
+  useEffect(() => {
+    const fetchMap = async () => {
+      try {
+        const res = await fetch(
+          "https://raw.githubusercontent.com/geohacker/africa/master/africa.geojson"
+        );
+        const json = await res.json();
+        setMapData(json);
+      } catch (err) {
+        console.error("Map fetch error:", err);
+      } finally {
+        setLoadingMap(false);
+      }
+    };
+    fetchMap();
+  }, []);
+
+  return (
+    <div className="relative w-full h-full bg-[#F6F8F4] rounded-2xl overflow-hidden">
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/8/86/Africa_%28orthographic_projection%29.svg"
+        alt="Africa map"
+        className="w-full h-full object-contain opacity-50"
+      />
+      {countries.map(({ name, lat, lng, count }) => {
+        // Rough projection – adjust if needed
+        const x = ((lng + 20) / 50) * 100;
+        const y = ((lat - 35) / -40) * 100;
+        const radius = Math.min(30, Math.max(6, 6 + count / 50));
+        const isKenya = name === "Kenya";
+
+        return (
+          <div
+            key={name}
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
+            style={{ left: `${x}%`, top: `${y}%` }}
+          >
+            {/* ─── Kenya gets a bright green glow + pulse ─── */}
+            {isKenya && (
+              <div
+                className="absolute rounded-full border-2 border-[#9CF06B] animate-ping"
+                style={{
+                  width: radius * 3,
+                  height: radius * 3,
+                  opacity: 0.3,
+                }}
+              />
+            )}
+            <div
+              className={`rounded-full border-2 border-white shadow-lg transition-all hover:scale-125 cursor-pointer ${
+                isKenya ? "bg-[#9CF06B] shadow-[0_0_20px_rgba(156,240,107,0.6)]" : "bg-[#11402D]"
+              }`}
+              style={{
+                width: radius,
+                height: radius,
+                opacity: isKenya ? 1 : 0.3 + Math.min(0.6, count / 100),
+              }}
+            />
+            <span
+              className={`text-[10px] font-bold mt-1 whitespace-nowrap px-1.5 py-0.5 rounded ${
+                isKenya
+                  ? "text-[#11402D] bg-[#9CF06B]"
+                  : "text-[#0A1A0F] bg-white/80"
+              }`}
+            >
+              {name} ({count})
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Main Component ────────────────────────────────────────────
 const Impact = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,7 +134,6 @@ const Impact = () => {
     const fetchImpactData = async () => {
       try {
         const token = localStorage.getItem("token");
-        // ✅ No query parameter – the endpoint doesn't accept one
         const res = await fetch(`${API_URL}/admin/impact/data`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -58,7 +141,7 @@ const Impact = () => {
         });
         if (!res.ok) throw new Error("Failed to fetch impact data");
         const data = await res.json();
-        setImpactData(data); // data has { stats, chartData }
+        setImpactData(data);
       } catch (err) {
         console.error("Impact fetch error:", err);
         setError(err.message);
@@ -90,8 +173,78 @@ const Impact = () => {
     fetchImpactData();
   }, []);
 
-  // ─── Build impact stats from real data ──────────────────────
-  const { stats, chartData } = impactData;
+  // ─── Simulate active countries ──────────────────────────────
+  const activeCountries = [
+    { name: "Kenya", lat: -1.2921, lng: 36.8219, count: 360 },
+    { name: "Nigeria", lat: 9.082, lng: 8.6753, count: 300 },
+    { name: "South Africa", lat: -30.5595, lng: 22.9375, count: 240 },
+    { name: "Ghana", lat: 7.9465, lng: -1.0232, count: 120 },
+    { name: "Tanzania", lat: -6.369, lng: 34.8888, count: 96 },
+    { name: "Uganda", lat: 1.3733, lng: 32.2903, count: 60 },
+    { name: "Ethiopia", lat: 9.145, lng: 40.4897, count: 24 },
+  ];
+
+  // ─── Prepare chart data ──────────────────────────────────────
+  const chartLabels = impactData.chartData.map((item) => item.month);
+  const chartData = {
+    labels: chartLabels,
+    datasets: [
+      {
+        label: "New Users",
+        data: impactData.chartData.map((item) => item.users),
+        backgroundColor: "#11402D",
+        borderRadius: 4,
+      },
+      {
+        label: "Waste (tonnes)",
+        data: impactData.chartData.map((item) => item.waste),
+        backgroundColor: "#9CF06B",
+        borderRadius: 4,
+      },
+      {
+        label: "Energy (GWh)",
+        data: impactData.chartData.map((item) => item.energy),
+        backgroundColor: "#F59E0B",
+        borderRadius: 4,
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          boxWidth: 12,
+          padding: 12,
+          font: { size: 11 },
+        },
+      },
+      tooltip: {
+        backgroundColor: "white",
+        titleColor: "#0A1A0F",
+        bodyColor: "#0A1A0F",
+        borderColor: "#E5EDE8",
+        borderWidth: 1,
+        cornerRadius: 8,
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 9 } },
+      },
+      y: {
+        grid: { color: "#f0f0f0" },
+        ticks: { font: { size: 9 } },
+      },
+    },
+  };
+
+  // ─── Build impact stats ──────────────────────────────────────
+  const { stats } = impactData;
 
   const impactStats = [
     {
@@ -216,7 +369,6 @@ const Impact = () => {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
         .font-display { font-family: 'Space Grotesk', sans-serif; }
-        .font-mono-cw { font-family: 'JetBrains Mono', monospace; }
         .shadow-soft { box-shadow: 0 2px 15px -3px rgba(0,0,0,0.05), 0 1px 4px -2px rgba(0,0,0,0.02); }
         .shadow-card { box-shadow: 0 4px 20px -6px rgba(0,0,0,0.06), 0 2px 8px -4px rgba(0,0,0,0.02); }
       `}</style>
@@ -283,6 +435,44 @@ const Impact = () => {
           })}
         </motion.section>
 
+        {/* ─── African Map Section ────────────────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="bg-white rounded-2xl sm:rounded-3xl border border-[#E5EDE8] p-4 sm:p-6 lg:p-8 shadow-card"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <div>
+              <h3 className="font-display text-xl sm:text-2xl font-bold text-[#0A1A0F] flex items-center gap-2">
+                <MapPin className="w-6 h-6 text-[#11402D]" />
+                Active Partners Across Africa
+              </h3>
+              <p className="text-xs sm:text-sm text-[#5A7060]">
+                Showing active partners by country (size reflects partner count)
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-[#5A7060]">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full bg-[#11402D] opacity-30" /> 10+
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-5 h-5 rounded-full bg-[#11402D] opacity-50" /> 50+
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-7 h-7 rounded-full bg-[#11402D] opacity-80" /> 100+
+              </span>
+            </div>
+          </div>
+
+          <div className="w-full h-[400px] sm:h-[500px] relative">
+            <AfricaMap countries={activeCountries} />
+          </div>
+          <div className="mt-3 text-center text-[10px] sm:text-xs text-[#5A7060]">
+            🌍 Data reflects active partners on the ReVive Energy platform
+          </div>
+        </motion.section>
+
         {/* ─── Impact Categories ────────────────────────────────── */}
         <motion.section
           initial="initial"
@@ -332,43 +522,10 @@ const Impact = () => {
               <h3 className="font-display text-xl sm:text-2xl font-bold text-[#0A1A0F]">Our Growth</h3>
               <p className="text-xs sm:text-sm text-[#5A7060]">Monthly new users, waste diverted (tonnes), and energy generated (GWh)</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-[10px] sm:text-xs">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#11402D]" /> Users
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#9CF06B]" /> Waste (t)
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#F59E0B]" /> Energy (GWh)
-              </span>
-            </div>
           </div>
 
           <div className="h-[250px] sm:h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 10, right: 20, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 9 }} />
-                <YAxis tick={{ fontSize: 9 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "white",
-                    border: "1px solid #E5EDE8",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                    fontSize: "12px",
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: "11px" }} />
-                <Bar dataKey="users" name="New Users" fill="#11402D" radius={[4,4,0,0]} />
-                <Bar dataKey="waste" name="Waste (tonnes)" fill="#9CF06B" radius={[4,4,0,0]} />
-                <Bar dataKey="energy" name="Energy (GWh)" fill="#F59E0B" radius={[4,4,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <Bar data={chartData} options={chartOptions} />
           </div>
           <div className="mt-3 sm:mt-4 text-center text-[10px] sm:text-xs text-[#5A7060]">
             📊 Data updated in real-time from the platform

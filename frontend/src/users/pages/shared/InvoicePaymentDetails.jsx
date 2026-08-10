@@ -261,7 +261,8 @@ export default function InvoicePaymentDetails() {
             </div>
           </div>
 
-          { /* QR Code */ }
+          { /* QR Code — encodes a public URL so scanning it opens the
+                receipt directly, without needing to log in */ }
           <div className="flex justify-center border-t border-gray-200 pt-2">
             {receipt?.qr_code_path ? (
               <img
@@ -271,7 +272,7 @@ export default function InvoicePaymentDetails() {
               />
             ) : (
               <QRCodeSVG
-                value={display.receiptNumber || `REV-${paymentId}`}
+                value={`${window.location.origin}/receipt/${display.receiptNumber}`}
                 size={80}
                 level="H"
                 includeMargin

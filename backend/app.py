@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
-from flask_mail import Mail
+from flask_mail import Mail, Message
 from config import Config
 from database import db
 from sqlalchemy import func
@@ -27,11 +27,11 @@ from models import (
     Invoice,
     Notification,
     Conversation,
-    Message,
+    Message as MessageModel,
     Wallet,
     WalletTransaction,
     WithdrawalRequest,
-    PartnershipApplication,  # ✅ Added new model
+    PartnershipApplication,
 )
 
 from routes.auth import auth_bp
@@ -45,16 +45,15 @@ from routes.invoices import invoices_bp
 from routes.messages import messages_bp
 from routes.admin import admin_bp
 from routes.wallet import wallet_bp
-from routes.contact import contact_bp          # ✅ Already imported
+from routes.contact import contact_bp
 from routes.tracking import tracking_bp
 from routes.disputes import disputes_bp
-
-# ─── NEW: Platform Wallet ──────────────────────────────────────
 from routes.platform_wallet import platform_wallet_bp
 
 from services.mpesa import MpesaService
 
 mpesa = MpesaService()
+
 
 def create_app():
     app = Flask(__name__)
@@ -65,8 +64,17 @@ def create_app():
     db.init_app(app)
     JWTManager(app)
 
+    # ─── Mail configuration ──────────────────────────────────────
+    app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+    app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+    app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() == 'true'
+    app.config['MAIL_USE_SSL'] = os.environ.get('MAIL_USE_SSL', 'False').lower() == 'true'
+    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+    app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+
     mail = Mail(app)
-    app.extensions["mail"] = mail
+    app.extensions["mail"] = mail  # ← CRITICAL: attach for blueprints
 
     # ─── Register Blueprints ──────────────────────────────────────
     app.register_blueprint(auth_bp, url_prefix="/api")
@@ -75,16 +83,15 @@ def create_app():
     app.register_blueprint(producer_bp, url_prefix="/api")
     app.register_blueprint(transporter_bp, url_prefix="/api")
     app.register_blueprint(notifications_bp, url_prefix="/api")
-    app.register_blueprint(payments_bp)               # already has /api/payments
+    app.register_blueprint(payments_bp)
     app.register_blueprint(invoices_bp, url_prefix="/api")
     app.register_blueprint(messages_bp, url_prefix="/api")
-    app.register_blueprint(admin_bp)                  # admin blueprint
+    app.register_blueprint(admin_bp)
     app.register_blueprint(wallet_bp)
-    app.register_blueprint(contact_bp)                # ✅ contact blueprint for partnerships
-    app.register_blueprint(tracking_bp)               # /api/tracking/...
-    app.register_blueprint(disputes_bp)               # /api/disputes
-    # ─── NEW: Platform Wallet ──────────────────────────────────
-    app.register_blueprint(platform_wallet_bp)        # /api/platform-wallet
+    app.register_blueprint(contact_bp)
+    app.register_blueprint(tracking_bp)
+    app.register_blueprint(disputes_bp)
+    app.register_blueprint(platform_wallet_bp)
 
     # ─── Helper: generate QR code ────────────────────────────────
     def generate_qr_code(payment):
@@ -483,7 +490,6 @@ def create_app():
             "user": user.to_dict(),
         }), 200
 
-    # ─── Change password endpoint ──────────────────────────────
     @app.route("/api/user/password", methods=["PUT"])
     @jwt_required()
     def change_password():
@@ -503,15 +509,31 @@ def create_app():
         if not user:
             return jsonify({"message": "User not found"}), 404
 
-        # Verify current password using the model's method
         if not user.check_password(current_password):
             return jsonify({"message": "Current password is incorrect"}), 401
 
-        # Update password using the model's method
         user.set_password(new_password)
         db.session.commit()
 
         return jsonify({"message": "Password updated successfully"}), 200
+
+    # ─── Test email endpoint ─────────────────────────────────────
+    @app.route("/api/test-email", methods=["POST"])
+    def test_email():
+        data = request.get_json() or {}
+        email = data.get("email", "samatar578@gmail.com")
+        subject = data.get("subject", "Test Email from ReVive")
+        body = data.get("body", "This is a test email to verify mail configuration.")
+
+        try:
+            msg = Message(subject=subject,
+                          recipients=[email],
+                          body=body,
+                          html=f"<p>{body}</p>")
+            mail.send(msg)
+            return jsonify({"message": f"Test email sent to {email}"}), 200
+        except Exception as e:
+            return jsonify({"message": f"Failed to send test email: {str(e)}"}), 500
 
     @app.route("/api/dashboard/test", methods=["GET"])
     def test_route():
@@ -542,4 +564,3 @@ if __name__ == "__main__":
     app = create_app()
     print("\n🚀 Server running on http://localhost:5000")
     app.run(debug=True, port=5000)
-    

@@ -6,10 +6,7 @@ import {
   MessageCircle,
   Send,
   Paperclip,
-  Smile,
   MoreVertical,
-  Phone,
-  Video,
   User,
   Package,
   Truck,
@@ -21,24 +18,17 @@ import {
   ChevronLeft,
   X,
   Trash2,
-  PhoneOff,
   Mic,
-  MicOff,
-  VideoOff,
   Info,
   Eraser,
   FileText,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Smile,
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import EmojiPicker from 'emoji-picker-react';   // <-- new library
 
-// ─── Emoji set (curated, like WhatsApp's quick bar) ────────────
-const EMOJI_LIST = [
-  '😀', '😂', '🥹', '😍', '😘', '😎', '🤔', '😴', '😭', '😡',
-  '👍', '👎', '🙏', '👏', '🙌', '💪', '🤝', '👋', '✌️', '🤞',
-  '❤️', '🔥', '🎉', '✅', '⚠️', '💚', '💯', '⭐', '📦', '🚚'
-];
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // ─── Helper functions ─────────────────────────────────────────
 const formatTime = (timestamp) => {
@@ -59,7 +49,6 @@ const formatDuration = (secs) => {
   return `${m}:${s}`;
 };
 
-// Groups messages under "Today" / "Yesterday" / a full date, like WhatsApp.
 const formatDateLabel = (timestamp) => {
   const date = new Date(timestamp);
   const today = new Date();
@@ -90,8 +79,6 @@ const getRoleColor = (role) => {
   }
 };
 
-// Messages a user hid "for me only" persist per-browser, since that's a
-// per-viewer preference rather than a shared record.
 const hiddenKey = (conversationId) => `hiddenMessages_${conversationId}`;
 
 export default function Messages() {
@@ -108,11 +95,7 @@ export default function Messages() {
   const [user, setUser] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  const conversationIdRef = useRef(null); // avoid duplicate mark-read calls
-
-  // ─── Emoji picker ───────────────────────────────────────────
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const emojiPickerRef = useRef(null);
+  const conversationIdRef = useRef(null);
 
   // ─── Attachments ────────────────────────────────────────────
   const [attachedFile, setAttachedFile] = useState(null);
@@ -128,7 +111,7 @@ export default function Messages() {
   const recordingTimerRef = useRef(null);
   const recordingCancelledRef = useRef(false);
 
-  // ─── Per-message action menu (delete) ──────────────────────
+  // ─── Per‑message action menu ──────────────────────────────
   const [openMenuId, setOpenMenuId] = useState(null);
   const [hiddenIds, setHiddenIds] = useState(new Set());
   const msgMenuRef = useRef(null);
@@ -137,23 +120,15 @@ export default function Messages() {
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const headerMenuRef = useRef(null);
 
-  // ─── Conversation-row "..." menu (delete chat) ──────────────
+  // ─── Conversation-row "..." menu ──────────────────────────
   const [openConvMenuId, setOpenConvMenuId] = useState(null);
   const convMenuRef = useRef(null);
 
-  // ─── Calls ───────────────────────────────────────────────────
-  // 'idle' | 'calling' | 'ongoing'
-  const [callState, setCallState] = useState('idle');
-  const [callType, setCallType] = useState(null); // 'audio' | 'video'
-  const [muted, setMuted] = useState(false);
-  const [cameraOff, setCameraOff] = useState(false);
-  const [callError, setCallError] = useState(null);
-  const [callDuration, setCallDuration] = useState(0);
-  const callTimerRef = useRef(null);
-  const ringTimeoutRef = useRef(null);
-  const localStreamRef = useRef(null);
-  const localVideoRef = useRef(null);
+  // ─── Emoji picker ──────────────────────────────────────────
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef(null);
 
+  // ─── Effects ────────────────────────────────────────────────
   useEffect(() => {
     const handleResize = () => setIsMobileView(window.innerWidth < 768);
     window.addEventListener('resize', handleResize);
@@ -167,12 +142,9 @@ export default function Messages() {
     }
   }, []);
 
-  // Close any open popover when clicking outside it
+  // Close any open popover when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
-        setShowEmojiPicker(false);
-      }
       if (msgMenuRef.current && !msgMenuRef.current.contains(e.target)) {
         setOpenMenuId(null);
       }
@@ -181,6 +153,10 @@ export default function Messages() {
       }
       if (convMenuRef.current && !convMenuRef.current.contains(e.target)) {
         setOpenConvMenuId(null);
+      }
+      // Close emoji picker if click outside
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -216,7 +192,7 @@ export default function Messages() {
 
   useEffect(() => { fetchConversations(); }, [fetchConversations]);
 
-  // ─── Mark messages as read when conversation is opened ─────
+  // ─── Mark messages as read ──────────────────────────────────
   const markConversationAsRead = useCallback(async (conversationId) => {
     if (!conversationId || conversationIdRef.current === conversationId) return;
     conversationIdRef.current = conversationId;
@@ -235,7 +211,7 @@ export default function Messages() {
     }
   }, []);
 
-  // ─── Fetch messages when active conversation changes ──────
+  // ─── Fetch messages ────────────────────────────────────────
   const fetchMessages = useCallback(async (conversationId) => {
     try {
       const token = localStorage.getItem('token');
@@ -269,30 +245,11 @@ export default function Messages() {
     fetchMessages(activeConversation.id);
   }, [activeConversation, markConversationAsRead, fetchMessages]);
 
-  // ─── Scroll to bottom on new messages ──────────────────────
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ─── Call duration ticker ───────────────────────────────────
-  useEffect(() => {
-    if (callState === 'ongoing') {
-      callTimerRef.current = setInterval(() => setCallDuration(d => d + 1), 1000);
-    } else {
-      clearInterval(callTimerRef.current);
-      setCallDuration(0);
-    }
-    return () => clearInterval(callTimerRef.current);
-  }, [callState]);
-
-  // Attach the real local media stream to the self-preview video element
-  useEffect(() => {
-    if (localVideoRef.current && localStreamRef.current) {
-      localVideoRef.current.srcObject = localStreamRef.current;
-    }
-  }, [callState, callType]);
-
-  // ─── Send message (text and/or attachment) ──────────────────
+  // ─── Send message ──────────────────────────────────────────
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if ((!newMessage.trim() && !attachedFile) || !activeConversation || sending) return;
@@ -307,8 +264,6 @@ export default function Messages() {
         formData.append('conversation_id', activeConversation.id);
         formData.append('message', newMessage.trim());
         formData.append('attachment', attachedFile);
-        // Leave Content-Type unset so the browser adds the correct
-        // multipart boundary automatically.
         response = await fetch(`${API_URL}/messages/send`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -336,7 +291,6 @@ export default function Messages() {
       setMessages(prev => [...prev, newMsg]);
       setNewMessage('');
       setAttachedFile(null);
-      setShowEmojiPicker(false);
       setConversations(prev =>
         prev.map(conv =>
           conv.id === activeConversation.id
@@ -352,12 +306,6 @@ export default function Messages() {
     }
   };
 
-  // ─── Emoji insert ────────────────────────────────────────────
-  const handleEmojiClick = (emoji) => {
-    setNewMessage(prev => prev + emoji);
-    inputRef.current?.focus();
-  };
-
   // ─── Attachment picking ──────────────────────────────────────
   const handleAttachClick = () => fileInputRef.current?.click();
 
@@ -368,12 +316,6 @@ export default function Messages() {
   };
 
   // ─── Voice notes ──────────────────────────────────────────────
-  // Records real microphone audio in the browser with the MediaRecorder
-  // API, then uploads it through the same multipart /messages/send path
-  // used for file attachments (field name "attachment", mime type
-  // audio/webm). No extra backend route is needed beyond accepting that
-  // upload — just render msg.attachment_type starting with "audio" as a
-  // playable clip, which the bubble below already does.
   const sendVoiceNote = async (file) => {
     if (!activeConversation) return;
     setSending(true);
@@ -454,13 +396,9 @@ export default function Messages() {
   useEffect(() => () => {
     clearInterval(recordingTimerRef.current);
     recordingStreamRef.current?.getTracks().forEach(t => t.stop());
-  }, []); // release the mic if the component unmounts mid-recording
+  }, []);
 
-  // ─── Delete a single message ─────────────────────────────────
-  // "Delete for me" hides it locally only. "Delete for everyone" calls the
-  // backend so both participants see "This message was deleted" — requires
-  // DELETE /messages/:id (body { scope: 'everyone' }) on the server, which
-  // should redact the message rather than hard-delete the row.
+  // ─── Delete a single message ──────────────────────────────
   const handleDeleteMessage = async (msg, scope) => {
     setOpenMenuId(null);
     if (scope === 'me') {
@@ -489,8 +427,7 @@ export default function Messages() {
     }
   };
 
-  // ─── Clear all messages in the open chat ─────────────────────
-  // Expects DELETE /messages/conversations/:id/messages on the server.
+  // ─── Clear chat ────────────────────────────────────────────
   const handleClearChat = async () => {
     if (!activeConversation) return;
     setShowHeaderMenu(false);
@@ -515,8 +452,7 @@ export default function Messages() {
     }
   };
 
-  // ─── Delete an entire chat/conversation ──────────────────────
-  // Expects DELETE /messages/conversations/:id on the server.
+  // ─── Delete an entire chat ──────────────────────────────────
   const handleDeleteChat = async (conversationId) => {
     setOpenConvMenuId(null);
     setShowHeaderMenu(false);
@@ -541,121 +477,6 @@ export default function Messages() {
       alert(err.message);
     }
   };
-
-  // ─── Calls ──────────────────────────────────────────────────
-  // Requests real microphone/camera permission and shows a live local
-  // preview, with mute and camera controls that genuinely enable/disable
-  // the media tracks. That covers everything a call button can do purely
-  // in the browser. Actually transmitting audio/video to the other person,
-  // and receiving a real "they answered" signal from their device, still
-  // needs a signaling channel (e.g. Socket.IO) plus an RTCPeerConnection
-  // on both ends, or a hosted provider like Twilio Video / Agora / Daily.
-  // Until that exists, every call here rings until it's either ended
-  // manually or times out — both cases are logged as a missed call, which
-  // is the honest behavior without a real "answer" event from the callee.
-  const RING_TIMEOUT_MS = 30000; // how long a call rings before it's "missed"
-
-  // Persists a call outcome as a message in the conversation, the same
-  // way WhatsApp shows "Missed voice call" / "Voice call · 2:15" inline
-  // in the thread. Requires POST /messages/conversations/:id/call-log
-  // on the backend (see below).
-  const logCallEvent = async (type, status, duration = 0) => {
-    if (!activeConversation) return;
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(
-        `${API_URL}/messages/conversations/${activeConversation.id}/call-log`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ call_type: type, call_status: status, duration })
-        }
-      );
-      if (!response.ok) throw new Error('Failed to log call');
-      const logMsg = await response.json();
-      setMessages(prev => [...prev, logMsg]);
-      setConversations(prev =>
-        prev.map(conv =>
-          conv.id === activeConversation.id
-            ? { ...conv, last_message: logMsg.message, timestamp: logMsg.created_at }
-            : conv
-        )
-      );
-    } catch (err) {
-      console.error('Call log error:', err);
-    }
-  };
-
-  const startCall = async (type) => {
-    setCallError(null);
-    setCallType(type);
-    setCallState('calling');
-    setMuted(false);
-    setCameraOff(false);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: type === 'video'
-      });
-      localStreamRef.current = stream;
-      // No one answers within RING_TIMEOUT_MS -> treat as a missed call,
-      // exactly like a real phone ringing out.
-      ringTimeoutRef.current = setTimeout(() => {
-        stopLocalStream();
-        setCallState('idle');
-        logCallEvent(type, 'missed');
-        setCallType(null);
-      }, RING_TIMEOUT_MS);
-    } catch (err) {
-      console.error('Media permission error:', err);
-      setCallError('Microphone/camera access was blocked. Allow permissions to place a call.');
-      setCallState('idle');
-    }
-  };
-
-  // Dev-only: lets you preview the "connected" call UI locally without
-  // real signaling. Not shown in production builds.
-  const devSimulateAnswer = () => {
-    clearTimeout(ringTimeoutRef.current);
-    setCallState('ongoing');
-  };
-
-  const stopLocalStream = () => {
-    localStreamRef.current?.getTracks().forEach(track => track.stop());
-    localStreamRef.current = null;
-  };
-
-  const endCall = () => {
-    clearTimeout(ringTimeoutRef.current);
-    // Ending the call while it was still ringing means nobody picked up —
-    // log it the same way a timeout would. Ending an ongoing call logs its
-    // duration instead, like a normal completed call.
-    if (callState === 'calling' && callType) {
-      logCallEvent(callType, 'missed');
-    } else if (callState === 'ongoing' && callType) {
-      logCallEvent(callType, 'completed', callDuration);
-    }
-    stopLocalStream();
-    setCallState('idle');
-    setCallType(null);
-    setCallError(null);
-  };
-
-  const toggleMute = () => {
-    const stream = localStreamRef.current;
-    if (!stream) return;
-    stream.getAudioTracks().forEach(t => { t.enabled = muted; });
-    setMuted(m => !m);
-  };
-
-  const toggleCamera = () => {
-    const stream = localStreamRef.current;
-    if (!stream) return;
-    stream.getVideoTracks().forEach(t => { t.enabled = cameraOff; });
-    setCameraOff(c => !c);
-  };
-
-  useEffect(() => () => { stopLocalStream(); clearTimeout(ringTimeoutRef.current); }, []); // release camera/mic on unmount
 
   // ─── Select conversation ────────────────────────────────────
   const handleSelectConversation = (conv) => {
@@ -876,20 +697,6 @@ export default function Messages() {
                 </div>
               </button>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => startCall('audio')}
-                  title="Voice call"
-                  className="p-2 rounded-xl hover:bg-gray-100 transition text-gray-500"
-                >
-                  <Phone className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => startCall('video')}
-                  title="Video call"
-                  className="p-2 rounded-xl hover:bg-gray-100 transition text-gray-500"
-                >
-                  <Video className="w-4 h-4" />
-                </button>
                 <div className="relative">
                   <button
                     onClick={() => setShowHeaderMenu(v => !v)}
@@ -945,32 +752,6 @@ export default function Messages() {
                       const showDateSeparator =
                         !prevMsg || formatDateLabel(prevMsg.created_at) !== formatDateLabel(msg.created_at);
                       const isVoiceNote = msg.attachment_type?.startsWith('audio');
-
-                      if (msg.message_type === 'call') {
-                        const missedForMe = msg.call_status === 'missed' && msg.receiver_id === user?.id;
-                        return (
-                          <div key={msg.id}>
-                            {showDateSeparator && (
-                              <div className="flex justify-center my-3">
-                                <span className="px-3 py-1 rounded-full bg-white border border-gray-100 shadow-sm text-[11px] font-medium text-gray-500">
-                                  {formatDateLabel(msg.created_at)}
-                                </span>
-                              </div>
-                            )}
-                            <div className="flex justify-center my-2">
-                              <div
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs ${
-                                  missedForMe ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'
-                                }`}
-                              >
-                                {msg.call_type === 'video' ? <Video className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
-                                <span>{msg.message}</span>
-                                <span className="text-gray-400">· {formatTime(msg.created_at)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
 
                       const menuButton = (
                         <div className="relative opacity-0 group-hover:opacity-100 transition">
@@ -1089,24 +870,6 @@ export default function Messages() {
 
                 {/* Input */}
                 <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 relative">
-                  {showEmojiPicker && (
-                    <div
-                      ref={emojiPickerRef}
-                      className="absolute bottom-full left-4 mb-2 w-72 bg-white rounded-2xl shadow-lg border border-gray-100 p-3 grid grid-cols-8 gap-1 z-20"
-                    >
-                      {EMOJI_LIST.map((emoji) => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          onClick={() => handleEmojiClick(emoji)}
-                          className="text-xl leading-none p-1 rounded-lg hover:bg-gray-100 transition"
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
                   {voiceError && (
                     <p className="text-xs text-red-500 mb-2 px-1">{voiceError}</p>
                   )}
@@ -1136,17 +899,38 @@ export default function Messages() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 py-2 border border-gray-200 focus-within:ring-2 focus-within:ring-green-500 transition">
-                      <button
-                        type="button"
-                        onClick={() => setShowEmojiPicker(v => !v)}
-                        className="text-gray-400 hover:text-gray-600 transition"
-                      >
-                        <Smile className="w-5 h-5" />
-                      </button>
+                      {/* Attachment button */}
                       <button type="button" onClick={handleAttachClick} className="text-gray-400 hover:text-gray-600 transition">
                         <Paperclip className="w-5 h-5" />
                       </button>
                       <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
+
+                      {/* Emoji picker */}
+                      <div className="relative" ref={emojiPickerRef}>
+                        <button
+                          type="button"
+                          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                          className="text-gray-400 hover:text-gray-600 transition p-1"
+                          aria-label="Pick an emoji"
+                        >
+                          <Smile className="w-5 h-5" />
+                        </button>
+                        {showEmojiPicker && (
+                          <div className="absolute bottom-full left-0 mb-2 z-50">
+                            <EmojiPicker
+                              onEmojiClick={(emojiObject) => {
+                                setNewMessage((prev) => prev + emojiObject.emoji);
+                                setShowEmojiPicker(false);
+                              }}
+                              skinTonesDisabled
+                              searchDisabled
+                              height={350}
+                              width={300}
+                            />
+                          </div>
+                        )}
+                      </div>
+
                       <input
                         ref={inputRef}
                         type="text"
@@ -1155,6 +939,7 @@ export default function Messages() {
                         placeholder="Type a message..."
                         className="flex-1 bg-transparent outline-none text-sm text-gray-700 placeholder-gray-400"
                       />
+
                       {!newMessage.trim() && !attachedFile ? (
                         <button
                           type="button"
@@ -1201,20 +986,6 @@ export default function Messages() {
                       {activeConversation.participant?.role || 'unknown'}
                     </span>
                   </div>
-                  <div className="flex gap-2 mb-6">
-                    <button
-                      onClick={() => startCall('audio')}
-                      className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition text-gray-600 text-xs"
-                    >
-                      <Phone className="w-4 h-4" /> Call
-                    </button>
-                    <button
-                      onClick={() => startCall('video')}
-                      className="flex-1 flex flex-col items-center gap-1 py-2 rounded-xl bg-gray-50 hover:bg-gray-100 transition text-gray-600 text-xs"
-                    >
-                      <Video className="w-4 h-4" /> Video
-                    </button>
-                  </div>
                   <div className="space-y-1 border-t border-gray-100 pt-4">
                     <button
                       onClick={handleClearChat}
@@ -1233,73 +1004,6 @@ export default function Messages() {
               )}
             </div>
           </>
-        )}
-
-        {/* ─── Call overlay ──────────────────────────────────── */}
-        {callState !== 'idle' && activeConversation && (
-          <div className="absolute inset-0 z-30 rounded-3xl bg-[#0E2A1C] text-white flex flex-col items-center justify-between p-8">
-            <div className="w-full flex justify-between items-center">
-              <span className="text-xs uppercase tracking-wide text-white/50">
-                {callType === 'video' ? 'Video call' : 'Voice call'}
-              </span>
-              {callState === 'ongoing' && (
-                <span className="text-xs text-white/70">{formatDuration(callDuration)}</span>
-              )}
-            </div>
-
-            {callType === 'video' && callState === 'ongoing' && !cameraOff ? (
-              <video
-                ref={localVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className="absolute inset-8 top-16 bottom-28 w-[calc(100%-4rem)] h-auto rounded-2xl object-cover bg-black/40"
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center text-3xl font-semibold">
-                  {activeConversation.participant?.name?.charAt(0)?.toUpperCase() || 'U'}
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-medium">{activeConversation.participant?.name || 'Unknown'}</p>
-                  <p className="text-sm text-white/60 mt-1">
-                    {callState === 'calling' ? 'Ringing…' : 'Connected'}
-                  </p>
-                  {callError && <p className="text-xs text-red-300 mt-2 max-w-xs">{callError}</p>}
-                  {callState === 'calling' && import.meta.env.DEV && (
-                    <button
-                      onClick={devSimulateAnswer}
-                      className="mt-3 text-xs px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition text-white/70"
-                    >
-                      Simulate answer (dev only)
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center gap-4">
-              <button
-                onClick={toggleMute}
-                className={`p-3 rounded-full transition ${muted ? 'bg-white text-[#0E2A1C]' : 'bg-white/10 hover:bg-white/20'}`}
-                title={muted ? 'Unmute' : 'Mute'}
-              >
-                {muted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-              </button>
-              {callType === 'video' && (
-                <button
-                  onClick={toggleCamera}
-                  className={`p-3 rounded-full transition ${cameraOff ? 'bg-white text-[#0E2A1C]' : 'bg-white/10 hover:bg-white/20'}`}
-                  title={cameraOff ? 'Turn camera on' : 'Turn camera off'}
-                >
-                  {cameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-                </button>
-              )}
-              <button onClick={endCall} className="p-3 rounded-full bg-red-600 hover:bg-red-700 transition" title="End call">
-                <PhoneOff className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </div>
