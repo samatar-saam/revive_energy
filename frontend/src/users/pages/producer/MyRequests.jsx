@@ -164,7 +164,7 @@ export default function MyRequests() {
   const isPaid = (req) => req.payment_status === "paid";
   const canPay = (req) => req.status === "approved" && req.payment_status !== "paid";
 
-  // ─── Amounts (fixed) ──────────────────────────────────────────
+  // ─── Amounts ──────────────────────────────────────────────────
   const getAmounts = (req) => {
     const wasteAmount = req.waste_value || 10;
     const transportFee = req.transport_fee || 10;
@@ -199,6 +199,29 @@ export default function MyRequests() {
       }
     }
     return false; // timeout
+  };
+
+  // ─── NEW: Mark request as sold (calls backend after payment) ──
+  const markRequestSold = async (requestId) => {
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_URL}/producer/requests/${requestId}/mark-sold`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to mark as sold");
+      }
+      const data = await res.json();
+      console.log("✅ Mark sold response:", data);
+      return data;
+    } catch (err) {
+      console.error("❌ Error marking sold:", err);
+      toast.error("Could not notify other producers, but your payment was successful.");
+    }
   };
 
   // ─── HANDLE PAYMENT ──────────────────────────────────────────
@@ -265,6 +288,8 @@ export default function MyRequests() {
           const paid = await pollPaymentStatus(data.payment_id);
           if (paid) {
             toast.success("✅ Payment confirmed! Request is now paid.");
+            // ─── AFTER PAYMENT: mark listing as sold ──────
+            await markRequestSold(selectedRequest.id);
           } else {
             toast.warning("Payment is taking longer than expected. Please check your request status later.");
           }

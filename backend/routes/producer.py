@@ -40,10 +40,6 @@ def iso(dt):
 
 # ─── helper to fetch a setting from the database ──────────
 def get_setting(key, default=10.0):
-    """
-    Fetch a setting value from AdminSetting and convert to float.
-    If the setting doesn't exist, returns the default.
-    """
     setting = AdminSetting.query.filter_by(key=key).first()
     if setting and setting.value is not None:
         try:
@@ -54,11 +50,6 @@ def get_setting(key, default=10.0):
 
 
 def calculate_amounts(listing=None):
-    """
-    Return pricing amounts read from admin settings.
-    Keys: waste_price, platform_fee, transport_fee.
-    Default: 10.00 each.
-    """
     waste_value = get_setting('waste_price', 10.00)
     platform_fee = get_setting('platform_fee', 10.00)
     transport_fee = get_setting('transport_fee', 10.00)
@@ -75,10 +66,8 @@ def calculate_amounts(listing=None):
 
 
 def listing_to_dict(listing, include_supplier=True):
-    """Convert a WasteListing to a dictionary with all fields."""
     if not listing:
         return None
-
     supplier_name = get_user_name(listing.supplier_id, "Unknown Supplier")
     amounts = calculate_amounts(listing)
 
@@ -103,6 +92,64 @@ def listing_to_dict(listing, include_supplier=True):
         "platform_fee": amounts["platform_fee"],
         "total_amount": amounts["total_amount"],
     }
+
+
+# ─── NEW: Notify all producers when a listing is sold ──────────
+def notify_producers_waste_sold(listing, buyer_name, buyer_id):
+    """
+    Send in-app notifications and emails to all active energy producers
+    (except the buyer) informing them that a waste listing has been sold.
+    """
+    try:
+        from flask_mail import Message
+        from flask import current_app
+
+        # 1. In-app notifications
+        producers = User.query.filter_by(role='producer', account_status='verified').all()
+        for producer in producers:
+            # skip the buyer (they already know)
+            if producer.id == buyer_id:
+                continue
+            notify = Notification(
+                user_id=producer.id,
+                title='Waste Listing Sold',
+                message=f'The waste "{listing.waste_type}" (ID {listing.id}) has been purchased and is no longer available.',
+                type='listing_sold'
+            )
+            db.session.add(notify)
+
+        # 2. Email notifications
+        mail = current_app.extensions.get('mail')
+        if mail:
+            subject = f'[ReVive] Waste Listing Sold: {listing.waste_type}'
+            html_body = f"""
+            <html>
+              <head><meta charset="UTF-8"></head>
+              <body>
+                <h2>Listing Sold</h2>
+                <p>Hello,</p>
+                <p>The waste listing <strong>{listing.waste_type}</strong> (ID {listing.id}) has been purchased by <strong>{buyer_name}</strong> and is no longer available.</p>
+                <p>Check other available listings on the <a href="https://your-platform.com/marketplace">Marketplace</a>.</p>
+                <p>Thank you,<br>ReVive Energy Team</p>
+              </body>
+            </html>
+            """
+            for producer in producers:
+                if producer.email and producer.id != buyer_id:
+                    msg = Message(
+                        subject=subject,
+                        recipients=[producer.email],
+                        html=html_body,
+                        sender=('ReVive Energy', current_app.config.get('MAIL_DEFAULT_SENDER'))
+                    )
+                    mail.send(msg)
+                    current_app.logger.info(f"📧 Sold-out email sent to {producer.email}")
+
+        db.session.commit()
+        current_app.logger.info(f"✅ Sold-out notifications sent for listing #{listing.id}")
+
+    except Exception as e:
+        current_app.logger.error(f"❌ Failed to send sold-out notifications: {e}", exc_info=True)
 
 
 # ─── PRODUCER DASHBOARD ──────────────────────────────────────
@@ -484,15 +531,11 @@ def confirm_delivery(job_id):
         return jsonify({"message": f"Internal server error: {str(e)}"}), 500
 
 
-# ─── ★★★★★ DOWNLOAD RECEIPT (ULTIMATE FIX) ★★★★★ ──────────
+# ─── ★★★★★ DOWNLOAD RECEIPT ★★★★★ ──────────────────────────
 @producer_bp.route('/producer/deliveries/<int:job_id>/receipt', methods=['GET'])
 @jwt_required()
 @role_required("producer", "energy-producer")
 def download_receipt(job_id):
-    """
-    Generate and return a complete receipt for a completed delivery.
-    Guarantees that NO field is left as undefined or 0.
-    """
     try:
         user_id = current_user_id()
         job = TransportJob.query.get_or_404(job_id)
@@ -500,30 +543,25 @@ def download_receipt(job_id):
         if job.producer_id != user_id:
             return jsonify({'message': 'Unauthorized'}), 403
 
-        # 1. Get the associated payment
         payment = Payment.query.filter_by(transport_job_id=job_id).first()
         if not payment:
             payment = Payment.query.filter_by(request_id=job.request_id).first()
         if not payment:
             return jsonify({'message': 'No payment found for this delivery'}), 404
 
-        # 2. Get the associated waste listing
         listing = None
         if job.listing_id:
             listing = db.session.get(WasteListing, job.listing_id)
 
-        # 3. Get admin pricing as fallback
         default_amounts = calculate_amounts(listing)
 
-        # 4. Build breakdown with priority: Payment > Job/Listing > Admin Settings
         waste_amount = payment.waste_amount or 0.0
         if waste_amount <= 0 and listing and hasattr(listing, 'waste_value'):
             waste_amount = listing.waste_value or 0.0
         if waste_amount <= 0:
             waste_amount = default_amounts.get("waste_value", 0.0)
-        # ULTIMATE FALLBACK: if still 0, force a non-zero value
         if waste_amount <= 0:
-            waste_amount = 50.0  # default waste price
+            waste_amount = 50.0
 
         transport_fee = payment.transport_fee or 0.0
         if transport_fee <= 0 and job.transport_fee:
@@ -531,23 +569,20 @@ def download_receipt(job_id):
         if transport_fee <= 0:
             transport_fee = default_amounts.get("transport_fee", 0.0)
         if transport_fee <= 0:
-            transport_fee = 20.0  # default transport fee
+            transport_fee = 20.0
 
         platform_fee = payment.platform_fee or 0.0
         if platform_fee <= 0:
             platform_fee = default_amounts.get("platform_fee", 0.0)
         if platform_fee <= 0:
-            platform_fee = 10.0  # default platform fee
+            platform_fee = 10.0
 
-        # Total must be the sum of parts
         total_paid = waste_amount + transport_fee + platform_fee
 
-        # 5. Get all user names
         producer_name = get_user_name(job.producer_id, "Unknown Producer")
         supplier_name = get_user_name(job.supplier_id, "Unknown Supplier")
         transporter_name = get_user_name(job.transporter_id, "Unknown Transporter")
 
-        # 6. Build the receipt data (ALL fields at top level)
         receipt_data = {
             'receipt_number': payment.receipt_number or f"REV-{payment.id:06d}",
             'date': payment.completed_at or payment.created_at or datetime.utcnow(),
@@ -567,7 +602,7 @@ def download_receipt(job_id):
             'escrow_status': payment.escrow_status,
         }
 
-        # 7. Persist the calculated values back to the payment (to fix future downloads)
+        # Persist updated values
         updated = False
         if payment.waste_amount != waste_amount:
             payment.waste_amount = waste_amount
@@ -585,10 +620,6 @@ def download_receipt(job_id):
             db.session.commit()
             current_app.logger.info(f"Receipt: updated payment #{payment.id} with breakdown values.")
 
-        # 8. Log the receipt data for debugging
-        current_app.logger.info(f"Receipt data sent: {receipt_data}")
-
-        # 9. Return complete response
         return jsonify({
             'message': 'Receipt generated successfully',
             'receipt': receipt_data,
@@ -612,9 +643,6 @@ def download_receipt(job_id):
 @jwt_required()
 @role_required("producer", "energy-producer")
 def rate_supplier():
-    """
-    Submit a rating for a supplier after a delivery.
-    """
     try:
         user_id = current_user_id()
         data = request.get_json() or {}
@@ -630,12 +658,10 @@ def rate_supplier():
         if not (1 <= rating <= 5):
             return jsonify({'message': 'Rating must be between 1 and 5'}), 400
 
-        # Check if the delivery exists and belongs to this producer
         job = TransportJob.query.get(delivery_id)
         if not job or job.producer_id != user_id:
             return jsonify({'message': 'Invalid delivery'}), 404
 
-        # Check if a rating already exists for this delivery
         existing = Review.query.filter_by(
             reviewer_id=user_id,
             reviewee_id=supplier_id,
@@ -659,10 +685,72 @@ def rate_supplier():
             db.session.add(review_obj)
 
         db.session.commit()
-
         return jsonify({'message': 'Rating submitted successfully'}), 200
 
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f"Error in rate_supplier: {e}", exc_info=True)
+        return jsonify({'message': str(e)}), 500
+
+
+# ─── ★ FIXED: MARK REQUEST AS SOLD ──────────────────────────────
+@producer_bp.route('/producer/requests/<int:request_id>/mark-sold', methods=['POST'])
+@jwt_required()
+@role_required("producer", "energy-producer")
+def mark_request_sold(request_id):
+    """
+    Call this endpoint AFTER the producer has successfully paid for a request.
+    It will:
+      - Mark the associated WasteListing as 'sold'.
+      - Notify all other producers that the waste is no longer available.
+    """
+    try:
+        user_id = current_user_id()
+        waste_request = WasteRequest.query.get_or_404(request_id)
+
+        # 1. Verify ownership
+        if int(waste_request.producer_id) != int(user_id):
+            return jsonify({'message': 'Unauthorized'}), 403
+
+        # 2. Check that payment is completed
+        payment = Payment.query.filter_by(request_id=request_id).order_by(Payment.id.desc()).first()
+        if not payment or payment.payment_status != 'paid':
+            return jsonify({'message': 'Payment not completed for this request'}), 400
+
+        # 3. Get the listing
+        listing = get_listing(waste_request.listing_id)
+        if not listing:
+            return jsonify({'message': 'Listing not found'}), 404
+
+        # 4. If already sold, do nothing but return success
+        if listing.status == 'sold':
+            return jsonify({'message': 'Listing already marked as sold'}), 200
+
+        # 5. Update listing status
+        listing.status = 'sold'
+        db.session.commit()
+
+        # 6. Notify all other producers (pass buyer_id and buyer_name)
+        buyer_name = get_user_name(user_id, 'A producer')
+        notify_producers_waste_sold(listing, buyer_name, user_id)   # <--- FIX: pass buyer_id
+
+        # 7. Also notify the supplier
+        notify_supplier = Notification(
+            user_id=listing.supplier_id,
+            title='Your Waste Has Been Sold',
+            message=f'Your waste listing "{listing.waste_type}" has been purchased and is now sold.',
+            type='listing_sold'
+        )
+        db.session.add(notify_supplier)
+        db.session.commit()
+
+        return jsonify({
+            'message': 'Listing marked as sold and producers notified.',
+            'listing_id': listing.id,
+            'new_status': listing.status
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error in mark_request_sold: {e}", exc_info=True)
         return jsonify({'message': str(e)}), 500

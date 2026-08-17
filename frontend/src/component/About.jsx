@@ -659,7 +659,7 @@ export default function AboutPage() {
       </section>
 
       {/* ============ PARTNERS ============ */}
-      <section className="py-16 bg-[#F6F8F4]">
+      {/* <section className="py-16 bg-[#F6F8F4]">
         <div className="max-w-7xl mx-auto px-6 lg:px-12">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -687,7 +687,7 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ============ CTA ============ */}
       <section className="py-24 lg:py-32 bg-[#0E2A1C]">
